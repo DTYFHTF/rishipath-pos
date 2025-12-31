@@ -24,6 +24,11 @@ class SalesReport extends Page implements HasForms
 
     protected static ?string $navigationLabel = 'Sales Report';
 
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasPermission('view_sales_reports') ?? false;
+    }
+
     public $startDate;
     public $endDate;
     public $storeId = null;

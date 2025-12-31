@@ -8,6 +8,7 @@ use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\StockLevel;
 use App\Models\Customer;
+use App\Services\BarcodeService;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
@@ -32,7 +33,13 @@ class POSBilling extends Page implements HasForms
 
     protected static ?int $navigationSort = 0;
 
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasPermission('access_pos_billing') ?? false;
+    }
+
     public $searchQuery = '';
+    public $barcodeInput = '';
     public $cart = [];
     public $selectedCustomer = null;
     public $customerName = '';
@@ -40,10 +47,68 @@ class POSBilling extends Page implements HasForms
     public $paymentMethod = 'cash';
     public $amountReceived = 0;
     public $notes = '';
+    public $scannerEnabled = true;
+
+    protected $listeners = ['barcodescanned' => 'handleBarcodeScanned'];
 
     public function mount(): void
     {
         $this->cart = [];
+    }
+
+    /**
+     * Handle barcode scan from scanner device or manual input
+     */
+    public function handleBarcodeScanned($barcode = null)
+    {
+        $barcode = $barcode ?? $this->barcodeInput;
+        
+        if (empty($barcode)) {
+            return;
+        }
+
+        $barcodeService = new BarcodeService();
+        
+        // Parse and validate barcode
+        $parsedBarcode = $barcodeService->parseScannedInput($barcode);
+        
+        if (!$parsedBarcode) {
+            Notification::make()
+                ->danger()
+                ->title('Invalid Barcode')
+                ->body('The scanned barcode format is invalid.')
+                ->send();
+            
+            $this->barcodeInput = '';
+            return;
+        }
+
+        // Find product variant by barcode
+        $variant = $barcodeService->findVariantByBarcode($parsedBarcode);
+        
+        if (!$variant) {
+            Notification::make()
+                ->warning()
+                ->title('Product Not Found')
+                ->body("No product found with barcode: {$parsedBarcode}")
+                ->send();
+            
+            $this->barcodeInput = '';
+            return;
+        }
+
+        // Add to cart
+        $this->addToCart($variant->id);
+        
+        // Clear barcode input
+        $this->barcodeInput = '';
+        
+        // Success sound/notification
+        Notification::make()
+            ->success()
+            ->title('Added to Cart')
+            ->body($variant->product->name . ' - ' . $variant->pack_size . $variant->unit)
+            ->send();
     }
 
     public function searchProducts()

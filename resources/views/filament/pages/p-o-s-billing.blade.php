@@ -2,16 +2,45 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Left Side: Product Search & Cart -->
         <div class="lg:col-span-2 space-y-4">
+            <!-- Barcode Scanner Input -->
+            <div class="bg-primary-50 dark:bg-primary-900/20 rounded-lg shadow p-4 border-2 border-primary-500">
+                <div class="flex items-center gap-3">
+                    <svg class="w-6 h-6 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path>
+                    </svg>
+                    <div class="flex-1">
+                        <label class="text-sm font-semibold text-primary-700 dark:text-primary-300">
+                            Barcode Scanner (F2 to focus)
+                        </label>
+                        <input 
+                            type="text" 
+                            wire:model.live="barcodeInput"
+                            wire:keydown.enter="handleBarcodeScanned"
+                            id="barcode-scanner-input"
+                            placeholder="Scan barcode or type and press Enter..."
+                            class="w-full mt-1 rounded-lg border-primary-300 dark:border-primary-700 dark:bg-gray-900 focus:ring-primary-500 focus:border-primary-500"
+                        />
+                    </div>
+                    <div class="text-xs text-primary-600 dark:text-primary-400">
+                        @if($scannerEnabled)
+                            <span class="inline-flex items-center gap-1">
+                                <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                                Active
+                            </span>
+                        @endif
+                    </div>
+                </div>
+            </div>
+
             <!-- Product Search -->
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                <h3 class="text-lg font-semibold mb-4">Product Search</h3>
+                <h3 class="text-lg font-semibold mb-4">Product Search (Manual)</h3>
                 
                 <input 
                     type="text" 
                     wire:model.live="searchQuery"
                     placeholder="Search by name, SKU, or barcode..."
                     class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 focus:ring-primary-500 focus:border-primary-500"
-                    autofocus
                 />
 
                 @if($searchQuery)
@@ -24,6 +53,9 @@
                                 <div class="font-semibold">{{ $variant->product->name }}</div>
                                 <div class="text-sm text-gray-600 dark:text-gray-400">
                                     {{ $variant->pack_size }} {{ $variant->unit }} - SKU: {{ $variant->sku }}
+                                    @if($variant->barcode)
+                                        <span class="ml-2 text-primary-600">📊 {{ $variant->barcode }}</span>
+                                    @endif
                                 </div>
                                 <div class="text-sm font-semibold text-primary-600">
                                     ₹{{ number_format($variant->mrp_india ?? $variant->base_price, 2) }}
@@ -194,4 +226,42 @@
             </button>
         </div>
     </div>
+
+    @push('scripts')
+    <script>
+        // Keyboard shortcuts for POS
+        document.addEventListener('keydown', function(e) {
+            // F2 - Focus barcode scanner input
+            if (e.key === 'F2') {
+                e.preventDefault();
+                document.getElementById('barcode-scanner-input')?.focus();
+            }
+            
+            // ESC - Clear barcode input
+            if (e.key === 'Escape' && document.activeElement.id === 'barcode-scanner-input') {
+                e.preventDefault();
+                @this.set('barcodeInput', '');
+            }
+        });
+
+        // Auto-focus barcode scanner on page load
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                document.getElementById('barcode-scanner-input')?.focus();
+            }, 500);
+        });
+
+        // Re-focus scanner after Livewire updates
+        Livewire.hook('message.processed', (message, component) => {
+            if (component.fingerprint.name === 'app.filament.pages.pos-billing') {
+                setTimeout(() => {
+                    const barcodeInput = document.getElementById('barcode-scanner-input');
+                    if (barcodeInput && document.activeElement !== barcodeInput) {
+                        barcodeInput.focus();
+                    }
+                }, 100);
+            }
+        });
+    </script>
+    @endpush
 </x-filament-panels::page>

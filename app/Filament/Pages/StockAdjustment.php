@@ -28,6 +28,11 @@ class StockAdjustment extends Page implements HasForms
 
     protected static ?string $navigationLabel = 'Stock Adjustment';
 
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasPermission('adjust_stock') ?? false;
+    }
+
     public $productVariantId;
     public $storeId;
     public $adjustmentType = 'increase';

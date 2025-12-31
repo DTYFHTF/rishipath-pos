@@ -68,6 +68,66 @@ class User extends Authenticatable implements FilamentUser
         return $this->active;
     }
 
+    /**
+     * Check if user has a specific permission
+     */
+    public function hasPermission(string $permission): bool
+    {
+        // Check user-specific permissions first
+        if (in_array($permission, $this->permissions ?? [])) {
+            return true;
+        }
+        
+        // Check role permissions
+        if ($this->role) {
+            return $this->role->hasPermission($permission);
+        }
+        
+        return false;
+    }
+
+    /**
+     * Check if user has any of the given permissions
+     */
+    public function hasAnyPermission(array $permissions): bool
+    {
+        foreach ($permissions as $permission) {
+            if ($this->hasPermission($permission)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Check if user has all of the given permissions
+     */
+    public function hasAllPermissions(array $permissions): bool
+    {
+        foreach ($permissions as $permission) {
+            if (!$this->hasPermission($permission)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Check if user has a specific role
+     */
+    public function hasRole(string $roleSlug): bool
+    {
+        return $this->role?->slug === $roleSlug;
+    }
+
+    /**
+     * Check if user is super admin
+     */
+    public function isSuperAdmin(): bool
+    {
+        return $this->hasRole('super-admin');
+    }
+
     public function organization(): BelongsTo
     {
         return $this->belongsTo(Organization::class);

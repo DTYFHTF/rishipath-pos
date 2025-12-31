@@ -23,6 +23,26 @@ class ProductResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->hasPermission('view_products') ?? false;
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()?->hasPermission('create_products') ?? false;
+    }
+
+    public static function canEdit($record): bool
+    {
+        return auth()->user()?->hasPermission('edit_products') ?? false;
+    }
+
+    public static function canDelete($record): bool
+    {
+        return auth()->user()?->hasPermission('delete_products') ?? false;
+    }
+
     public static function form(Form $form): Form
     {
         return $form
