@@ -18,6 +18,7 @@ return new class extends Migration
             $table->decimal('quantity', 10, 3);
             $table->string('unit', 20);
             $table->decimal('price_per_unit', 10, 2);
+            $table->decimal('cost_price', 10, 2)->default(0);
             $table->decimal('subtotal', 10, 2);
             $table->decimal('discount_amount', 10, 2)->default(0);
             $table->decimal('tax_rate', 5, 2);

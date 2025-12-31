@@ -252,7 +252,7 @@ class RoleResource extends Resource
                 
                 Tables\Columns\TextColumn::make('permissions')
                     ->label('Permissions')
-                    ->formatStateUsing(fn ($state) => count($state ?? []))
+                    ->formatStateUsing(fn ($state) => is_string($state) ? count(json_decode($state, true) ?? []) : count($state ?? []))
                     ->badge()
                     ->color('info')
                     ->suffix(' permissions'),
@@ -283,7 +283,7 @@ class RoleResource extends Resource
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make()
-                        ->disabled(fn ($records) => $records->contains(fn ($record) => $record->is_system_role)),
+                        ->disabled(fn ($records) => $records?->contains(fn ($record) => $record->is_system_role) ?? false),
                 ]),
             ])
             ->defaultSort('name');

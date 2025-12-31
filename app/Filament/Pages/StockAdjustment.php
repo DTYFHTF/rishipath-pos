@@ -43,7 +43,8 @@ class StockAdjustment extends Page implements HasForms
 
     public function mount(): void
     {
-        $this->storeId = Auth::user()->stores[0] ?? 1;
+        $stores = Auth::user()->stores ?? [];
+        $this->storeId = !empty($stores) ? $stores[0] : 1;
     }
 
     public function form(Form $form): Form
@@ -52,9 +53,12 @@ class StockAdjustment extends Page implements HasForms
             ->schema([
                 Select::make('storeId')
                     ->label('Store')
-                    ->relationship('store', 'name')
+                    ->options(\App\Models\Store::pluck('name', 'id'))
                     ->required()
-                    ->default(fn () => Auth::user()->stores[0] ?? 1)
+                    ->default(function () {
+                        $stores = Auth::user()->stores ?? [];
+                        return !empty($stores) ? $stores[0] : 1;
+                    })
                     ->live()
                     ->afterStateUpdated(fn () => $this->updateCurrentStock()),
                 
@@ -109,8 +113,7 @@ class StockAdjustment extends Page implements HasForms
                     ->label('Notes')
                     ->rows(3)
                     ->placeholder('Add any additional details...'),
-            ])
-            ->statePath('data');
+            ]);
     }
 
     public function updateCurrentStock(): void
@@ -194,8 +197,10 @@ class StockAdjustment extends Page implements HasForms
                 ->send();
 
             // Reset form
-            $this->reset(['productVariantId', 'quantity', 'reason', 'notes']);
-            $this->adjustmentType = 'increase';
+            $this->productVariantId = null;
+            $this->quantity = null;
+            $this->reason = null;
+            $this->notes = null;
             $this->currentStock = 0;
 
         } catch (\Exception $e) {

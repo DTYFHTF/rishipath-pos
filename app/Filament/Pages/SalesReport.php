@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Services\ExportService;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -52,7 +53,7 @@ class SalesReport extends Page implements HasForms
                     ->required(),
                 Select::make('storeId')
                     ->label('Store')
-                    ->relationship('store', 'name')
+                    ->options(\App\Models\Store::pluck('name', 'id'))
                     ->placeholder('All Stores'),
                 Select::make('paymentMethod')
                     ->label('Payment Method')
@@ -141,5 +142,76 @@ class SalesReport extends Page implements HasForms
             ->groupBy('date')
             ->orderBy('date')
             ->get();
+    }
+
+    /**
+     * Export report to Excel
+     */
+    public function exportToExcel()
+    {
+        $salesData = $this->getSalesData();
+        $paymentMethods = $this->getSalesByPaymentMethod();
+        $topProducts = $this->getTopProducts();
+        $dailySales = $this->getDailySales();
+
+        $data = [];
+        
+        // Add summary
+        $data[] = ['SALES REPORT'];
+        $data[] = ['Period', $this->startDate . ' to ' . $this->endDate];
+        if ($this->storeId) {
+            $store = \App\Models\Store::find($this->storeId);
+            $data[] = ['Store', $store?->name ?? 'Unknown'];
+        }
+        $data[] = [''];
+        
+        // Add summary metrics
+        $data[] = ['SUMMARY METRICS'];
+        $data[] = ['Total Sales', '₹' . number_format($salesData['total_sales'], 2)];
+        $data[] = ['Total Transactions', $salesData['total_transactions']];
+        $data[] = ['Total Items Sold', $salesData['total_items_sold']];
+        $data[] = ['Average Sale', '₹' . number_format($salesData['average_sale'], 2)];
+        $data[] = ['Total Tax', '₹' . number_format($salesData['total_tax'], 2)];
+        $data[] = ['Total Discount', '₹' . number_format($salesData['total_discount'], 2)];
+        $data[] = [''];
+        
+        // Add payment methods
+        $data[] = ['SALES BY PAYMENT METHOD'];
+        $data[] = ['Payment Method', 'Count', 'Total Amount'];
+        foreach ($paymentMethods as $method) {
+            $data[] = [
+                ucfirst($method->payment_method),
+                $method->count,
+                '₹' . number_format($method->total, 2),
+            ];
+        }
+        $data[] = [''];
+        
+        // Add top products
+        $data[] = ['TOP 10 PRODUCTS'];
+        $data[] = ['Product Name', 'Quantity Sold', 'Total Revenue'];
+        foreach ($topProducts as $product) {
+            $data[] = [
+                $product->product_name,
+                $product->total_quantity,
+                '₹' . number_format($product->total_revenue, 2),
+            ];
+        }
+        $data[] = [''];
+        
+        // Add daily sales
+        $data[] = ['DAILY SALES'];
+        $data[] = ['Date', 'Transactions', 'Total Amount'];
+        foreach ($dailySales as $day) {
+            $data[] = [
+                $day->date,
+                $day->count,
+                '₹' . number_format($day->total, 2),
+            ];
+        }
+
+        $filename = 'sales_report_' . $this->startDate . '_to_' . $this->endDate;
+        
+        return app(ExportService::class)->downloadExcel($data, $filename);
     }
 }

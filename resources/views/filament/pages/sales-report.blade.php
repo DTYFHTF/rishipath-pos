@@ -4,9 +4,12 @@
         <x-filament::card>
             <form wire:submit.prevent="$refresh">
                 {{ $this->form }}
-                <div class="mt-4">
+                <div class="mt-4 flex gap-3">
                     <x-filament::button type="submit" wire:click="$refresh">
                         Generate Report
+                    </x-filament::button>
+                    <x-filament::button color="success" wire:click="exportToExcel">
+                        📥 Export to Excel
                     </x-filament::button>
                 </div>
             </form>

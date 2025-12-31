@@ -293,6 +293,10 @@ class POSBilling extends Page implements HasForms
                 $itemSubtotal = $item['price'] * $item['quantity'];
                 $itemTax = $itemSubtotal * ($item['tax_rate'] / 100);
 
+                // Get cost price from variant
+                $variant = ProductVariant::find($item['variant_id']);
+                $costPrice = $variant?->cost_price ?? 0;
+
                 SaleItem::create([
                     'sale_id' => $sale->id,
                     'product_variant_id' => $item['variant_id'],
@@ -301,6 +305,7 @@ class POSBilling extends Page implements HasForms
                     'quantity' => $item['quantity'],
                     'unit' => $item['unit'],
                     'price_per_unit' => $item['price'],
+                    'cost_price' => $costPrice,
                     'subtotal' => $itemSubtotal,
                     'tax_rate' => $item['tax_rate'],
                     'tax_amount' => $itemTax,

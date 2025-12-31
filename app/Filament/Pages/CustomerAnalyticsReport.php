@@ -40,13 +40,13 @@ class CustomerAnalyticsReport extends Page
         $activeCustomers = $query->distinct('customer_id')->whereNotNull('customer_id')->count();
         $newCustomers = Customer::whereBetween('created_at', [$this->startDate, $this->endDate])->count();
 
-        $totalRevenue = $query->sum('final_total');
+        $totalRevenue = $query->sum('total_amount');
         $totalTransactions = $query->count();
         $avgTransactionValue = $totalTransactions > 0 ? $totalRevenue / $totalTransactions : 0;
 
         $customerRevenue = $query->whereNotNull('customer_id')
             ->groupBy('customer_id')
-            ->selectRaw('customer_id, SUM(final_total) as total')
+            ->selectRaw('customer_id, SUM(total_amount) as total')
             ->get();
 
         $avgCustomerLifetimeValue = $customerRevenue->avg('total') ?? 0;
@@ -86,7 +86,7 @@ class CustomerAnalyticsReport extends Page
             $frequency = $customer->sales->count();
 
             // Monetary: Total spending
-            $monetary = $customer->sales->sum('final_total');
+            $monetary = $customer->sales->sum('total_amount');
 
             $rfmData[] = [
                 'customer_id' => $customer->id,

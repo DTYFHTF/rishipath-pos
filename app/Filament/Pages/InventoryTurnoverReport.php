@@ -50,7 +50,7 @@ class InventoryTurnoverReport extends Page
         $avgInventory = ProductBatch::query()
             ->when($this->storeId, fn($q) => $q->where('store_id', $this->storeId))
             ->where('quantity_remaining', '>', 0)
-            ->avg(DB::raw('quantity_remaining * cost_price'));
+            ->avg(DB::raw('quantity_remaining * COALESCE(purchase_price, 0)'));
 
         $turnoverRate = $avgInventory > 0 ? $cogs / $avgInventory : 0;
         $daysToSell = $turnoverRate > 0 ? 365 / $turnoverRate : 0;
@@ -82,8 +82,8 @@ class InventoryTurnoverReport extends Page
             ->select([
                 'product_variant_id',
                 DB::raw('SUM(quantity) as total_sold'),
-                DB::raw('SUM(quantity * cost_price) as cogs'),
-                DB::raw('SUM(quantity * unit_price) as revenue'),
+                DB::raw('SUM(quantity * COALESCE(cost_price, 0)) as cogs'),
+                DB::raw('SUM(quantity * price_per_unit) as revenue'),
             ])
             ->whereBetween('created_at', [$this->startDate, $this->endDate])
             ->when($this->storeId, fn($q) => 

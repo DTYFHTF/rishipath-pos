@@ -223,7 +223,7 @@ class UserResource extends Resource
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make()
-                        ->disabled(fn ($records) => $records->contains(fn ($record) => $record->id === auth()->id())),
+                        ->disabled(fn ($records) => $records?->contains(fn ($record) => $record->id === auth()->id()) ?? false),
                 ]),
             ])
             ->defaultSort('name');

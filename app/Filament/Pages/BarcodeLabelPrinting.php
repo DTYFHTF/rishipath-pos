@@ -29,21 +29,24 @@ class BarcodeLabelPrinting extends Page implements HasForms
         return auth()->user()?->hasPermission('view_product_batches') ?? false;
     }
 
-    public $selectedVariants = [];
-    public $copiesPerLabel = 1;
-    public $labelSize = 'small'; // small, medium, large
+    public ?array $data = [];
     public $showPrice = true;
     public $showSKU = true;
     public $generatedLabels = [];
 
     public function mount(): void
     {
-        $this->form->fill();
+        $this->form->fill([
+            'selectedVariants' => [],
+            'copiesPerLabel' => 1,
+            'labelSize' => 'medium',
+        ]);
     }
 
     public function form(Form $form): Form
     {
         return $form
+            ->statePath('data')
             ->schema([
                 Select::make('selectedVariants')
                     ->label('Select Products')
@@ -80,8 +83,7 @@ class BarcodeLabelPrinting extends Page implements HasForms
                     ])
                     ->default('medium')
                     ->required(),
-            ])
-            ->statePath('data');
+            ]);
     }
 
     public function generateLabels()
@@ -114,7 +116,11 @@ class BarcodeLabelPrinting extends Page implements HasForms
     public function clearLabels()
     {
         $this->generatedLabels = [];
-        $this->form->fill();
+        $this->form->fill([
+            'selectedVariants' => [],
+            'copiesPerLabel' => 1,
+            'labelSize' => 'medium',
+        ]);
     }
 
     public function generateAllBarcodes()
