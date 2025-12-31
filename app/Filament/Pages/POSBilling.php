@@ -9,6 +9,7 @@ use App\Models\SaleItem;
 use App\Models\StockLevel;
 use App\Models\Customer;
 use App\Services\BarcodeService;
+use App\Services\LoyaltyService;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
@@ -322,6 +323,12 @@ class POSBilling extends Page implements HasForms
                     $stock->last_movement_at = now();
                     $stock->save();
                 }
+            }
+
+            // Award loyalty points
+            if ($sale->customer_id) {
+                $loyaltyService = new LoyaltyService();
+                $loyaltyService->awardPointsForSale($sale);
             }
 
             DB::commit();
