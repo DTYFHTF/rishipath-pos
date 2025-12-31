@@ -17,13 +17,36 @@ class CustomerResource extends Resource
 {
     protected static ?string $model = Customer::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-users';
+
+    protected static ?string $navigationGroup = 'Sales';
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                //
+                Forms\Components\TextInput::make('customer_code')
+                    ->required()
+                    ->unique(ignoreRecord: true)
+                    ->maxLength(50),
+                Forms\Components\TextInput::make('name')
+                    ->required()
+                    ->maxLength(255),
+                Forms\Components\TextInput::make('phone')
+                    ->tel()
+                    ->maxLength(20),
+                Forms\Components\TextInput::make('email')
+                    ->email()
+                    ->maxLength(255),
+                Forms\Components\Textarea::make('address')
+                    ->rows(2),
+                Forms\Components\TextInput::make('city')
+                    ->maxLength(100),
+                Forms\Components\DatePicker::make('date_of_birth'),
+                Forms\Components\Textarea::make('notes')
+                    ->rows(2),
+                Forms\Components\Toggle::make('active')
+                    ->default(true),
             ]);
     }
 
@@ -31,12 +54,19 @@ class CustomerResource extends Resource
     {
         return $table
             ->columns([
-                //
+                Tables\Columns\TextColumn::make('customer_code')->searchable(),
+                Tables\Columns\TextColumn::make('name')->searchable(),
+                Tables\Columns\TextColumn::make('phone')->searchable(),
+                Tables\Columns\TextColumn::make('email')->searchable(),
+                Tables\Columns\TextColumn::make('total_purchases')->label('Purchases'),
+                Tables\Columns\TextColumn::make('total_spent')->money('INR'),
+                Tables\Columns\IconColumn::make('active')->boolean(),
             ])
             ->filters([
-                //
+                Tables\Filters\TernaryFilter::make('active'),
             ])
             ->actions([
+                Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([

@@ -17,13 +17,36 @@ class StoreResource extends Resource
 {
     protected static ?string $model = Store::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-building-storefront';
+
+    protected static ?string $navigationGroup = 'Settings';
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                //
+                Forms\Components\TextInput::make('code')
+                    ->required()
+                    ->maxLength(50),
+                Forms\Components\TextInput::make('name')
+                    ->required()
+                    ->maxLength(255),
+                Forms\Components\Textarea::make('address')
+                    ->rows(2),
+                Forms\Components\TextInput::make('city')
+                    ->maxLength(100),
+                Forms\Components\TextInput::make('state')
+                    ->maxLength(100),
+                Forms\Components\TextInput::make('postal_code')
+                    ->maxLength(20),
+                Forms\Components\TextInput::make('phone')
+                    ->tel()
+                    ->maxLength(20),
+                Forms\Components\TextInput::make('email')
+                    ->email()
+                    ->maxLength(255),
+                Forms\Components\Toggle::make('active')
+                    ->default(true),
             ]);
     }
 
@@ -31,10 +54,14 @@ class StoreResource extends Resource
     {
         return $table
             ->columns([
-                //
+                Tables\Columns\TextColumn::make('code')->searchable(),
+                Tables\Columns\TextColumn::make('name')->searchable(),
+                Tables\Columns\TextColumn::make('city'),
+                Tables\Columns\TextColumn::make('phone'),
+                Tables\Columns\IconColumn::make('active')->boolean(),
             ])
             ->filters([
-                //
+                Tables\Filters\TernaryFilter::make('active'),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
