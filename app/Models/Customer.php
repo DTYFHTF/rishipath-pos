@@ -58,6 +58,11 @@ class Customer extends Model
         return $this->hasMany(LoyaltyPoint::class);
     }
 
+    public function ledgerEntries(): HasMany
+    {
+        return $this->hasMany(CustomerLedgerEntry::class);
+    }
+
     /**
      * Check if customer is enrolled in loyalty program
      */
@@ -90,5 +95,47 @@ class Customer extends Model
         }
 
         return true;
+    }
+
+    /**
+     * Get current outstanding balance
+     */
+    public function getOutstandingBalance(): float
+    {
+        return CustomerLedgerEntry::getCustomerBalance($this->id);
+    }
+
+    /**
+     * Get pending/overdue amounts
+     */
+    public function getOutstandingAmount(): float
+    {
+        return CustomerLedgerEntry::getCustomerOutstanding($this->id);
+    }
+
+    /**
+     * Check if customer has credit limit exceeded
+     */
+    public function hasCreditLimitExceeded(float $creditLimit): bool
+    {
+        return $this->getOutstandingBalance() > $creditLimit;
+    }
+
+    /**
+     * Get ledger statement for date range
+     */
+    public function getLedgerStatement($startDate = null, $endDate = null)
+    {
+        $query = $this->ledgerEntries()->orderBy('transaction_date', 'desc');
+
+        if ($startDate) {
+            $query->where('transaction_date', '>=', $startDate);
+        }
+
+        if ($endDate) {
+            $query->where('transaction_date', '<=', $endDate);
+        }
+
+        return $query->get();
     }
 }

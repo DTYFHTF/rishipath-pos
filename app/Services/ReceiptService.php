@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Sale;
 use App\Models\Organization;
+use Illuminate\Support\Facades\Log;
 
 class ReceiptService
 {
@@ -137,7 +138,7 @@ class ReceiptService
         // In a real implementation, this would send to a thermal printer
         // For now, we'll log it or return the text
         
-        \Log::info("Receipt for Sale #{$sale->id}:\n" . $receipt);
+        Log::info("Receipt for Sale #{$sale->id}:\n" . $receipt);
         
         return true;
     }

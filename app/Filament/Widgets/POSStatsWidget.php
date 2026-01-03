@@ -5,6 +5,7 @@ namespace App\Filament\Widgets;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\Customer;
+use Illuminate\Support\Facades\DB;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -25,7 +26,7 @@ class POSStatsWidget extends BaseWidget
         
         $totalCustomers = Customer::where('active', true)->count();
 
-        $lowStockCount = \DB::table('stock_levels')
+        $lowStockCount = DB::table('stock_levels')
             ->whereColumn('quantity', '<=', 'reorder_level')
             ->count();
 

@@ -3,6 +3,7 @@
 namespace App\Filament\Traits;
 
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 trait HasPermissionCheck
 {
@@ -90,7 +91,7 @@ trait HasPermissionCheck
     protected static function getPermissionName(string $action): string
     {
         $modelName = class_basename(static::getModel());
-        $resourceName = strtolower(str_replace('_', '', snake_case($modelName)));
+        $resourceName = strtolower(str_replace('_', '', Str::snake($modelName)));
         
         // Map resource names to permission names
         $permissionMap = [

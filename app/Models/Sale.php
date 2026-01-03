@@ -85,4 +85,31 @@ class Sale extends Model
     {
         return $this->hasMany(SalePayment::class);
     }
+
+    public function paymentSplits(): HasMany
+    {
+        return $this->hasMany(PaymentSplit::class);
+    }
+
+    public function ledgerEntries(): HasMany
+    {
+        return $this->hasMany(CustomerLedgerEntry::class, 'reference_id')
+            ->where('reference_type', 'Sale');
+    }
+
+    /**
+     * Check if this sale has split payments
+     */
+    public function hasSplitPayments(): bool
+    {
+        return $this->paymentSplits()->count() > 1;
+    }
+
+    /**
+     * Get total paid via split payments
+     */
+    public function getSplitPaymentsTotal(): float
+    {
+        return (float) $this->paymentSplits()->sum('amount');
+    }
 }
