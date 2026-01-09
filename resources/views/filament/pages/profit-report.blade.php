@@ -122,20 +122,20 @@
                     @foreach($this->getTopProfitableProducts(10) as $product)
                         <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
                             <div class="flex items-center justify-between mb-2">
-                                <div class="font-semibold text-sm">{{ $product['name'] }}</div>
+                                <div class="font-semibold text-sm text-gray-900 dark:text-gray-100">{{ $product['name'] }}</div>
                                 <span class="text-green-600 dark:text-green-400 font-bold">₹{{ number_format($product['profit'], 2) }}</span>
                             </div>
-                            <div class="grid grid-cols-3 gap-2 text-xs text-gray-600 dark:text-gray-400">
+                            <div class="grid grid-cols-3 gap-2 text-xs text-gray-700 dark:text-gray-300">
                                 <div>
-                                    <div class="text-gray-500">Sold</div>
+                                    <div class="text-gray-500 dark:text-gray-400">Sold</div>
                                     <div class="font-medium">{{ $product['quantity_sold'] }} units</div>
                                 </div>
                                 <div>
-                                    <div class="text-gray-500">Revenue</div>
+                                    <div class="text-gray-500 dark:text-gray-400">Revenue</div>
                                     <div class="font-medium">₹{{ number_format($product['revenue'], 2) }}</div>
                                 </div>
                                 <div>
-                                    <div class="text-gray-500">Margin</div>
+                                    <div class="text-gray-500 dark:text-gray-400">Margin</div>
                                     <div class="font-medium">{{ number_format($product['profit_margin'], 2) }}%</div>
                                 </div>
                             </div>
@@ -151,20 +151,20 @@
                     @foreach($this->getLeastProfitableProducts(10) as $product)
                         <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
                             <div class="flex items-center justify-between mb-2">
-                                <div class="font-semibold text-sm">{{ $product['name'] }}</div>
+                                <div class="font-semibold text-sm text-gray-900 dark:text-gray-100">{{ $product['name'] }}</div>
                                 <span class="text-red-600 dark:text-red-400 font-bold">₹{{ number_format($product['profit'], 2) }}</span>
                             </div>
-                            <div class="grid grid-cols-3 gap-2 text-xs text-gray-600 dark:text-gray-400">
+                            <div class="grid grid-cols-3 gap-2 text-xs text-gray-700 dark:text-gray-300">
                                 <div>
-                                    <div class="text-gray-500">Sold</div>
+                                    <div class="text-gray-500 dark:text-gray-400">Sold</div>
                                     <div class="font-medium">{{ $product['quantity_sold'] }} units</div>
                                 </div>
                                 <div>
-                                    <div class="text-gray-500">Revenue</div>
+                                    <div class="text-gray-500 dark:text-gray-400">Revenue</div>
                                     <div class="font-medium">₹{{ number_format($product['revenue'], 2) }}</div>
                                 </div>
                                 <div>
-                                    <div class="text-gray-500">Margin</div>
+                                    <div class="text-gray-500 dark:text-gray-400">Margin</div>
                                     <div class="font-medium">{{ number_format($product['profit_margin'], 2) }}%</div>
                                 </div>
                             </div>

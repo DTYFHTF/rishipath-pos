@@ -169,15 +169,91 @@
                     {{-- Customer Selection --}}
                     <x-filament::card>
                         <label class="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Customer (Optional)</label>
-                        <select
-                            wire:model.live="sessions.{{ $activeSessionKey }}.customer_id"
-                            class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
-                        >
-                            <option value="">Walk-in Customer</option>
-                            @foreach(\App\Models\Customer::where('active', true)->orderBy('name')->get() as $customer)
-                                <option value="{{ $customer->id }}">{{ $customer->name }} - {{ $customer->phone }}</option>
-                            @endforeach
-                        </select>
+                        
+                        {{-- Show selected customer or search input --}}
+                        @if($session['customer_id'])
+                            <div class="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xl">👤</span>
+                                    <div>
+                                        <div class="font-medium text-gray-900 dark:text-gray-100">{{ $session['customer_name'] ?? 'Customer' }}</div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400">ID: {{ $session['customer_id'] }}</div>
+                                    </div>
+                                </div>
+                                <button 
+                                    type="button"
+                                    wire:click="clearCustomer"
+                                    class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                                    title="Remove customer"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                        @else
+                            <div x-data="{ open: false }" class="relative">
+                                <input
+                                    type="text"
+                                    wire:model.live.debounce.300ms="customerSearch"
+                                    @focus="open = true"
+                                    @click.away="open = false"
+                                    placeholder="🔍 Search customers (name, phone, code)..."
+                                    class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400"
+                                />
+                                
+                                {{-- Dropdown results --}}
+                                <div 
+                                    x-show="open && ($wire.customers.length > 0 || !$wire.customerSearch)"
+                                    x-transition
+                                    class="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+                                >
+                                    {{-- Walk-in option always first --}}
+                                    <button
+                                        type="button"
+                                        wire:click="selectCustomer(null)"
+                                        @click="open = false"
+                                        class="w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 flex items-center gap-3"
+                                    >
+                                        <span class="text-xl">🚶</span>
+                                        <div>
+                                            <div class="font-medium text-gray-900 dark:text-gray-100">Walk-in Customer</div>
+                                            <div class="text-xs text-gray-500 dark:text-gray-400">No customer account</div>
+                                        </div>
+                                    </button>
+                                    
+                                    @forelse($this->customers as $customer)
+                                        <button
+                                            type="button"
+                                            wire:click="selectCustomer({{ $customer->id }})"
+                                            @click="open = false"
+                                            class="w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"
+                                        >
+                                            <span class="text-xl">👤</span>
+                                            <div class="flex-1">
+                                                <div class="font-medium text-gray-900 dark:text-gray-100">{{ $customer->name }}</div>
+                                                <div class="text-xs text-gray-500 dark:text-gray-400">
+                                                    {{ $customer->phone ?? 'No phone' }}
+                                                    @if($customer->total_purchases > 0)
+                                                        • {{ $customer->total_purchases }} purchases
+                                                    @endif
+                                                </div>
+                                            </div>
+                                            @if($customer->loyalty_points > 0)
+                                                <span class="text-xs bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 px-2 py-1 rounded">
+                                                    {{ $customer->loyalty_points }} pts
+                                                </span>
+                                            @endif
+                                        </button>
+                                    @empty
+                                        @if($customerSearch)
+                                            <div class="px-4 py-3 text-gray-500 dark:text-gray-400 text-center">
+                                                No customers found for "{{ $customerSearch }}"
+                                            </div>
+                                        @endif
+                                    @endforelse
+                                </div>
+                            </div>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Top 5 customers by purchase count shown</p>
+                        @endif
                     </x-filament::card>
 
                     {{-- Totals --}}

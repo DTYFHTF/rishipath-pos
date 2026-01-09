@@ -37,6 +37,7 @@ class EnhancedPOS extends Page
     public $activeSessionKey = null;
     public $quickSearchInput = '';
     public $barcodeInput = '';
+    public $customerSearch = '';
     
     // Split payment
     public $showSplitPayment = false;
@@ -50,6 +51,65 @@ class EnhancedPOS extends Page
         'createNewSession' => 'createSession',
         'parkCurrentSession' => 'parkSession',
     ];
+
+    /**
+     * Get customers for searchable dropdown
+     * Shows top 5 customers by purchase count, or filters by search term
+     */
+    public function getCustomersProperty()
+    {
+        $query = Customer::query()->where('active', true);
+        
+        if (!empty($this->customerSearch)) {
+            // Search by name, phone, or code
+            $search = $this->customerSearch;
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%")
+                  ->orWhere('customer_code', 'like', "%{$search}%");
+            });
+        }
+        
+        // Order by total purchases (top customers first)
+        return $query->orderByDesc('total_purchases')
+            ->limit(5)
+            ->get();
+    }
+
+    /**
+     * Select a customer for current session
+     */
+    public function selectCustomer($customerId): void
+    {
+        if (!$this->activeSessionKey) {
+            return;
+        }
+
+        if ($customerId) {
+            $customer = Customer::find($customerId);
+            $this->sessions[$this->activeSessionKey]['customer_id'] = $customerId;
+            $this->sessions[$this->activeSessionKey]['customer_name'] = $customer?->name;
+        } else {
+            $this->sessions[$this->activeSessionKey]['customer_id'] = null;
+            $this->sessions[$this->activeSessionKey]['customer_name'] = null;
+        }
+        
+        $this->customerSearch = '';
+    }
+
+    /**
+     * Clear customer from current session
+     */
+    public function clearCustomer(): void
+    {
+        if (!$this->activeSessionKey) {
+            return;
+        }
+        
+        $this->sessions[$this->activeSessionKey]['customer_id'] = null;
+        $this->sessions[$this->activeSessionKey]['customer_name'] = null;
+        $this->customerSearch = '';
+    }
 
     public function mount(): void
     {

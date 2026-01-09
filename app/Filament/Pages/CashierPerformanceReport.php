@@ -209,7 +209,8 @@ class CashierPerformanceReport extends Page
 
         $dailyData = [];
         foreach ($query as $sale) {
-            $date = $sale->date;
+            // Ensure date is a string for use as array key
+            $date = $sale->date instanceof \Carbon\Carbon ? $sale->date->toDateString() : (string) $sale->date;
             if (!isset($dailyData[$date])) {
                 $dailyData[$date] = [
                     'date' => $date,
