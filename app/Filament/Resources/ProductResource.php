@@ -124,6 +124,41 @@ class ProductResource extends Resource
                     ])
                     ->columns(2),
 
+                Forms\Components\Section::make('Product Images')
+                    ->schema([
+                        Forms\Components\FileUpload::make('image_1')
+                            ->label('Product Image 1')
+                            ->image()
+                            ->directory('product-images')
+                            ->imageEditor()
+                            ->imageEditorAspectRatios([
+                                '1:1',
+                                '4:3',
+                            ])
+                            ->maxSize(2048),
+                        Forms\Components\FileUpload::make('image_2')
+                            ->label('Product Image 2')
+                            ->image()
+                            ->directory('product-images')
+                            ->imageEditor()
+                            ->imageEditorAspectRatios([
+                                '1:1',
+                                '4:3',
+                            ])
+                            ->maxSize(2048),
+                        Forms\Components\FileUpload::make('image_3')
+                            ->label('Product Image 3')
+                            ->image()
+                            ->directory('product-images')
+                            ->imageEditor()
+                            ->imageEditorAspectRatios([
+                                '1:1',
+                                '4:3',
+                            ])
+                            ->maxSize(2048),
+                    ])
+                    ->columns(3),
+
                 Forms\Components\Section::make('Status')
                     ->schema([
                         Forms\Components\Toggle::make('active')

@@ -23,6 +23,8 @@ class BarcodeLabelPrinting extends Page implements HasForms
     protected static ?string $navigationGroup = 'Inventory';
 
     protected static ?string $navigationLabel = 'Barcode Labels';
+    
+    protected static ?int $navigationSort = 13;
 
     public static function canAccess(): bool
     {

@@ -8,6 +8,7 @@ use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\StockLevel;
 use App\Models\Customer;
+use App\Models\CustomerLedgerEntry;
 use App\Services\BarcodeService;
 use App\Services\LoyaltyService;
 use Filament\Forms\Components\Select;
@@ -329,6 +330,11 @@ class POSBilling extends Page implements HasForms
             if ($sale->customer_id) {
                 $loyaltyService = new LoyaltyService();
                 $loyaltyService->awardPointsForSale($sale);
+            }
+
+            // Create ledger entry if customer is selected and payment is on credit
+            if ($sale->customer_id && $sale->payment_method === 'credit') {
+                CustomerLedgerEntry::createSaleEntry($sale);
             }
 
             DB::commit();

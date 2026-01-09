@@ -23,7 +23,7 @@ class EnhancedPOS extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-shopping-cart';
     protected static string $view = 'filament.pages.enhanced-p-o-s';
-    protected static ?string $navigationLabel = 'Enhanced POS';
+    protected static ?string $navigationLabel = 'POS';
     protected static ?string $title = 'Point of Sale';
     protected static ?int $navigationSort = 1;
 
@@ -112,7 +112,7 @@ class EnhancedPOS extends Page
 
         $session = PosSession::createNew([
             'organization_id' => auth()->user()->organization_id,
-            'store_id' => auth()->user()->store_id,
+            'store_id' => auth()->user()->store_id ?? \App\Models\Store::first()?->id,
             'cashier_id' => auth()->id(),
             'session_name' => "Cart #{$sessionCount}",
         ]);
@@ -312,10 +312,11 @@ class EnhancedPOS extends Page
                 'variant_id' => $variant->id,
                 'product_name' => $variant->product->name,
                 'variant_name' => $variant->pack_size . $variant->unit,
-                'price' => $variant->selling_price,
+                'price' => $variant->mrp_india ?? $variant->base_price ?? 0,
                 'quantity' => $quantity,
                 'discount' => 0,
-                'tax' => $variant->product->tax_rate ?? 0,
+                'tax_rate' => 12, // Default 12% GST
+                'image' => $variant->image_1 ?? $variant->product->image_1 ?? null,
             ];
         }
 
@@ -460,7 +461,7 @@ class EnhancedPOS extends Page
             // Create sale
             $sale = Sale::create([
                 'organization_id' => auth()->user()->organization_id,
-                'store_id' => auth()->user()->store_id,
+                'store_id' => auth()->user()->store_id ?? \App\Models\Store::first()?->id,
                 'cashier_id' => auth()->id(),
                 'customer_id' => $session['customer_id'],
                 'invoice_number' => 'INV-' . time(),
@@ -494,7 +495,7 @@ class EnhancedPOS extends Page
 
                 // Update stock
                 StockLevel::where('product_variant_id', $item['variant_id'])
-                    ->where('store_id', auth()->user()->store_id)
+                    ->where('store_id', auth()->user()->store_id ?? \App\Models\Store::first()?->id)
                     ->decrement('quantity', $item['quantity']);
             }
 
@@ -518,7 +519,7 @@ class EnhancedPOS extends Page
             // Apply loyalty points
             if ($session['customer_id']) {
                 $loyaltyService = new LoyaltyService();
-                $loyaltyService->processSale($sale);
+                $loyaltyService->awardPointsForSale($sale);
             }
 
             DB::commit();

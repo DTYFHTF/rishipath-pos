@@ -52,14 +52,14 @@
                             <div class="flex-1 relative">
                                 <input
                                     type="text"
-                                    wire:model.live="quickSearchInput"
+                                    wire:model="quickSearchInput"
                                     wire:keydown.enter="handleQuickInput"
                                     placeholder="Type product name, SKU, or scan barcode... (Press / to focus)"
-                                    class="w-full px-4 py-3 pr-24 rounded-lg border-2 border-gray-300 dark:border-gray-600 focus:border-primary-500 dark:focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+                                    class="w-full px-4 py-3 pr-20 rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-primary-500 dark:focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
                                     autofocus
                                     x-ref="searchInput"
                                 />
-                                <kbd class="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 rounded border border-gray-300 dark:border-gray-600">
+                                <kbd class="absolute right-4 top-1/2 -translate-y-1/2 px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 rounded border border-gray-300 dark:border-gray-600">
                                     Enter
                                 </kbd>
                             </div>
@@ -106,6 +106,15 @@
                             <div class="space-y-2 max-h-96 overflow-y-auto">
                                 @foreach($session['cart'] as $index => $item)
                                     <div class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                                        {{-- Product Image --}}
+                                        @if(!empty($item['image']))
+                                            <img src="{{ Storage::url($item['image']) }}" alt="{{ $item['product_name'] }}" class="w-12 h-12 object-cover rounded">
+                                        @else
+                                            <div class="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center">
+                                                <x-heroicon-o-photo class="w-6 h-6 text-gray-400" />
+                                            </div>
+                                        @endif
+
                                         <div class="flex-1">
                                             <p class="font-medium text-gray-900 dark:text-gray-100">{{ $item['product_name'] }}</p>
                                             <p class="text-sm text-gray-500 dark:text-gray-400">{{ $item['variant_name'] }} • ₹{{ number_format($item['price'], 2) }}</p>
@@ -124,7 +133,7 @@
                                                 type="number"
                                                 wire:change="updateQuantity({{ $index }}, $event.target.value)"
                                                 value="{{ $item['quantity'] }}"
-                                                class="w-16 px-2 py-1 text-center rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+                                                class="w-16 px-2 py-1 text-center rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                                                 min="1"
                                             />
                                             
@@ -234,13 +243,13 @@
                                 wire:model.live="sessions.{{ $activeSessionKey }}.amount_received"
                                 step="0.01"
                                 placeholder="0.00"
-                                class="w-full px-4 py-3 text-lg rounded-lg border-2 border-gray-300 dark:border-gray-600 focus:border-primary-500 dark:focus:border-primary-500"
+                                class="w-full px-4 py-3 text-lg rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-primary-500 dark:focus:border-primary-500"
                             />
                             
                             @if($session['amount_received'] > 0)
                                 <div class="mt-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
                                     <div class="flex justify-between text-green-700 dark:text-green-400">
-                                        <span>Change:</span>
+                                        <span class="font-medium">Return Change:</span>
                                         <span class="text-xl font-bold">
                                             ₹{{ number_format(max(0, $session['amount_received'] - $session['total']), 2) }}
                                         </span>

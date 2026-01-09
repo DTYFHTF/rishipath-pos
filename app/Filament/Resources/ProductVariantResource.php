@@ -21,7 +21,125 @@ class ProductVariantResource extends Resource
     protected static ?string $navigationGroup = 'Product Catalog';
     
     protected static ?int $navigationSort = 2;
+    public static function form(Form $form): Form
+    {
+        return $form
+            ->schema([
+                Forms\Components\Section::make('Basic Information')
+                    ->schema([
+                        Forms\Components\Select::make('product_id')
+                            ->relationship('product', 'name')
+                            ->required()
+                            ->searchable()
+                            ->preload(),
+                        Forms\Components\TextInput::make('sku')
+                            ->label('SKU')
+                            ->required()
+                            ->unique(ignoreRecord: true)
+                            ->maxLength(100),
+                        Forms\Components\TextInput::make('pack_size')
+                            ->label('Pack Size')
+                            ->required()
+                            ->numeric()
+                            ->minValue(0.001),
+                        Forms\Components\Select::make('unit')
+                            ->required()
+                            ->options([
+                                'GMS' => 'Grams (GMS)',
+                                'KG' => 'Kilograms (KG)',
+                                'ML' => 'Milliliters (ML)',
+                                'L' => 'Liters (L)',
+                                'PCS' => 'Pieces (PCS)',
+                            ]),
+                    ])
+                    ->columns(2),
 
+                Forms\Components\Section::make('Pricing')
+                    ->schema([
+                        Forms\Components\TextInput::make('base_price')
+                            ->label('Base Price')
+                            ->numeric()
+                            ->prefix('₹')
+                            ->minValue(0),
+                        Forms\Components\TextInput::make('cost_price')
+                            ->label('Cost Price')
+                            ->numeric()
+                            ->prefix('₹')
+                            ->minValue(0),
+                        Forms\Components\TextInput::make('mrp_india')
+                            ->label('MRP (India)')
+                            ->numeric()
+                            ->prefix('₹')
+                            ->minValue(0),
+                        Forms\Components\TextInput::make('selling_price_nepal')
+                            ->label('Selling Price (Nepal)')
+                            ->numeric()
+                            ->prefix('NPR ')
+                            ->minValue(0),
+                    ])
+                    ->columns(2),
+
+                Forms\Components\Section::make('Additional Details')
+                    ->schema([
+                        Forms\Components\TextInput::make('barcode')
+                            ->label('Barcode')
+                            ->unique(ignoreRecord: true)
+                            ->maxLength(100)
+                            ->helperText('Leave empty to auto-generate'),
+                        Forms\Components\TextInput::make('hsn_code')
+                            ->label('HSN Code')
+                            ->maxLength(20),
+                        Forms\Components\TextInput::make('weight')
+                            ->label('Weight (for shipping)')
+                            ->numeric()
+                            ->suffix('kg')
+                            ->minValue(0),
+                    ])
+                    ->columns(3),
+
+                Forms\Components\Section::make('Variant Images')
+                    ->schema([
+                        Forms\Components\FileUpload::make('image_1')
+                            ->label('Variant Image 1')
+                            ->image()
+                            ->directory('variant-images')
+                            ->imageEditor()
+                            ->imageEditorAspectRatios([
+                                '1:1',
+                                '4:3',
+                            ])
+                            ->maxSize(2048),
+                        Forms\Components\FileUpload::make('image_2')
+                            ->label('Variant Image 2')
+                            ->image()
+                            ->directory('variant-images')
+                            ->imageEditor()
+                            ->imageEditorAspectRatios([
+                                '1:1',
+                                '4:3',
+                            ])
+                            ->maxSize(2048),
+                        Forms\Components\FileUpload::make('image_3')
+                            ->label('Variant Image 3')
+                            ->image()
+                            ->directory('variant-images')
+                            ->imageEditor()
+                            ->imageEditorAspectRatios([
+                                '1:1',
+                                '4:3',
+                            ])
+                            ->maxSize(2048),
+                    ])
+                    ->columns(3),
+
+                Forms\Components\Section::make('Status')
+                    ->schema([
+                        Forms\Components\Toggle::make('active')
+                            ->label('Active')
+                            ->default(true),
+                    ]),
+            ]);
+    }
     public static function table(Table $table): Table
     {
         return $table

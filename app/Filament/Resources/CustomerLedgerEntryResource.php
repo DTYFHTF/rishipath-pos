@@ -198,8 +198,6 @@ class CustomerLedgerEntryResource extends Resource
                 ]),
             ])
             ->defaultSort('transaction_date', 'desc');
-                ]),
-            ]);
     }
 
     public static function getRelations(): array
