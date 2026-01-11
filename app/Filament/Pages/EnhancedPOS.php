@@ -37,6 +37,7 @@ class EnhancedPOS extends Page
     public $activeSessionKey = null;
     public $quickSearchInput = '';
     public $barcodeInput = '';
+    public $customerSearch = '';
     
     // Split payment
     public $showSplitPayment = false;
@@ -50,6 +51,66 @@ class EnhancedPOS extends Page
         'createNewSession' => 'createSession',
         'parkCurrentSession' => 'parkSession',
     ];
+
+    /**
+     * Get product search results as you type
+     * Searches: Product name (priority), other names (Hindi/Sanskrit/Nepali), description, SKU, barcode
+     */
+    public function getSearchResultsProperty()
+    {
+        $search = trim($this->quickSearchInput);
+        
+        if (strlen($search) < 2) {
+            return collect([]);
+        }
+
+        // Use a single DRY query with weighted relevance
+        return ProductVariant::query()
+            ->with('product')
+            ->where('active', true)
+            ->whereHas('product', fn($q) => $q->where('active', true))
+            ->where(function($query) use ($search) {
+                $query
+                    // Product name fields
+                    ->whereHas('product', function($q) use ($search) {
+                        $q->where('name', 'like', "%{$search}%")
+                          ->orWhere('name_hindi', 'like', "%{$search}%")
+                          ->orWhere('name_nepali', 'like', "%{$search}%")
+                          ->orWhere('name_sanskrit', 'like', "%{$search}%")
+                          ->orWhere('description', 'like', "%{$search}%");
+                    })
+                    // Variant fields
+                    ->orWhere('sku', 'like', "%{$search}%")
+                    ->orWhere('barcode', 'like', "%{$search}%");
+            })
+            // Order by relevance: exact name match first, then partial matches
+            ->orderByRaw("
+                CASE 
+                    WHEN EXISTS (SELECT 1 FROM products WHERE products.id = product_variants.product_id AND products.name LIKE ?) THEN 1
+                    WHEN EXISTS (SELECT 1 FROM products WHERE products.id = product_variants.product_id AND products.name LIKE ?) THEN 2
+                    WHEN sku LIKE ? OR barcode LIKE ? THEN 3
+                    ELSE 4
+                END
+            ", ["{$search}%", "%{$search}%", "{$search}%", "{$search}%"])
+            ->limit(10)
+            ->get()
+            ->map(function($variant) {
+                return [
+                    'id' => $variant->id,
+                    'product_name' => $variant->product->name,
+                    'variant_name' => $variant->pack_size . ' ' . $variant->unit,
+                    'sku' => $variant->sku,
+                    'barcode' => $variant->barcode,
+                    'price' => $variant->selling_price_nepal,
+                    'image' => $variant->product->image_url,
+                    'other_names' => collect([
+                        $variant->product->name_hindi,
+                        $variant->product->name_nepali,
+                        $variant->product->name_sanskrit,
+                    ])->filter()->implode(' / '),
+                ];
+            });
+    }
 
     public function mount(): void
     {
@@ -95,6 +156,49 @@ class EnhancedPOS extends Page
     }
 
     /**
+     * Select a customer for current session
+     */
+    public function selectCustomer($customerId): void
+    {
+        if (!$this->activeSessionKey) {
+            return;
+        }
+
+        if ($customerId) {
+            $customer = Customer::find($customerId);
+            $this->sessions[$this->activeSessionKey]['customer_id'] = $customerId;
+            $this->sessions[$this->activeSessionKey]['customer_name'] = $customer?->name;
+        } else {
+            $this->sessions[$this->activeSessionKey]['customer_id'] = null;
+            $this->sessions[$this->activeSessionKey]['customer_name'] = null;
+        }
+        
+        $this->customerSearch = '';
+    }
+
+    /**
+     * Clear customer from current session
+     */
+    public function clearCustomer(): void
+    {
+        if (!$this->activeSessionKey) {
+            return;
+        }
+        
+        $this->sessions[$this->activeSessionKey]['customer_id'] = null;
+        $this->sessions[$this->activeSessionKey]['customer_name'] = null;
+        $this->customerSearch = '';
+    }
+
+    /**
+     * Open customer creation - redirect to customer resource
+     */
+    public function openCustomerModal(): void
+    {
+        $this->redirect(route('filament.admin.resources.customers.create'));
+    }
+
+    /**
      * Create a new POS session
      */
     public function createSession(): void
@@ -112,7 +216,7 @@ class EnhancedPOS extends Page
 
         $session = PosSession::createNew([
             'organization_id' => auth()->user()->organization_id,
-            'store_id' => auth()->user()->store_id ?? \App\Models\Store::first()?->id,
+            'store_id' => (!empty(auth()->user()->stores) ? auth()->user()->stores[0] : \App\Models\Store::first()?->id),
             'cashier_id' => auth()->id(),
             'session_name' => "Cart #{$sessionCount}",
         ]);
@@ -286,16 +390,19 @@ class EnhancedPOS extends Page
             return;
         }
 
-        // Check stock
+        // Check stock - get user's first store or system default
+        $userStores = auth()->user()->stores ?? [];
+        $storeId = !empty($userStores) ? $userStores[0] : Store::first()?->id;
+        
         $stockLevel = StockLevel::where('product_variant_id', $variantId)
-            ->where('store_id', auth()->user()->store_id)
+            ->where('store_id', $storeId)
             ->first();
 
         if (!$stockLevel || $stockLevel->quantity < $quantity) {
             Notification::make()
                 ->warning()
                 ->title('Insufficient Stock')
-                ->body('Available: ' . ($stockLevel->quantity ?? 0))
+                ->body('Available: ' . ($stockLevel->quantity ?? 0) . ' in stock')
                 ->send();
             return;
         }
@@ -328,7 +435,8 @@ class EnhancedPOS extends Page
     }
 
     /**
-     * Handle quick search and barcode input
+     * Handle quick search and barcode input (Enter key)
+     * Uses same DRY search logic as getSearchResultsProperty
      */
     public function handleQuickInput(): void
     {
@@ -338,28 +446,27 @@ class EnhancedPOS extends Page
             return;
         }
 
-        // Try as barcode first
+        // Try exact barcode/SKU match first (for barcode scanners)
         $variant = ProductVariant::where('barcode', $input)
             ->orWhere('sku', $input)
             ->first();
 
         if ($variant) {
             $this->addToCart($variant->id);
+            $this->quickSearchInput = '';
             return;
         }
 
-        // Search by name
-        $results = ProductVariant::whereHas('product', function ($query) use ($input) {
-            $query->where('name', 'like', "%{$input}%")
-                  ->orWhere('sku', 'like', "%{$input}%");
-        })->limit(1)->first();
-
-        if ($results) {
-            $this->addToCart($results->id);
+        // Use the search results if available (first match)
+        $results = $this->searchResults;
+        if ($results->isNotEmpty()) {
+            $this->addToCart($results->first()['id']);
+            $this->quickSearchInput = '';
         } else {
             Notification::make()
                 ->warning()
                 ->title('Product Not Found')
+                ->body('No products found for "' . $input . '"')
                 ->send();
         }
     }
@@ -461,7 +568,7 @@ class EnhancedPOS extends Page
             // Create sale
             $sale = Sale::create([
                 'organization_id' => auth()->user()->organization_id,
-                'store_id' => auth()->user()->store_id ?? \App\Models\Store::first()?->id,
+                'store_id' => (!empty(auth()->user()->stores) ? auth()->user()->stores[0] : \App\Models\Store::first()?->id),
                 'cashier_id' => auth()->id(),
                 'customer_id' => $session['customer_id'],
                 'invoice_number' => 'INV-' . time(),
@@ -495,7 +602,7 @@ class EnhancedPOS extends Page
 
                 // Update stock
                 StockLevel::where('product_variant_id', $item['variant_id'])
-                    ->where('store_id', auth()->user()->store_id ?? \App\Models\Store::first()?->id)
+                    ->where('store_id', (!empty(auth()->user()->stores) ? auth()->user()->stores[0] : \App\Models\Store::first()?->id))
                     ->decrement('quantity', $item['quantity']);
             }
 

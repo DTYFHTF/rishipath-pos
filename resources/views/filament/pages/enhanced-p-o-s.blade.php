@@ -48,36 +48,87 @@
                     
                     {{-- Quick Search with Keyboard Shortcut Hint --}}
                     <x-filament::card>
-                        <div class="flex items-center gap-3">
-                            <div class="flex-1 relative">
-                                <input
-                                    type="text"
-                                    wire:model="quickSearchInput"
-                                    wire:keydown.enter="handleQuickInput"
-                                    placeholder="Type product name, SKU, or scan barcode... (Press / to focus)"
-                                    class="w-full px-4 py-3 pr-20 rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-primary-500 dark:focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
-                                    autofocus
-                                    x-ref="searchInput"
-                                />
-                                <kbd class="absolute right-4 top-1/2 -translate-y-1/2 px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 rounded border border-gray-300 dark:border-gray-600">
-                                    Enter
-                                </kbd>
+                        <div x-data="{ showResults: false }" class="relative">
+                            <div class="flex items-center gap-3">
+                                <div class="flex-1 relative">
+                                    <input
+                                        type="text"
+                                        wire:model.live.debounce.300ms="quickSearchInput"
+                                        wire:keydown.enter="handleQuickInput"
+                                        wire:keydown.escape="$set('quickSearchInput', '')"
+                                        @focus="showResults = true"
+                                        @click.away="showResults = false"
+                                        placeholder="🔍 Search product name, Hindi/Sanskrit name, description, SKU, barcode..."
+                                        class="w-full px-4 py-3 pr-20 rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-primary-500 dark:focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+                                        autofocus
+                                        x-ref="searchInput"
+                                    />
+                                    <kbd class="absolute right-4 top-1/2 -translate-y-1/2 px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300">
+                                        Enter
+                                    </kbd>
+                                </div>
+                                <button
+                                    wire:click="handleQuickInput"
+                                    class="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition font-medium"
+                                >
+                                    <x-heroicon-o-magnifying-glass class="w-5 h-5" />
+                                </button>
                             </div>
-                            <button
-                                wire:click="handleQuickInput"
-                                class="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition font-medium"
-                            >
-                                <x-heroicon-o-magnifying-glass class="w-5 h-5" />
-                            </button>
+
+                            {{-- Search Results Dropdown --}}
+                            @if(strlen($quickSearchInput) >= 2)
+                                <div 
+                                    x-show="showResults"
+                                    x-transition
+                                    class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-80 overflow-y-auto"
+                                >
+                                    @forelse($this->searchResults as $result)
+                                        <button
+                                            type="button"
+                                            wire:click="addToCart({{ $result['id'] }})"
+                                            @click="showResults = false"
+                                            class="w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-b-0 flex items-center gap-3"
+                                        >
+                                            {{-- Product Image --}}
+                                            @if(!empty($result['image']))
+                                                <img src="{{ Storage::url($result['image']) }}" alt="" class="w-12 h-12 object-cover rounded">
+                                            @else
+                                                <div class="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center">
+                                                    <x-heroicon-o-cube class="w-6 h-6 text-gray-400" />
+                                                </div>
+                                            @endif
+                                            
+                                            <div class="flex-1 min-w-0">
+                                                <div class="font-medium text-gray-900 dark:text-gray-100 truncate">{{ $result['product_name'] }}</div>
+                                                <div class="text-sm text-gray-500 dark:text-gray-400">{{ $result['variant_name'] }}</div>
+                                                @if($result['other_names'])
+                                                    <div class="text-xs text-blue-600 dark:text-blue-400 truncate">{{ $result['other_names'] }}</div>
+                                                @endif
+                                            </div>
+                                            
+                                            <div class="text-right">
+                                                <div class="font-bold text-green-600 dark:text-green-400">₹{{ number_format($result['price'], 2) }}</div>
+                                                <div class="text-xs text-gray-400">{{ $result['sku'] }}</div>
+                                            </div>
+                                        </button>
+                                    @empty
+                                        <div class="px-4 py-6 text-center text-gray-500 dark:text-gray-400">
+                                            <x-heroicon-o-magnifying-glass class="w-8 h-8 mx-auto mb-2 opacity-50" />
+                                            <p>No products found for "{{ $quickSearchInput }}"</p>
+                                            <p class="text-xs mt-1">Try searching by name, Hindi/Sanskrit name, or SKU</p>
+                                        </div>
+                                    @endforelse
+                                </div>
+                            @endif
                         </div>
 
                         {{-- Keyboard Shortcuts Info --}}
                         <div class="mt-3 flex flex-wrap gap-2 text-xs text-gray-500 dark:text-gray-400">
-                            <span><kbd class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">F1</kbd> New Cart</span>
-                            <span><kbd class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">F2</kbd> Park</span>
-                            <span><kbd class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">F8</kbd> Complete</span>
-                            <span><kbd class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">F9</kbd> Clear</span>
-                            <span><kbd class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">Esc</kbd> Clear Search</span>
+                            <span><kbd class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-gray-600 dark:text-gray-300">F1</kbd> New Cart</span>
+                            <span><kbd class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-gray-600 dark:text-gray-300">F2</kbd> Park</span>
+                            <span><kbd class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-gray-600 dark:text-gray-300">F8</kbd> Complete</span>
+                            <span><kbd class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-gray-600 dark:text-gray-300">F9</kbd> Clear</span>
+                            <span><kbd class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-gray-600 dark:text-gray-300">Esc</kbd> Clear Search</span>
                         </div>
                     </x-filament::card>
 
@@ -168,16 +219,101 @@
                 <div class="space-y-4">
                     {{-- Customer Selection --}}
                     <x-filament::card>
-                        <label class="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Customer (Optional)</label>
-                        <select
-                            wire:model.live="sessions.{{ $activeSessionKey }}.customer_id"
-                            class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
-                        >
-                            <option value="">Walk-in Customer</option>
-                            @foreach(\App\Models\Customer::where('active', true)->orderBy('name')->get() as $customer)
-                                <option value="{{ $customer->id }}">{{ $customer->name }} - {{ $customer->phone }}</option>
-                            @endforeach
-                        </select>
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Customer (Optional)</label>
+                            <button
+                                wire:click="openCustomerModal"
+                                class="text-xs px-2 py-1 bg-primary-600 text-white rounded hover:bg-primary-700 transition"
+                                title="Add New Customer"
+                            >
+                                + New
+                            </button>
+                        </div>
+                        
+                        {{-- Show selected customer or search input --}}
+                        @if($session['customer_id'])
+                            <div class="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xl">👤</span>
+                                    <div>
+                                        <div class="font-medium text-gray-900 dark:text-gray-100">{{ $session['customer_name'] ?? 'Customer' }}</div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400">ID: {{ $session['customer_id'] }}</div>
+                                    </div>
+                                </div>
+                                <button 
+                                    type="button"
+                                    wire:click="clearCustomer"
+                                    class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                                    title="Remove customer"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                        @else
+                            <div x-data="{ open: false }" class="relative">
+                                <input
+                                    type="text"
+                                    wire:model.live.debounce.300ms="customerSearch"
+                                    @focus="open = true"
+                                    @click.away="open = false"
+                                    placeholder="🔍 Search customers (name, phone)..."
+                                    class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400"
+                                />
+                                
+                                {{-- Dropdown results --}}
+                                <div 
+                                    x-show="open && ($wire.customers.length > 0 || !$wire.customerSearch)"
+                                    x-transition
+                                    class="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+                                >
+                                    {{-- Walk-in option always first --}}
+                                    <button
+                                        type="button"
+                                        wire:click="selectCustomer(null)"
+                                        @click="open = false"
+                                        class="w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 flex items-center gap-3 transition"
+                                    >
+                                        <span class="text-xl">🚶</span>
+                                        <div>
+                                            <div class="font-medium text-gray-900 dark:text-gray-100">Walk-in Customer</div>
+                                            <div class="text-xs text-gray-500 dark:text-gray-400">No customer account</div>
+                                        </div>
+                                    </button>
+                                    
+                                    @forelse($this->customers as $customer)
+                                        <button
+                                            type="button"
+                                            wire:click="selectCustomer({{ $customer->id }})"
+                                            @click="open = false"
+                                            class="w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 transition"
+                                        >
+                                            <span class="text-xl">👤</span>
+                                            <div class="flex-1">
+                                                <div class="font-medium text-gray-900 dark:text-gray-100">{{ $customer->name }}</div>
+                                                <div class="text-xs text-gray-500 dark:text-gray-400">
+                                                    {{ $customer->phone ?? 'No phone' }}
+                                                    @if($customer->total_purchases > 0)
+                                                        • {{ $customer->total_purchases }} purchases
+                                                    @endif
+                                                </div>
+                                            </div>
+                                            @if($customer->loyalty_points > 0)
+                                                <span class="text-xs bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 px-2 py-1 rounded">
+                                                    {{ $customer->loyalty_points }} pts
+                                                </span>
+                                            @endif
+                                        </button>
+                                    @empty
+                                        @if($customerSearch)
+                                            <div class="px-4 py-3 text-gray-500 dark:text-gray-400 text-center">
+                                                No customers found for "{{ $customerSearch }}"
+                                            </div>
+                                        @endif
+                                    @endforelse
+                                </div>
+                            </div>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Top 5 customers by purchase count shown</p>
+                        @endif
                     </x-filament::card>
 
                     {{-- Totals --}}
