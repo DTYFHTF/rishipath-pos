@@ -56,33 +56,35 @@
                                         wire:model.live.debounce.300ms="quickSearchInput"
                                         wire:keydown.enter="handleQuickInput"
                                         wire:keydown.escape="$set('quickSearchInput', '')"
-                                        @focus="showResults = true"
-                                        @click.away="showResults = false"
+                                        @input="showResults = ($event.target.value.length >= 1)"
+                                        @focus="showResults = ($event.target.value.length >= 1)"
+                                        @click.outside="showResults = false"
                                         placeholder="🔍 Search product name, Hindi/Sanskrit name, description, SKU, barcode..."
-                                        class="w-full px-4 py-3 pr-20 rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-primary-500 dark:focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+                                        class="w-full px-4 py-3 rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-primary-500 dark:focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
                                         autofocus
                                         x-ref="searchInput"
                                     />
-                                    <kbd class="absolute right-4 top-1/2 -translate-y-1/2 px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300">
-                                        Enter
-                                    </kbd>
                                 </div>
                                 <button
                                     wire:click="handleQuickInput"
-                                    class="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition font-medium"
+                                    class="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition font-medium flex items-center gap-2"
                                 >
                                     <x-heroicon-o-magnifying-glass class="w-5 h-5" />
+                                    <kbd class="px-2 py-1 text-xs bg-white/20 rounded border border-white/30 text-white">
+                                        Enter
+                                    </kbd>
                                 </button>
                             </div>
 
                             {{-- Search Results Dropdown --}}
-                            @if(strlen($quickSearchInput) >= 2)
+                            @php $searchResults = $this->searchResults; @endphp
+                            @if(strlen($quickSearchInput ?? '') >= 1 && count($searchResults) > 0)
                                 <div 
                                     x-show="showResults"
                                     x-transition
                                     class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-80 overflow-y-auto"
                                 >
-                                    @forelse($this->searchResults as $result)
+                                    @forelse($searchResults as $result)
                                         <button
                                             type="button"
                                             wire:click="addToCart({{ $result['id'] }})"
@@ -124,11 +126,11 @@
 
                         {{-- Keyboard Shortcuts Info --}}
                         <div class="mt-3 flex flex-wrap gap-2 text-xs text-gray-500 dark:text-gray-400">
-                            <span><kbd class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-gray-600 dark:text-gray-300">F1</kbd> New Cart</span>
-                            <span><kbd class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-gray-600 dark:text-gray-300">F2</kbd> Park</span>
-                            <span><kbd class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-gray-600 dark:text-gray-300">F8</kbd> Complete</span>
-                            <span><kbd class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-gray-600 dark:text-gray-300">F9</kbd> Clear</span>
-                            <span><kbd class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-gray-600 dark:text-gray-300">Esc</kbd> Clear Search</span>
+                            <span><kbd class="px-1.5 py-0.5 bg-white dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white shadow-sm">F1</kbd> New Cart</span>
+                            <span><kbd class="px-1.5 py-0.5 bg-white dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white shadow-sm">F2</kbd> Park</span>
+                            <span><kbd class="px-1.5 py-0.5 bg-white dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white shadow-sm">F8</kbd> Complete</span>
+                            <span><kbd class="px-1.5 py-0.5 bg-white dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white shadow-sm">F9</kbd> Clear</span>
+                            <span><kbd class="px-1.5 py-0.5 bg-white dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white shadow-sm">Esc</kbd> Clear Search</span>
                         </div>
                     </x-filament::card>
 
@@ -250,19 +252,28 @@
                                 </button>
                             </div>
                         @else
-                            <div x-data="{ open: false }" class="relative">
+                            <div x-data="{ open: false }" class="relative" wire:key="customer-search-{{ $activeSessionKey }}">
                                 <input
                                     type="text"
                                     wire:model.live.debounce.300ms="customerSearch"
                                     @focus="open = true"
                                     @click.away="open = false"
+                                    @input="open = true"
                                     placeholder="🔍 Search customers (name, phone)..."
                                     class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400"
                                 />
                                 
+                                {{-- Loading indicator --}}
+                                <div wire:loading wire:target="customerSearch" class="absolute right-3 top-1/2 -translate-y-1/2">
+                                    <svg class="animate-spin h-4 w-4 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                </div>
+                                
                                 {{-- Dropdown results --}}
                                 <div 
-                                    x-show="open && ($wire.customers.length > 0 || !$wire.customerSearch)"
+                                    x-show="open"
                                     x-transition
                                     class="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto"
                                 >
@@ -312,7 +323,13 @@
                                     @endforelse
                                 </div>
                             </div>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Top 5 customers by purchase count shown</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                @if($customerSearch)
+                                    Showing search results (up to 10)
+                                @else
+                                    Top 5 customers by purchase count shown
+                                @endif
+                            </p>
                         @endif
                     </x-filament::card>
 
@@ -392,6 +409,26 @@
                                     </div>
                                 </div>
                             @endif
+                        </x-filament::card>
+                    @endif
+
+                    {{-- WhatsApp Receipt Toggle --}}
+                    @if($session['customer_id'] && $session['customer']?->phone)
+                        <x-filament::card>
+                            <label class="flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    wire:model="sendWhatsApp"
+                                    class="h-5 w-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-800"
+                                />
+                                <div class="ml-3 flex-1">
+                                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Send receipt via WhatsApp</span>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                        To: {{ $session['customer']->phone }}
+                                    </p>
+                                </div>
+                                <x-heroicon-o-chat-bubble-left-right class="w-5 h-5 text-green-600 dark:text-green-400" />
+                            </label>
                         </x-filament::card>
                     @endif
 

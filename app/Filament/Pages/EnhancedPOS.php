@@ -14,6 +14,7 @@ use App\Models\CustomerLedgerEntry;
 use App\Services\BarcodeService;
 use App\Services\LoyaltyService;
 use App\Services\CustomerLedgerService;
+use App\Services\WhatsAppService;
 use Filament\Pages\Page;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
@@ -43,6 +44,9 @@ class EnhancedPOS extends Page
     public $showSplitPayment = false;
     public $splitPayments = [];
     
+    // WhatsApp receipt
+    public $sendWhatsApp = false;
+    
     // Keyboard shortcuts enabled
     public $shortcutsEnabled = true;
 
@@ -60,7 +64,7 @@ class EnhancedPOS extends Page
     {
         $search = trim($this->quickSearchInput);
         
-        if (strlen($search) < 2) {
+        if (strlen($search) < 1) {
             return collect([]);
         }
 
@@ -121,6 +125,23 @@ class EnhancedPOS extends Page
         } else {
             $this->activeSessionKey = array_key_first($this->sessions);
         }
+        
+        // Check if a customer was just created and auto-select them
+        if (session()->has('new_customer_id')) {
+            $customerId = session()->pull('new_customer_id');
+            $customer = Customer::find($customerId);
+            
+            if ($customer && $this->activeSessionKey) {
+                $this->sessions[$this->activeSessionKey]['customer_id'] = $customerId;
+                $this->sessions[$this->activeSessionKey]['customer_name'] = $customer->name;
+                
+                Notification::make()
+                    ->success()
+                    ->title('Customer Selected')
+                    ->body("{$customer->name} has been added to the current cart")
+                    ->send();
+            }
+        }
     }
 
     /**
@@ -153,6 +174,39 @@ class EnhancedPOS extends Page
                 'notes' => $session->notes,
             ];
         }
+    }
+
+    /**
+     * Get customers for searchable dropdown
+     * Shows top 5 customers by purchase count, or filters by search term
+     */
+    #[\Livewire\Attributes\Computed]
+    public function getCustomersProperty()
+    {
+        $query = Customer::query()
+            ->where('organization_id', auth()->user()->organization_id)
+            ->where('active', true);
+        
+        if (!empty($this->customerSearch)) {
+            // Search by name, phone, email or code
+            $search = $this->customerSearch;
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('customer_code', 'like', "%{$search}%");
+            });
+            // When searching, show more results and prioritize recent matches
+            return $query->orderByDesc('created_at')
+                ->limit(10)
+                ->get();
+        }
+        
+        // When not searching, show top customers by purchase count
+        return $query->orderByDesc('total_purchases')
+            ->orderByDesc('created_at')
+            ->limit(5)
+            ->get();
     }
 
     /**
@@ -195,6 +249,8 @@ class EnhancedPOS extends Page
      */
     public function openCustomerModal(): void
     {
+        // Store the current session for later
+        session()->put('pos_return_session', $this->activeSessionKey);
         $this->redirect(route('filament.admin.resources.customers.create'));
     }
 
@@ -416,9 +472,11 @@ class EnhancedPOS extends Page
             $this->sessions[$this->activeSessionKey]['cart'][$existingIndex]['quantity'] += $quantity;
         } else {
             $this->sessions[$this->activeSessionKey]['cart'][] = [
+                'product_id' => $variant->product->id,
                 'variant_id' => $variant->id,
                 'product_name' => $variant->product->name,
                 'variant_name' => $variant->pack_size . $variant->unit,
+                'sku' => $variant->sku,
                 'price' => $variant->mrp_india ?? $variant->base_price ?? 0,
                 'quantity' => $quantity,
                 'discount' => 0,
@@ -534,7 +592,7 @@ class EnhancedPOS extends Page
             $lineTotal = $item['price'] * $item['quantity'];
             $discount = $item['discount'] ?? 0;
             $taxableAmount = $lineTotal - $discount;
-            $tax = $taxableAmount * ($item['tax'] / 100);
+            $tax = $taxableAmount * (($item['tax_rate'] ?? 0) / 100);
 
             $subtotal += $lineTotal;
             $totalDiscount += $discount;
@@ -565,10 +623,16 @@ class EnhancedPOS extends Page
         DB::beginTransaction();
         
         try {
+            $storeId = (!empty(auth()->user()->stores) ? auth()->user()->stores[0] : \App\Models\Store::first()?->id);
+            $terminal = \App\Models\Terminal::where('store_id', $storeId)->where('active', true)->first();
+            
             // Create sale
+            $receiptNumber = 'RCPT-' . strtoupper(substr(md5(uniqid()), 0, 8));
             $sale = Sale::create([
                 'organization_id' => auth()->user()->organization_id,
-                'store_id' => (!empty(auth()->user()->stores) ? auth()->user()->stores[0] : \App\Models\Store::first()?->id),
+                'store_id' => $storeId,
+                'terminal_id' => $terminal?->id ?? \App\Models\Terminal::where('active', true)->first()?->id,
+                'receipt_number' => $receiptNumber,
                 'cashier_id' => auth()->id(),
                 'customer_id' => $session['customer_id'],
                 'invoice_number' => 'INV-' . time(),
@@ -586,18 +650,30 @@ class EnhancedPOS extends Page
                 'status' => 'completed',
             ]);
 
-            // Create sale items
+            // Create sale items (match columns defined in migration)
             foreach ($session['cart'] as $item) {
+                $price = (float) ($item['price'] ?? 0);
+                $quantity = (float) ($item['quantity'] ?? 1);
+                $discount = (float) ($item['discount'] ?? 0);
+                $taxRate = (float) ($item['tax_rate'] ?? 0);
+                $subtotal = round($price * $quantity, 2);
+                $taxAmount = round((($subtotal - $discount) * ($taxRate / 100)), 2);
+                $total = round(($subtotal - $discount) + $taxAmount, 2);
+
                 SaleItem::create([
                     'sale_id' => $sale->id,
                     'product_variant_id' => $item['variant_id'],
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $item['price'],
-                    'subtotal' => $item['price'] * $item['quantity'],
-                    'discount_amount' => $item['discount'] ?? 0,
-                    'tax_rate' => $item['tax'] ?? 0,
-                    'tax_amount' => ($item['price'] * $item['quantity'] - ($item['discount'] ?? 0)) * ($item['tax'] / 100),
-                    'total' => ($item['price'] * $item['quantity'] - ($item['discount'] ?? 0)) * (1 + $item['tax'] / 100),
+                    'product_name' => $item['product_name'] ?? null,
+                    'product_sku' => $item['sku'] ?? '',
+                    'quantity' => $quantity,
+                    'unit' => $item['unit'] ?? 'pcs',
+                    'price_per_unit' => $price,
+                    'cost_price' => $item['cost_price'] ?? 0,
+                    'subtotal' => $subtotal,
+                    'discount_amount' => $discount,
+                    'tax_rate' => $taxRate,
+                    'tax_amount' => $taxAmount,
+                    'total' => $total,
                 ]);
 
                 // Update stock
@@ -634,11 +710,19 @@ class EnhancedPOS extends Page
             // Complete session
             $dbSession = PosSession::where('session_key', $this->activeSessionKey)->first();
             $dbSession?->complete();
-
-            unset($this->sessions[$this->activeSessionKey]);
+// Send WhatsApp receipt if requested and customer has phone
+            if ($this->sendWhatsApp && $sale->customer_phone) {
+                $this->sendWhatsAppReceipt($sale);
+            }
 
             Notification::make()
                 ->success()
+                ->title('Sale Completed')
+                ->body("Invoice: {$sale->invoice_number}" . ($this->sendWhatsApp && $sale->customer_phone ? " (WhatsApp sent)" : ""))
+                ->send();
+
+            // Reset WhatsApp toggle
+            $this->sendWhatsApp = falses()
                 ->title('Sale Completed')
                 ->body("Invoice: {$sale->invoice_number}")
                 ->send();
@@ -656,6 +740,44 @@ class EnhancedPOS extends Page
             Notification::make()
                 ->danger()
                 ->title('Error')
+                ->body($e->getMessage())
+                ->send();
+        }
+    }
+
+    /**
+     * Send receipt via WhatsApp
+     */
+    protected function sendWhatsAppReceipt(Sale $sale): void
+    {
+        try {
+            $whatsappService = app(WhatsAppService::class);
+            
+            if (!$whatsappService->isConfigured()) {
+                Notification::make()
+                    ->warning()
+                    ->title('WhatsApp Not Configured')
+                    ->body('WhatsApp credentials not set. Receipt logged only.')
+                    ->send();
+                
+                // Still call the service to log the receipt
+                $whatsappService->sendReceipt($sale, $sale->customer_phone);
+                return;
+            }
+            
+            $success = $whatsappService->sendReceipt($sale, $sale->customer_phone);
+            
+            if (!$success) {
+                Notification::make()
+                    ->warning()
+                    ->title('WhatsApp Send Failed')
+                    ->body('Could not send receipt. Check logs.')
+                    ->send();
+            }
+        } catch (\Exception $e) {
+            Notification::make()
+                ->danger()
+                ->title('WhatsApp Error')
                 ->body($e->getMessage())
                 ->send();
         }

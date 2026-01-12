@@ -92,9 +92,30 @@ class ExportService
 
     /**
      * Download Excel file
+     * Supports both 2-arg (data, filename) and 3-arg (data, headers, filename) usage
      */
-    public function downloadExcel(Collection $data, array $headers, string $filename)
+    public function downloadExcel(array|Collection $data, array|string $headersOrFilename, ?string $filename = null)
     {
+        // Handle flexible arguments
+        if (is_string($headersOrFilename)) {
+            // 2-arg style: (data, filename)
+            $filename = $headersOrFilename;
+            $headers = [];
+        } else {
+            // 3-arg style: (data, headers, filename)
+            $headers = $headersOrFilename;
+        }
+        
+        // Convert array to collection if needed
+        if (is_array($data)) {
+            $data = collect($data);
+        }
+        
+        // Ensure filename has extension
+        if (!str_ends_with($filename, '.xlsx')) {
+            $filename .= '.xlsx';
+        }
+
         $export = new class($data, $headers) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings, \Maatwebsite\Excel\Concerns\WithStyles, \Maatwebsite\Excel\Concerns\ShouldAutoSize {
             private $data;
             private $headers;
