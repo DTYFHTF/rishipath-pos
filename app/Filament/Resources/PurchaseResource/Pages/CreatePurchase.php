@@ -14,7 +14,7 @@ class CreatePurchase extends CreateRecord
     {
         $data['organization_id'] = Auth::user()->organization_id ?? 1;
         $data['created_by'] = Auth::id();
-        
+
         return $data;
     }
 }

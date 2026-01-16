@@ -76,7 +76,7 @@ class CustomerLedgerEntry extends Model
         return $query->where('status', 'overdue')
             ->orWhere(function ($q) {
                 $q->where('status', 'pending')
-                  ->where('due_date', '<', now());
+                    ->where('due_date', '<', now());
             });
     }
 
@@ -95,28 +95,36 @@ class CustomerLedgerEntry extends Model
      */
     public function isOverdue(): bool
     {
-        return $this->status === 'overdue' || 
+        return $this->status === 'overdue' ||
                ($this->status === 'pending' && $this->due_date && $this->due_date->isPast());
     }
 
     public function getDaysOverdue(): int
     {
-        if (!$this->isOverdue() || !$this->due_date) {
+        if (! $this->isOverdue() || ! $this->due_date) {
             return 0;
         }
-        
+
         return now()->diffInDays($this->due_date);
     }
 
     public function getAgingBucket(): string
     {
         $days = $this->getDaysOverdue();
-        
-        if ($days <= 0) return 'Current';
-        if ($days <= 30) return '1-30 days';
-        if ($days <= 60) return '31-60 days';
-        if ($days <= 90) return '61-90 days';
-        
+
+        if ($days <= 0) {
+            return 'Current';
+        }
+        if ($days <= 30) {
+            return '1-30 days';
+        }
+        if ($days <= 60) {
+            return '31-60 days';
+        }
+        if ($days <= 90) {
+            return '61-90 days';
+        }
+
         return '90+ days';
     }
 
@@ -154,7 +162,7 @@ class CustomerLedgerEntry extends Model
     public static function createPaymentEntry(Customer $customer, array $data): self
     {
         $previousBalance = self::getCustomerBalance($customer->id);
-        
+
         return self::create([
             'organization_id' => $data['organization_id'],
             'store_id' => $data['store_id'] ?? null,
@@ -179,7 +187,7 @@ class CustomerLedgerEntry extends Model
         $latestEntry = self::forCustomer($customerId)
             ->orderBy('created_at', 'desc')
             ->first();
-        
+
         return $latestEntry ? (float) $latestEntry->balance : 0;
     }
 

@@ -2,20 +2,24 @@
 
 namespace App\Filament\Pages;
 
-use Filament\Pages\Page;
-use App\Models\ReportSchedule;
 use App\Models\AlertRule;
 use App\Models\Notification;
+use App\Models\ReportSchedule;
 use App\Models\ScheduledReportRun;
-use Illuminate\Support\Facades\DB;
+use Filament\Pages\Page;
 
 class AutomationDashboard extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-cog-6-tooth';
+
     protected static ?string $navigationLabel = 'Automation';
+
     protected static ?string $navigationGroup = 'Reports & Alerts';
+
     protected static ?int $navigationSort = 1;
+
     protected static string $view = 'filament.pages.automation-dashboard';
+
     protected static ?string $title = 'Report Scheduling & Automation';
 
     /**
@@ -25,15 +29,15 @@ class AutomationDashboard extends Page
     {
         $activeSchedules = ReportSchedule::active()->count();
         $totalSchedules = ReportSchedule::count();
-        
+
         $activeAlerts = AlertRule::active()->count();
         $totalAlerts = AlertRule::count();
-        
+
         $unsentNotifications = Notification::unsent()->count();
         $criticalAlerts = Notification::bySeverity('critical')
             ->where('created_at', '>=', now()->subDay())
             ->count();
-        
+
         $recentRuns = ScheduledReportRun::where('created_at', '>=', now()->subWeek())
             ->count();
         $successRate = $this->getSuccessRate();
@@ -125,9 +129,9 @@ class AutomationDashboard extends Page
     public function getAlertSummary(): array
     {
         $rules = AlertRule::active()->get();
-        
-        $byType = $rules->groupBy('type')->map(fn($group) => $group->count())->toArray();
-        $byFrequency = $rules->groupBy('frequency')->map(fn($group) => $group->count())->toArray();
+
+        $byType = $rules->groupBy('type')->map(fn ($group) => $group->count())->toArray();
+        $byFrequency = $rules->groupBy('frequency')->map(fn ($group) => $group->count())->toArray();
 
         return [
             'by_type' => $byType,
@@ -136,7 +140,7 @@ class AutomationDashboard extends Page
                 ->orderBy('trigger_count', 'desc')
                 ->take(5)
                 ->get()
-                ->map(fn($rule) => [
+                ->map(fn ($rule) => [
                     'name' => $rule->name,
                     'count' => $rule->trigger_count,
                     'last_triggered' => $rule->last_triggered_at,
@@ -151,7 +155,7 @@ class AutomationDashboard extends Page
     protected function getSuccessRate(): float
     {
         $total = ScheduledReportRun::where('created_at', '>=', now()->subWeek())->count();
-        
+
         if ($total === 0) {
             return 100.0;
         }

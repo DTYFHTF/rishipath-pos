@@ -2,38 +2,39 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\Customer;
+use App\Models\CustomerLedgerEntry;
+use App\Models\PaymentSplit;
+use App\Models\PosSession;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\StockLevel;
-use App\Models\Customer;
-use App\Models\PosSession;
-use App\Models\PaymentSplit;
-use App\Models\CustomerLedgerEntry;
 use App\Models\Store;
 use App\Models\Terminal;
-use App\Services\BarcodeService;
-use App\Services\LoyaltyService;
-use App\Services\CustomerLedgerService;
-use App\Services\WhatsAppService;
 use App\Services\InventoryService;
-use Illuminate\Support\Facades\Log;
-use Filament\Pages\Page;
+use App\Services\LoyaltyService;
+use App\Services\WhatsAppService;
 use Filament\Notifications\Notification;
+use Filament\Pages\Page;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 
 class EnhancedPOS extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-shopping-cart';
+
     protected static string $view = 'filament.pages.enhanced-p-o-s';
+
     protected static ?string $navigationLabel = 'POS';
+
     protected static ?int $navigationSort = 1;
 
     public function getTitle(): string
     {
         $storeName = $this->currentTerminal?->store?->name ?? 'POS';
+
         return "Point of Sale - {$storeName}";
     }
 
@@ -44,24 +45,32 @@ class EnhancedPOS extends Page
 
     // Multi-session properties
     public $sessions = [];
+
     public $activeSessionKey = null;
+
     public $quickSearchInput = '';
+
     public $barcodeInput = '';
+
     public $customerSearch = '';
-    
+
     // Split payment
     public $showSplitPayment = false;
+
     public $splitPayments = [];
-    
+
     // WhatsApp receipt
     public $sendWhatsApp = false;
+
     // Prevent duplicate sale submissions
     public $processingSale = false;
-    
+
     // Keyboard shortcuts enabled
     public $shortcutsEnabled = true;
+
     // Available stores for selector
     public $stores = [];
+
     // Terminal tied to this POS instance (by device or active terminal)
     public $currentTerminal = null;
 
@@ -78,7 +87,7 @@ class EnhancedPOS extends Page
     public function getSearchResultsProperty()
     {
         $search = trim($this->quickSearchInput);
-        
+
         if (strlen($search) < 1) {
             return collect([]);
         }
@@ -87,37 +96,37 @@ class EnhancedPOS extends Page
         return ProductVariant::query()
             ->with('product')
             ->where('active', true)
-            ->whereHas('product', fn($q) => $q->where('active', true))
-            ->where(function($query) use ($search) {
+            ->whereHas('product', fn ($q) => $q->where('active', true))
+            ->where(function ($query) use ($search) {
                 $query
                     // Product name fields
-                    ->whereHas('product', function($q) use ($search) {
+                    ->whereHas('product', function ($q) use ($search) {
                         $q->where('name', 'like', "%{$search}%")
-                          ->orWhere('name_hindi', 'like', "%{$search}%")
-                          ->orWhere('name_nepali', 'like', "%{$search}%")
-                          ->orWhere('name_sanskrit', 'like', "%{$search}%")
-                          ->orWhere('description', 'like', "%{$search}%");
+                            ->orWhere('name_hindi', 'like', "%{$search}%")
+                            ->orWhere('name_nepali', 'like', "%{$search}%")
+                            ->orWhere('name_sanskrit', 'like', "%{$search}%")
+                            ->orWhere('description', 'like', "%{$search}%");
                     })
                     // Variant fields
                     ->orWhere('sku', 'like', "%{$search}%")
                     ->orWhere('barcode', 'like', "%{$search}%");
             })
             // Order by relevance: exact name match first, then partial matches
-            ->orderByRaw("
+            ->orderByRaw('
                 CASE 
                     WHEN EXISTS (SELECT 1 FROM products WHERE products.id = product_variants.product_id AND products.name LIKE ?) THEN 1
                     WHEN EXISTS (SELECT 1 FROM products WHERE products.id = product_variants.product_id AND products.name LIKE ?) THEN 2
                     WHEN sku LIKE ? OR barcode LIKE ? THEN 3
                     ELSE 4
                 END
-            ", ["{$search}%", "%{$search}%", "{$search}%", "{$search}%"])
+            ', ["{$search}%", "%{$search}%", "{$search}%", "{$search}%"])
             ->limit(10)
             ->get()
-            ->map(function($variant) {
+            ->map(function ($variant) {
                 return [
                     'id' => $variant->id,
                     'product_name' => $variant->product->name,
-                    'variant_name' => $variant->pack_size . ' ' . $variant->unit,
+                    'variant_name' => $variant->pack_size.' '.$variant->unit,
                     'sku' => $variant->sku,
                     'barcode' => $variant->barcode,
                     'price' => $variant->selling_price_nepal,
@@ -134,22 +143,22 @@ class EnhancedPOS extends Page
     public function mount(): void
     {
         $this->loadActiveSessions();
-        
+
         if (empty($this->sessions)) {
             $this->createSession();
         } else {
             $this->activeSessionKey = array_key_first($this->sessions);
         }
-        
+
         // Check if a customer was just created and auto-select them
         if (session()->has('new_customer_id')) {
             $customerId = session()->pull('new_customer_id');
             $customer = Customer::find($customerId);
-            
+
             if ($customer && $this->activeSessionKey) {
                 $this->sessions[$this->activeSessionKey]['customer_id'] = $customerId;
                 $this->sessions[$this->activeSessionKey]['customer_name'] = $customer->name;
-                
+
                 Notification::make()
                     ->success()
                     ->title('Customer Selected')
@@ -184,7 +193,7 @@ class EnhancedPOS extends Page
         }
 
         $userStores = auth()->user()->stores ?? [];
-        if (!empty($userStores)) {
+        if (! empty($userStores)) {
             return $userStores[0];
         }
 
@@ -235,22 +244,23 @@ class EnhancedPOS extends Page
         $query = Customer::query()
             ->where('organization_id', auth()->user()->organization_id)
             ->where('active', true);
-        
-        if (!empty($this->customerSearch)) {
+
+        if (! empty($this->customerSearch)) {
             // Search by name, phone, email or code
             $search = $this->customerSearch;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('customer_code', 'like', "%{$search}%");
+                    ->orWhere('phone', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('customer_code', 'like', "%{$search}%");
             });
+
             // When searching, show more results and prioritize recent matches
             return $query->orderByDesc('created_at')
                 ->limit(10)
                 ->get();
         }
-        
+
         // When not searching, show top customers by purchase count
         return $query->orderByDesc('total_purchases')
             ->orderByDesc('created_at')
@@ -263,7 +273,7 @@ class EnhancedPOS extends Page
      */
     public function selectCustomer($customerId): void
     {
-        if (!$this->activeSessionKey) {
+        if (! $this->activeSessionKey) {
             return;
         }
 
@@ -275,7 +285,7 @@ class EnhancedPOS extends Page
             $this->sessions[$this->activeSessionKey]['customer_id'] = null;
             $this->sessions[$this->activeSessionKey]['customer_name'] = null;
         }
-        
+
         $this->customerSearch = '';
     }
 
@@ -284,10 +294,10 @@ class EnhancedPOS extends Page
      */
     public function clearCustomer(): void
     {
-        if (!$this->activeSessionKey) {
+        if (! $this->activeSessionKey) {
             return;
         }
-        
+
         $this->sessions[$this->activeSessionKey]['customer_id'] = null;
         $this->sessions[$this->activeSessionKey]['customer_name'] = null;
         $this->customerSearch = '';
@@ -309,13 +319,14 @@ class EnhancedPOS extends Page
     public function createSession(): void
     {
         $sessionCount = count($this->sessions) + 1;
-        
+
         if ($sessionCount > 5) {
             Notification::make()
                 ->warning()
                 ->title('Maximum Sessions Reached')
                 ->body('You can have up to 5 active sessions. Please park or complete existing sessions.')
                 ->send();
+
             return;
         }
 
@@ -361,6 +372,7 @@ class EnhancedPOS extends Page
     public function getActiveStoreNameProperty(): ?string
     {
         $session = $this->getCurrentSession();
+
         return $session ? ($session['store_name'] ?? null) : null;
     }
 
@@ -369,7 +381,7 @@ class EnhancedPOS extends Page
      */
     public function switchToSession($sessionKey): void
     {
-        if (!isset($this->sessions[$sessionKey])) {
+        if (! isset($this->sessions[$sessionKey])) {
             return;
         }
 
@@ -379,7 +391,7 @@ class EnhancedPOS extends Page
         }
 
         $this->activeSessionKey = $sessionKey;
-        
+
         // Resume if parked
         if ($this->sessions[$sessionKey]['status'] === 'parked') {
             $session = PosSession::where('session_key', $sessionKey)->first();
@@ -398,22 +410,25 @@ class EnhancedPOS extends Page
 
         if (! ($user?->hasPermission('switch_store') || $user?->isSuperAdmin())) {
             Notification::make()->warning()->title('Not allowed')->body('You do not have permission to change store.')->send();
+
             return;
         }
 
-        if (!isset($this->sessions[$sessionKey])) {
+        if (! isset($this->sessions[$sessionKey])) {
             return;
         }
 
         // Prevent switching if cart has items
-        if (!empty($this->sessions[$sessionKey]['cart'])) {
+        if (! empty($this->sessions[$sessionKey]['cart'])) {
             Notification::make()->warning()->title('Cannot change store')->body('Please empty the cart before changing the store.')->send();
+
             return;
         }
 
         $session = PosSession::where('session_key', $sessionKey)->first();
-        if (!$session) {
+        if (! $session) {
             Notification::make()->danger()->title('Session not found')->send();
+
             return;
         }
 
@@ -441,15 +456,15 @@ class EnhancedPOS extends Page
      */
     public function parkSession(): void
     {
-        if (!$this->activeSessionKey) {
+        if (! $this->activeSessionKey) {
             return;
         }
 
         $this->saveCurrentSession();
-        
+
         $session = PosSession::where('session_key', $this->activeSessionKey)->first();
         $session?->park();
-        
+
         $this->sessions[$this->activeSessionKey]['status'] = 'parked';
         $this->sessions[$this->activeSessionKey]['parked_at'] = now();
 
@@ -477,17 +492,18 @@ class EnhancedPOS extends Page
      */
     public function closeSession($sessionKey): void
     {
-        if (!isset($this->sessions[$sessionKey])) {
+        if (! isset($this->sessions[$sessionKey])) {
             return;
         }
 
         // Don't allow closing if there are items in cart
-        if (!empty($this->sessions[$sessionKey]['cart'])) {
+        if (! empty($this->sessions[$sessionKey]['cart'])) {
             Notification::make()
                 ->warning()
                 ->title('Cannot Close Session')
                 ->body('Please complete or clear the cart first')
                 ->send();
+
             return;
         }
 
@@ -498,8 +514,8 @@ class EnhancedPOS extends Page
 
         if ($this->activeSessionKey === $sessionKey) {
             $this->activeSessionKey = count($this->sessions) > 0 ? array_key_first($this->sessions) : null;
-            
-            if (!$this->activeSessionKey) {
+
+            if (! $this->activeSessionKey) {
                 $this->createSession();
             }
         }
@@ -510,13 +526,13 @@ class EnhancedPOS extends Page
      */
     protected function saveCurrentSession(): void
     {
-        if (!$this->activeSessionKey || !isset($this->sessions[$this->activeSessionKey])) {
+        if (! $this->activeSessionKey || ! isset($this->sessions[$this->activeSessionKey])) {
             return;
         }
 
         $sessionData = $this->sessions[$this->activeSessionKey];
         $session = PosSession::where('session_key', $this->activeSessionKey)->first();
-        
+
         if ($session) {
             $session->updateCart($sessionData['cart']);
             $session->update([
@@ -540,34 +556,36 @@ class EnhancedPOS extends Page
     public function addToCart($variantId, $quantity = 1): void
     {
         $session = $this->getCurrentSession();
-        if (!$session) {
+        if (! $session) {
             return;
         }
 
         $variant = ProductVariant::with('product')->find($variantId);
-        
-        if (!$variant) {
+
+        if (! $variant) {
             Notification::make()
                 ->danger()
                 ->title('Product not found')
                 ->send();
+
             return;
         }
 
         // Check stock - get user's first store or system default
         $userStores = auth()->user()->stores ?? [];
-        $storeId = !empty($userStores) ? $userStores[0] : Store::first()?->id;
-        
+        $storeId = ! empty($userStores) ? $userStores[0] : Store::first()?->id;
+
         $stockLevel = StockLevel::where('product_variant_id', $variantId)
             ->where('store_id', $storeId)
             ->first();
 
-        if (!$stockLevel || $stockLevel->quantity < $quantity) {
+        if (! $stockLevel || $stockLevel->quantity < $quantity) {
             Notification::make()
                 ->warning()
                 ->title('Insufficient Stock')
-                ->body('Available: ' . ($stockLevel->quantity ?? 0) . ' in stock')
+                ->body('Available: '.($stockLevel->quantity ?? 0).' in stock')
                 ->send();
+
             return;
         }
 
@@ -583,7 +601,7 @@ class EnhancedPOS extends Page
                 'product_id' => $variant->product->id,
                 'variant_id' => $variant->id,
                 'product_name' => $variant->product->name,
-                'variant_name' => $variant->pack_size . $variant->unit,
+                'variant_name' => $variant->pack_size.$variant->unit,
                 'sku' => $variant->sku,
                 'price' => $variant->mrp_india ?? $variant->base_price ?? 0,
                 'quantity' => $quantity,
@@ -607,7 +625,7 @@ class EnhancedPOS extends Page
     public function handleQuickInput(): void
     {
         $input = trim($this->quickSearchInput);
-        
+
         if (empty($input)) {
             return;
         }
@@ -620,6 +638,7 @@ class EnhancedPOS extends Page
         if ($variant) {
             $this->addToCart($variant->id);
             $this->quickSearchInput = '';
+
             return;
         }
 
@@ -632,7 +651,7 @@ class EnhancedPOS extends Page
             Notification::make()
                 ->warning()
                 ->title('Product Not Found')
-                ->body('No products found for "' . $input . '"')
+                ->body('No products found for "'.$input.'"')
                 ->send();
         }
     }
@@ -642,7 +661,7 @@ class EnhancedPOS extends Page
      */
     public function updateQuantity($index, $quantity): void
     {
-        if (!$this->activeSessionKey || $quantity < 1) {
+        if (! $this->activeSessionKey || $quantity < 1) {
             return;
         }
 
@@ -656,13 +675,13 @@ class EnhancedPOS extends Page
      */
     public function removeItem($index): void
     {
-        if (!$this->activeSessionKey) {
+        if (! $this->activeSessionKey) {
             return;
         }
 
         unset($this->sessions[$this->activeSessionKey]['cart'][$index]);
         $this->sessions[$this->activeSessionKey]['cart'] = array_values($this->sessions[$this->activeSessionKey]['cart']);
-        
+
         $this->recalculateCart();
         $this->saveCurrentSession();
     }
@@ -672,7 +691,7 @@ class EnhancedPOS extends Page
      */
     public function applyItemDiscount($index, $discount): void
     {
-        if (!$this->activeSessionKey) {
+        if (! $this->activeSessionKey) {
             return;
         }
 
@@ -686,12 +705,12 @@ class EnhancedPOS extends Page
      */
     protected function recalculateCart(): void
     {
-        if (!$this->activeSessionKey) {
+        if (! $this->activeSessionKey) {
             return;
         }
 
         $cart = $this->sessions[$this->activeSessionKey]['cart'];
-        
+
         $subtotal = 0;
         $totalDiscount = 0;
         $totalTax = 0;
@@ -725,29 +744,31 @@ class EnhancedPOS extends Page
                 ->title('Processing')
                 ->body('Sale is already being processed. Please wait.')
                 ->send();
+
             return;
         }
 
         $this->processingSale = true;
 
         $session = $this->getCurrentSession();
-        
-        if (!$session || empty($session['cart'])) {
+
+        if (! $session || empty($session['cart'])) {
             Notification::make()
                 ->warning()
                 ->title('Cart is Empty')
                 ->send();
+
             return;
         }
 
         DB::beginTransaction();
-        
+
         try {
             $storeId = $this->resolveStoreId();
             $terminal = \App\Models\Terminal::where('store_id', $storeId)->where('active', true)->first();
-            
+
             // Create sale
-            $receiptNumber = 'RCPT-' . strtoupper(substr(md5(uniqid()), 0, 8));
+            $receiptNumber = 'RCPT-'.strtoupper(substr(md5(uniqid()), 0, 8));
 
             // Normalize payment method to match DB enum: ['cash','upi','card','esewa','khalti','other']
             $allowedPaymentMethods = ['cash', 'upi', 'card', 'esewa', 'khalti'];
@@ -765,7 +786,7 @@ class EnhancedPOS extends Page
                 'receipt_number' => $receiptNumber,
                 'cashier_id' => auth()->id(),
                 'customer_id' => $session['customer_id'],
-                'invoice_number' => 'INV-' . time(),
+                'invoice_number' => 'INV-'.time(),
                 'date' => now()->toDateString(),
                 'time' => now()->toTimeString(),
                 'subtotal' => $session['subtotal'],
@@ -820,7 +841,7 @@ class EnhancedPOS extends Page
             }
 
             // Save split payments
-            if ($this->showSplitPayment && !empty($this->splitPayments)) {
+            if ($this->showSplitPayment && ! empty($this->splitPayments)) {
                 foreach ($this->splitPayments as $split) {
                     PaymentSplit::create([
                         'sale_id' => $sale->id,
@@ -832,13 +853,13 @@ class EnhancedPOS extends Page
             }
 
             // Create ledger entry if customer and credit sale
-            if ($session['customer_id'] && (!$this->showSplitPayment && $session['payment_method'] === 'credit')) {
+            if ($session['customer_id'] && (! $this->showSplitPayment && $session['payment_method'] === 'credit')) {
                 CustomerLedgerEntry::createSaleEntry($sale);
             }
 
             // Apply loyalty points
             if ($session['customer_id']) {
-                $loyaltyService = new LoyaltyService();
+                $loyaltyService = new LoyaltyService;
                 $loyaltyService->awardPointsForSale($sale);
             }
 
@@ -847,7 +868,7 @@ class EnhancedPOS extends Page
             // Complete session
             $dbSession = PosSession::where('session_key', $this->activeSessionKey)->first();
             $dbSession?->complete();
-// Send WhatsApp receipt if requested and customer has phone
+            // Send WhatsApp receipt if requested and customer has phone
             if ($this->sendWhatsApp && $sale->customer_phone) {
                 $this->sendWhatsAppReceipt($sale);
             }
@@ -855,7 +876,7 @@ class EnhancedPOS extends Page
             Notification::make()
                 ->success()
                 ->title('Sale Completed')
-                ->body("Invoice: {$sale->invoice_number}" . ($this->sendWhatsApp && $sale->customer_phone ? " (WhatsApp sent)" : ""))
+                ->body("Invoice: {$sale->invoice_number}".($this->sendWhatsApp && $sale->customer_phone ? ' (WhatsApp sent)' : ''))
                 ->send();
 
             // Reset WhatsApp toggle
@@ -870,7 +891,7 @@ class EnhancedPOS extends Page
 
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             Notification::make()
                 ->danger()
                 ->title('Error')
@@ -889,22 +910,23 @@ class EnhancedPOS extends Page
     {
         try {
             $whatsappService = app(WhatsAppService::class);
-            
-            if (!$whatsappService->isConfigured()) {
+
+            if (! $whatsappService->isConfigured()) {
                 Notification::make()
                     ->warning()
                     ->title('WhatsApp Not Configured')
                     ->body('WhatsApp credentials not set. Receipt logged only.')
                     ->send();
-                
+
                 // Still call the service to log the receipt
                 $whatsappService->sendReceipt($sale, $sale->customer_phone);
+
                 return;
             }
-            
+
             $success = $whatsappService->sendReceipt($sale, $sale->customer_phone);
-            
-            if (!$success) {
+
+            if (! $success) {
                 Notification::make()
                     ->warning()
                     ->title('WhatsApp Send Failed')
@@ -926,8 +948,8 @@ class EnhancedPOS extends Page
     public function openSplitPayment(): void
     {
         $session = $this->getCurrentSession();
-        
-        if (!$session) {
+
+        if (! $session) {
             return;
         }
 

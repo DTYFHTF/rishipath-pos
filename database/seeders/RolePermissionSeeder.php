@@ -19,7 +19,7 @@ class RolePermissionSeeder extends Seeder
             'view_pos_stats',
             'view_inventory_overview',
             'view_low_stock_alerts',
-            
+
             // POS Operations
             'access_pos_billing',
             'create_sales',
@@ -28,7 +28,7 @@ class RolePermissionSeeder extends Seeder
             'process_refunds',
             'view_sales',
             'view_own_sales_only',
-            
+
             // Product Management
             'view_products',
             'create_products',
@@ -42,7 +42,7 @@ class RolePermissionSeeder extends Seeder
             'create_categories',
             'edit_categories',
             'delete_categories',
-            
+
             // Inventory Management
             'view_inventory',
             'view_stock_levels',
@@ -57,34 +57,34 @@ class RolePermissionSeeder extends Seeder
             'create_suppliers',
             'edit_suppliers',
             'delete_suppliers',
-            
+
             // Customer Management
             'view_customers',
             'create_customers',
             'edit_customers',
             'delete_customers',
             'view_customer_purchase_history',
-            
+
             // Reporting
             'view_sales_reports',
             'view_inventory_reports',
             'view_profit_reports',
             'export_reports',
             'email_reports',
-            
+
             // User Management
             'view_users',
             'create_users',
             'edit_users',
             'delete_users',
             'manage_user_permissions',
-            
+
             // Role Management
             'view_roles',
             'create_roles',
             'edit_roles',
             'delete_roles',
-            
+
             // Settings & Configuration
             'view_settings',
             'edit_settings',
@@ -98,7 +98,7 @@ class RolePermissionSeeder extends Seeder
             'create_terminals',
             'edit_terminals',
             'delete_terminals',
-            
+
             // System Administration
             'access_system_logs',
             'manage_backups',
@@ -113,13 +113,14 @@ class RolePermissionSeeder extends Seeder
     {
         // Get or create the main organization
         $organization = Organization::first();
-        
-        if (!$organization) {
+
+        if (! $organization) {
             $this->command->error('No organization found. Please run DatabaseSeeder first.');
+
             return;
         }
 
-        $this->command->info('Creating roles and permissions for: ' . $organization->name);
+        $this->command->info('Creating roles and permissions for: '.$organization->name);
 
         // Define predefined roles with their permissions
         $roles = [
@@ -138,7 +139,7 @@ class RolePermissionSeeder extends Seeder
                     'view_pos_stats',
                     'view_inventory_overview',
                     'view_low_stock_alerts',
-                    
+
                     // POS
                     'access_pos_billing',
                     'create_sales',
@@ -146,7 +147,7 @@ class RolePermissionSeeder extends Seeder
                     'apply_discounts',
                     'process_refunds',
                     'view_sales',
-                    
+
                     // Products
                     'view_products',
                     'create_products',
@@ -157,7 +158,7 @@ class RolePermissionSeeder extends Seeder
                     'view_categories',
                     'create_categories',
                     'edit_categories',
-                    
+
                     // Inventory
                     'view_inventory',
                     'view_stock_levels',
@@ -170,24 +171,24 @@ class RolePermissionSeeder extends Seeder
                     'view_suppliers',
                     'create_suppliers',
                     'edit_suppliers',
-                    
+
                     // Customers
                     'view_customers',
                     'create_customers',
                     'edit_customers',
                     'view_customer_purchase_history',
-                    
+
                     // Reporting
                     'view_sales_reports',
                     'view_inventory_reports',
                     'view_profit_reports',
                     'export_reports',
-                    
+
                     // Users (limited)
                     'view_users',
                     'create_users',
                     'edit_users',
-                    
+
                     // Settings (limited)
                     'view_settings',
                     'view_stores',
@@ -202,20 +203,20 @@ class RolePermissionSeeder extends Seeder
                     // Dashboard (limited)
                     'view_dashboard',
                     'view_pos_stats',
-                    
+
                     // POS (main function)
                     'access_pos_billing',
                     'create_sales',
                     'view_own_sales_only',
-                    
+
                     // Products (view only)
                     'view_products',
                     'view_product_variants',
-                    
+
                     // Inventory (view only)
                     'view_inventory',
                     'view_stock_levels',
-                    
+
                     // Customers
                     'view_customers',
                     'create_customers',
@@ -231,12 +232,12 @@ class RolePermissionSeeder extends Seeder
                     'view_dashboard',
                     'view_inventory_overview',
                     'view_low_stock_alerts',
-                    
+
                     // Products
                     'view_products',
                     'view_product_variants',
                     'view_categories',
-                    
+
                     // Inventory (full access)
                     'view_inventory',
                     'view_stock_levels',
@@ -249,7 +250,7 @@ class RolePermissionSeeder extends Seeder
                     'view_suppliers',
                     'create_suppliers',
                     'edit_suppliers',
-                    
+
                     // Reporting (inventory only)
                     'view_inventory_reports',
                     'export_reports',
@@ -264,33 +265,33 @@ class RolePermissionSeeder extends Seeder
                     'view_dashboard',
                     'view_pos_stats',
                     'view_inventory_overview',
-                    
+
                     // Sales (view only)
                     'view_sales',
-                    
+
                     // Products (view only)
                     'view_products',
                     'view_product_variants',
                     'view_categories',
-                    
+
                     // Inventory (view only)
                     'view_inventory',
                     'view_stock_levels',
                     'view_product_batches',
                     'view_inventory_movements',
                     'view_suppliers',
-                    
+
                     // Customers
                     'view_customers',
                     'view_customer_purchase_history',
-                    
+
                     // Reporting (full access)
                     'view_sales_reports',
                     'view_inventory_reports',
                     'view_profit_reports',
                     'export_reports',
                     'email_reports',
-                    
+
                     // Settings (view only)
                     'view_settings',
                     'view_stores',
@@ -313,11 +314,11 @@ class RolePermissionSeeder extends Seeder
                 ]
             );
 
-            $this->command->info("✓ Created/Updated role: {$role->name} with " . count($role->permissions) . " permissions");
+            $this->command->info("✓ Created/Updated role: {$role->name} with ".count($role->permissions).' permissions');
         }
 
         $this->command->info('');
         $this->command->info('Role and permission seeding complete!');
-        $this->command->info('Total permissions defined: ' . count($this->getAllPermissions()));
+        $this->command->info('Total permissions defined: '.count($this->getAllPermissions()));
     }
 }

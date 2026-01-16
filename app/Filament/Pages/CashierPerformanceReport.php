@@ -12,14 +12,21 @@ use Illuminate\Support\Facades\DB;
 class CashierPerformanceReport extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
+
     protected static ?string $navigationLabel = 'Cashier Performance';
+
     protected static ?string $navigationGroup = 'Reports';
+
     protected static ?int $navigationSort = 34;
+
     protected static string $view = 'filament.pages.cashier-performance-report';
 
     public $startDate;
+
     public $endDate;
+
     public $storeId = '';
+
     public $cashierId = '';
 
     public function mount(): void
@@ -35,8 +42,8 @@ class CashierPerformanceReport extends Page
     {
         $query = Sale::query()
             ->whereBetween('created_at', [$this->startDate, $this->endDate])
-            ->when($this->storeId, fn($q) => $q->where('store_id', $this->storeId))
-            ->when($this->cashierId, fn($q) => $q->where('cashier_id', $this->cashierId));
+            ->when($this->storeId, fn ($q) => $q->where('store_id', $this->storeId))
+            ->when($this->cashierId, fn ($q) => $q->where('cashier_id', $this->cashierId));
 
         $totalSales = $query->count();
         $totalRevenue = $query->sum('total_amount');
@@ -79,7 +86,7 @@ class CashierPerformanceReport extends Page
                 DB::raw('MAX(created_at) as last_sale'),
             ])
             ->whereBetween('created_at', [$this->startDate, $this->endDate])
-            ->when($this->storeId, fn($q) => $q->where('store_id', $this->storeId))
+            ->when($this->storeId, fn ($q) => $q->where('store_id', $this->storeId))
             ->groupBy('cashier_id');
 
         $sales = $query->get();
@@ -87,12 +94,14 @@ class CashierPerformanceReport extends Page
         $performance = [];
         foreach ($sales as $sale) {
             $cashier = User::find($sale->cashier_id);
-            if (!$cashier) continue;
+            if (! $cashier) {
+                continue;
+            }
 
             // Get items count for this cashier
             $itemsCount = Sale::where('cashier_id', $sale->cashier_id)
                 ->whereBetween('created_at', [$this->startDate, $this->endDate])
-                ->when($this->storeId, fn($q) => $q->where('store_id', $this->storeId))
+                ->when($this->storeId, fn ($q) => $q->where('store_id', $this->storeId))
                 ->withCount('items')
                 ->get()
                 ->sum('items_count');
@@ -103,7 +112,9 @@ class CashierPerformanceReport extends Page
             $firstSale = Carbon::parse($sale->first_sale);
             $lastSale = Carbon::parse($sale->last_sale);
             $workingHours = $firstSale->diffInHours($lastSale);
-            if ($workingHours === 0) $workingHours = 1; // Minimum 1 hour
+            if ($workingHours === 0) {
+                $workingHours = 1;
+            } // Minimum 1 hour
 
             $salesPerHour = $workingHours > 0 ? $sale->total_sales / $workingHours : 0;
             $revenuePerHour = $workingHours > 0 ? $sale->total_revenue / $workingHours : 0;
@@ -137,7 +148,7 @@ class CashierPerformanceReport extends Page
         }
 
         // Sort by total revenue
-        usort($performance, fn($a, $b) => $b['total_revenue'] <=> $a['total_revenue']);
+        usort($performance, fn ($a, $b) => $b['total_revenue'] <=> $a['total_revenue']);
 
         return $performance;
     }
@@ -148,7 +159,8 @@ class CashierPerformanceReport extends Page
     public function getTopCashiers(int $limit = 5): array
     {
         $performance = $this->getCashierPerformance();
-        usort($performance, fn($a, $b) => $b['efficiency_score'] <=> $a['efficiency_score']);
+        usort($performance, fn ($a, $b) => $b['efficiency_score'] <=> $a['efficiency_score']);
+
         return array_slice($performance, 0, $limit);
     }
 
@@ -157,7 +169,7 @@ class CashierPerformanceReport extends Page
      */
     public function getHourlyPerformance(): array
     {
-        if (!$this->cashierId) {
+        if (! $this->cashierId) {
             return [];
         }
 
@@ -174,7 +186,7 @@ class CashierPerformanceReport extends Page
             ])
             ->where('cashier_id', $this->cashierId)
             ->whereBetween('created_at', [$this->startDate, $this->endDate])
-            ->when($this->storeId, fn($q) => $q->where('store_id', $this->storeId))
+            ->when($this->storeId, fn ($q) => $q->where('store_id', $this->storeId))
             ->groupBy('hour')
             ->orderBy('hour')
             ->get();
@@ -205,8 +217,8 @@ class CashierPerformanceReport extends Page
                 DB::raw('SUM(total_amount) as total_revenue'),
             ])
             ->whereBetween('created_at', [$this->startDate, $this->endDate])
-            ->when($this->storeId, fn($q) => $q->where('store_id', $this->storeId))
-            ->when($this->cashierId, fn($q) => $q->where('cashier_id', $this->cashierId))
+            ->when($this->storeId, fn ($q) => $q->where('store_id', $this->storeId))
+            ->when($this->cashierId, fn ($q) => $q->where('cashier_id', $this->cashierId))
             ->groupBy('date', 'cashier_id')
             ->orderBy('date')
             ->get();
@@ -221,7 +233,7 @@ class CashierPerformanceReport extends Page
                 $dateKey = (string) $dateValue;
             }
 
-            if (!isset($dailyData[$dateKey])) {
+            if (! isset($dailyData[$dateKey])) {
                 $dailyData[$dateKey] = [
                     'date' => $dateKey,
                     'cashiers' => [],
@@ -249,7 +261,7 @@ class CashierPerformanceReport extends Page
      */
     public function getPaymentMethodDistribution(): array
     {
-        if (!$this->cashierId) {
+        if (! $this->cashierId) {
             return [];
         }
 
@@ -261,7 +273,7 @@ class CashierPerformanceReport extends Page
             ])
             ->where('cashier_id', $this->cashierId)
             ->whereBetween('created_at', [$this->startDate, $this->endDate])
-            ->when($this->storeId, fn($q) => $q->where('store_id', $this->storeId))
+            ->when($this->storeId, fn ($q) => $q->where('store_id', $this->storeId))
             ->groupBy('payment_method')
             ->get();
 
@@ -285,40 +297,40 @@ class CashierPerformanceReport extends Page
         $performance = $this->getCashierPerformance();
 
         $data = [];
-        
+
         // Add summary
         $data[] = ['CASHIER PERFORMANCE REPORT'];
-        $data[] = ['Period', $this->startDate . ' to ' . $this->endDate];
+        $data[] = ['Period', $this->startDate.' to '.$this->endDate];
         $data[] = [''];
         $data[] = ['SUMMARY METRICS'];
         $data[] = ['Total Sales', $metrics['total_sales']];
-        $data[] = ['Total Revenue', '₹' . number_format($metrics['total_revenue'], 2)];
-        $data[] = ['Avg Sale Value', '₹' . number_format($metrics['avg_sale_value'], 2)];
+        $data[] = ['Total Revenue', '₹'.number_format($metrics['total_revenue'], 2)];
+        $data[] = ['Avg Sale Value', '₹'.number_format($metrics['avg_sale_value'], 2)];
         $data[] = ['Total Items Sold', $metrics['total_items']];
         $data[] = ['Avg Items Per Sale', number_format($metrics['avg_items_per_sale'], 2)];
         $data[] = ['Active Cashiers', $metrics['active_cashiers']];
         $data[] = [''];
-        
+
         // Add cashier details
         $data[] = ['Cashier', 'Total Sales', 'Total Revenue', 'Avg Sale Value', 'Total Items', 'Avg Items/Sale', 'Working Hours', 'Sales/Hour', 'Revenue/Hour', 'Efficiency Score'];
-        
+
         foreach ($performance as $cashier) {
             $data[] = [
                 $cashier['cashier_name'],
                 $cashier['total_sales'],
-                '₹' . number_format($cashier['total_revenue'], 2),
-                '₹' . number_format($cashier['avg_sale_value'], 2),
+                '₹'.number_format($cashier['total_revenue'], 2),
+                '₹'.number_format($cashier['avg_sale_value'], 2),
                 $cashier['total_items'],
                 $cashier['avg_items_per_sale'],
-                $cashier['working_hours'] . ' hrs',
+                $cashier['working_hours'].' hrs',
                 $cashier['sales_per_hour'],
-                '₹' . number_format($cashier['revenue_per_hour'], 2),
-                $cashier['efficiency_score'] . '%',
+                '₹'.number_format($cashier['revenue_per_hour'], 2),
+                $cashier['efficiency_score'].'%',
             ];
         }
 
-        $filename = 'cashier_performance_' . $this->startDate . '_to_' . $this->endDate;
-        
+        $filename = 'cashier_performance_'.$this->startDate.'_to_'.$this->endDate;
+
         return app(ExportService::class)->downloadExcel($data, $filename);
     }
 }

@@ -20,13 +20,19 @@ class RecordPayment extends Page implements HasForms
     use InteractsWithForms;
 
     protected static ?string $navigationIcon = 'heroicon-o-banknotes';
+
     protected static ?string $navigationGroup = 'Customers';
+
     protected static ?int $navigationSort = 4;
+
     protected static string $view = 'filament.pages.record-payment';
+
     protected static ?string $title = 'Record Customer Payment';
 
     public ?array $data = [];
+
     public ?float $outstandingBalance = null;
+
     public ?float $currentBalance = null;
 
     public function mount(): void
@@ -109,18 +115,19 @@ class RecordPayment extends Page implements HasForms
     {
         $data = $this->form->getState();
 
-        if (!$data['customer_id']) {
+        if (! $data['customer_id']) {
             Notification::make()
                 ->title('Please select a customer')
                 ->danger()
                 ->send();
+
             return;
         }
 
         try {
             $customer = Customer::find($data['customer_id']);
-            
-            $ledgerService = new CustomerLedgerService();
+
+            $ledgerService = new CustomerLedgerService;
             $ledgerService->recordPayment($customer, [
                 'organization_id' => auth()->user()->organization_id,
                 'store_id' => $data['store_id'],
@@ -144,7 +151,7 @@ class RecordPayment extends Page implements HasForms
                 'store_id' => auth()->user()->store_id ?? Store::first()?->id,
                 'payment_method' => 'cash',
             ]);
-            
+
             $this->outstandingBalance = null;
             $this->currentBalance = null;
 

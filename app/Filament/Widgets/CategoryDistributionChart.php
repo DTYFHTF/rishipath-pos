@@ -10,8 +10,10 @@ use Illuminate\Support\Facades\DB;
 class CategoryDistributionChart extends ChartWidget
 {
     protected static ?string $heading = 'Sales by Category (Last 30 Days)';
+
     protected static ?int $sort = 4;
-    protected int | string | array $columnSpan = 1;
+
+    protected int|string|array $columnSpan = 1;
 
     public static function canView(): bool
     {

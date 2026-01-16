@@ -2,8 +2,8 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
 use App\Services\AlertService;
+use Illuminate\Console\Command;
 
 class SendPendingNotifications extends Command
 {
@@ -27,11 +27,11 @@ class SendPendingNotifications extends Command
     public function handle(AlertService $service)
     {
         $this->info('Sending pending notifications...');
-        
+
         $processed = $service->processUnsentNotifications();
-        
+
         $this->info("✅ Processed {$processed} pending notifications");
-        
+
         return Command::SUCCESS;
     }
 }

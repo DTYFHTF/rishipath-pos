@@ -77,8 +77,8 @@ class LoyaltyTier extends Model
     public function pointsToNextTier(int $currentPoints): ?int
     {
         $nextTier = $this->getNextTier();
-        
-        if (!$nextTier) {
+
+        if (! $nextTier) {
             return null;
         }
 

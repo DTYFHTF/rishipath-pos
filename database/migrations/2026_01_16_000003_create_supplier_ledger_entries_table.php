@@ -38,7 +38,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('supplier_ledger_entries');
-        
+
         Schema::table('suppliers', function (Blueprint $table) {
             $table->dropColumn('current_balance');
         });

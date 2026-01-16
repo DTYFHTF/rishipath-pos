@@ -3,7 +3,6 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ProductBatchResource\Pages;
-use App\Filament\Resources\ProductBatchResource\RelationManagers;
 use App\Models\ProductBatch;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -11,7 +10,6 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class ProductBatchResource extends Resource
 {
@@ -143,7 +141,7 @@ class ProductBatchResource extends Resource
                 Tables\Columns\TextColumn::make('expiry_date')
                     ->date()
                     ->sortable()
-                    ->color(fn ($record) => $record->expiry_date && $record->expiry_date->isPast() ? 'danger' : 
+                    ->color(fn ($record) => $record->expiry_date && $record->expiry_date->isPast() ? 'danger' :
                         ($record->expiry_date && $record->expiry_date->diffInDays() < 30 ? 'warning' : null)),
                 Tables\Columns\TextColumn::make('supplier.name')
                     ->toggleable(isToggledHiddenByDefault: true),

@@ -12,7 +12,7 @@ class LoyaltyTierSeeder extends Seeder
     {
         $organization = Organization::first();
 
-        if (!$organization) {
+        if (! $organization) {
             return;
         }
 

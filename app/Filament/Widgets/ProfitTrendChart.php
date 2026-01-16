@@ -11,8 +11,10 @@ use Illuminate\Support\Facades\DB;
 class ProfitTrendChart extends ChartWidget
 {
     protected static ?string $heading = 'Profit Analysis (Last 30 Days)';
+
     protected static ?int $sort = 3;
-    protected int | string | array $columnSpan = 'full';
+
+    protected int|string|array $columnSpan = 'full';
 
     public static function canView(): bool
     {
@@ -26,21 +28,21 @@ class ProfitTrendChart extends ChartWidget
 
         // Get daily sales with cost calculation
         $dailyData = [];
-        
+
         for ($date = $startDate->copy(); $date <= $endDate; $date->addDay()) {
             $dateStr = $date->format('Y-m-d');
-            
+
             $sales = Sale::whereDate('created_at', $dateStr)->get();
             $revenue = $sales->sum('final_total');
-            
+
             // Calculate cost from sale items
             $saleIds = $sales->pluck('id');
             $cost = SaleItem::whereIn('sale_id', $saleIds)
                 ->sum(DB::raw('quantity * cost_price'));
-            
+
             $profit = $revenue - $cost;
             $margin = $revenue > 0 ? ($profit / $revenue) * 100 : 0;
-            
+
             $dailyData[] = [
                 'date' => $date->format('M d'),
                 'revenue' => round($revenue, 2),

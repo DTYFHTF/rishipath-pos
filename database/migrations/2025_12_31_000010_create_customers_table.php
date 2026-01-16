@@ -24,7 +24,7 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->boolean('active')->default(true);
             $table->timestamps();
-            
+
             $table->index('organization_id');
             $table->index('customer_code');
             $table->index('phone');

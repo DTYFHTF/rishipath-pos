@@ -1,6 +1,7 @@
 <?php
-require __DIR__ . '/../vendor/autoload.php';
-$app = require_once __DIR__ . '/../bootstrap/app.php';
+
+require __DIR__.'/../vendor/autoload.php';
+$app = require_once __DIR__.'/../bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 
 $user = App\Models\User::first();
@@ -18,7 +19,7 @@ try {
         'terminal_id' => $terminal->id,
         'customer_id' => $customer->id,
         'cashier_id' => $user->id,
-        'receipt_number' => 'RCPT-TEST-' . uniqid(),
+        'receipt_number' => 'RCPT-TEST-'.uniqid(),
         'date' => now()->toDateString(),
         'time' => now()->toTimeString(),
         'subtotal' => 70,
@@ -59,6 +60,6 @@ try {
     echo "Sale item created: {$saleItem->id}\n";
     echo "Test sale complete.\n";
 } catch (Exception $e) {
-    echo "Error: " . $e->getMessage() . "\n";
-    echo "File: " . $e->getFile() . ":" . $e->getLine() . "\n";
+    echo 'Error: '.$e->getMessage()."\n";
+    echo 'File: '.$e->getFile().':'.$e->getLine()."\n";
 }

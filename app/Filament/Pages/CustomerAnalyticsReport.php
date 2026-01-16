@@ -7,18 +7,23 @@ use App\Models\Sale;
 use App\Services\ExportService;
 use Carbon\Carbon;
 use Filament\Pages\Page;
-use Illuminate\Support\Facades\DB;
 
 class CustomerAnalyticsReport extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-users';
+
     protected static ?string $navigationLabel = 'Customer Analytics';
+
     protected static ?string $navigationGroup = 'Reports';
+
     protected static ?int $navigationSort = 33;
+
     protected static string $view = 'filament.pages.customer-analytics-report';
 
     public $startDate;
+
     public $endDate;
+
     public $storeId = '';
 
     public function mount(): void
@@ -34,7 +39,7 @@ class CustomerAnalyticsReport extends Page
     {
         $query = Sale::query()
             ->whereBetween('created_at', [$this->startDate, $this->endDate])
-            ->when($this->storeId, fn($q) => $q->where('store_id', $this->storeId));
+            ->when($this->storeId, fn ($q) => $q->where('store_id', $this->storeId));
 
         $totalCustomers = Customer::count();
         $activeCustomers = $query->distinct('customer_id')->whereNotNull('customer_id')->count();
@@ -70,13 +75,15 @@ class CustomerAnalyticsReport extends Page
     {
         $customers = Customer::with(['sales' => function ($query) {
             $query->whereBetween('created_at', [$this->startDate, $this->endDate])
-                ->when($this->storeId, fn($q) => $q->where('store_id', $this->storeId));
+                ->when($this->storeId, fn ($q) => $q->where('store_id', $this->storeId));
         }])->get();
 
         $rfmData = [];
 
         foreach ($customers as $customer) {
-            if ($customer->sales->isEmpty()) continue;
+            if ($customer->sales->isEmpty()) {
+                continue;
+            }
 
             // Recency: Days since last purchase
             $lastPurchase = $customer->sales->max('created_at');
@@ -112,7 +119,7 @@ class CustomerAnalyticsReport extends Page
             $data['frequency_score'] = $frequencyScores[$index];
             $data['monetary_score'] = $monetaryScores[$index];
             $data['rfm_score'] = $recencyScores[$index] + $frequencyScores[$index] + $monetaryScores[$index];
-            
+
             // Customer Segment
             $data['segment'] = $this->getCustomerSegment(
                 $recencyScores[$index],
@@ -122,7 +129,7 @@ class CustomerAnalyticsReport extends Page
         }
 
         // Sort by RFM score
-        usort($rfmData, fn($a, $b) => $b['rfm_score'] <=> $a['rfm_score']);
+        usort($rfmData, fn ($a, $b) => $b['rfm_score'] <=> $a['rfm_score']);
 
         return $rfmData;
     }
@@ -135,21 +142,21 @@ class CustomerAnalyticsReport extends Page
         $sorted = $values;
         sort($sorted);
         $count = count($sorted);
-        
+
         $scores = [];
         foreach ($values as $value) {
             $position = array_search($value, $sorted);
             $percentile = ($position + 1) / $count;
-            
+
             if ($reverse) {
                 $score = 5 - floor($percentile * 5);
             } else {
                 $score = ceil($percentile * 5);
             }
-            
+
             $scores[] = max(1, min(5, $score));
         }
-        
+
         return $scores;
     }
 
@@ -158,14 +165,31 @@ class CustomerAnalyticsReport extends Page
      */
     private function getCustomerSegment(int $r, int $f, int $m): string
     {
-        if ($r >= 4 && $f >= 4 && $m >= 4) return 'Champions';
-        if ($r >= 3 && $f >= 4 && $m >= 4) return 'Loyal Customers';
-        if ($r >= 4 && $f <= 2 && $m >= 3) return 'Potential Loyalists';
-        if ($r >= 4 && $f <= 2 && $m <= 2) return 'New Customers';
-        if ($r >= 3 && $f >= 3 && $m >= 3) return 'Promising';
-        if ($r <= 2 && $f >= 3 && $m >= 3) return 'At Risk';
-        if ($r <= 2 && $f <= 2 && $m >= 3) return 'Hibernating';
-        if ($r <= 2 && $f >= 3 && $m <= 2) return 'Cannot Lose Them';
+        if ($r >= 4 && $f >= 4 && $m >= 4) {
+            return 'Champions';
+        }
+        if ($r >= 3 && $f >= 4 && $m >= 4) {
+            return 'Loyal Customers';
+        }
+        if ($r >= 4 && $f <= 2 && $m >= 3) {
+            return 'Potential Loyalists';
+        }
+        if ($r >= 4 && $f <= 2 && $m <= 2) {
+            return 'New Customers';
+        }
+        if ($r >= 3 && $f >= 3 && $m >= 3) {
+            return 'Promising';
+        }
+        if ($r <= 2 && $f >= 3 && $m >= 3) {
+            return 'At Risk';
+        }
+        if ($r <= 2 && $f <= 2 && $m >= 3) {
+            return 'Hibernating';
+        }
+        if ($r <= 2 && $f >= 3 && $m <= 2) {
+            return 'Cannot Lose Them';
+        }
+
         return 'Lost';
     }
 
@@ -175,7 +199,8 @@ class CustomerAnalyticsReport extends Page
     public function getTopCustomers(int $limit = 10): array
     {
         $rfm = $this->getRfmAnalysis();
-        usort($rfm, fn($a, $b) => $b['monetary'] <=> $a['monetary']);
+        usort($rfm, fn ($a, $b) => $b['monetary'] <=> $a['monetary']);
+
         return array_slice($rfm, 0, $limit);
     }
 
@@ -189,7 +214,7 @@ class CustomerAnalyticsReport extends Page
 
         foreach ($rfm as $customer) {
             $segment = $customer['segment'];
-            if (!isset($segments[$segment])) {
+            if (! isset($segments[$segment])) {
                 $segments[$segment] = [
                     'count' => 0,
                     'revenue' => 0,
@@ -208,7 +233,7 @@ class CustomerAnalyticsReport extends Page
         }
 
         // Sort by revenue
-        uasort($segments, fn($a, $b) => $b['revenue'] <=> $a['revenue']);
+        uasort($segments, fn ($a, $b) => $b['revenue'] <=> $a['revenue']);
 
         return $segments;
     }
@@ -220,7 +245,7 @@ class CustomerAnalyticsReport extends Page
     {
         $query = Sale::query()
             ->whereBetween('created_at', [$this->startDate, $this->endDate])
-            ->when($this->storeId, fn($q) => $q->where('store_id', $this->storeId))
+            ->when($this->storeId, fn ($q) => $q->where('store_id', $this->storeId))
             ->whereNotNull('customer_id')
             ->groupBy('customer_id')
             ->selectRaw('customer_id, COUNT(*) as purchase_count')
@@ -261,30 +286,30 @@ class CustomerAnalyticsReport extends Page
         $rfm = $this->getRfmAnalysis();
 
         $data = [];
-        
+
         // Add summary
         $data[] = ['CUSTOMER ANALYTICS REPORT'];
-        $data[] = ['Period', $this->startDate . ' to ' . $this->endDate];
+        $data[] = ['Period', $this->startDate.' to '.$this->endDate];
         $data[] = [''];
         $data[] = ['SUMMARY METRICS'];
         $data[] = ['Total Customers', $metrics['total_customers']];
         $data[] = ['Active Customers', $metrics['active_customers']];
         $data[] = ['New Customers', $metrics['new_customers']];
-        $data[] = ['Total Revenue', '₹' . number_format($metrics['total_revenue'], 2)];
-        $data[] = ['Avg Transaction Value', '₹' . number_format($metrics['avg_transaction_value'], 2)];
-        $data[] = ['Avg Lifetime Value', '₹' . number_format($metrics['avg_lifetime_value'], 2)];
+        $data[] = ['Total Revenue', '₹'.number_format($metrics['total_revenue'], 2)];
+        $data[] = ['Avg Transaction Value', '₹'.number_format($metrics['avg_transaction_value'], 2)];
+        $data[] = ['Avg Lifetime Value', '₹'.number_format($metrics['avg_lifetime_value'], 2)];
         $data[] = [''];
-        
+
         // Add RFM analysis
         $data[] = ['Customer Name', 'Phone', 'Recency (days)', 'Frequency', 'Monetary', 'R Score', 'F Score', 'M Score', 'Total Score', 'Segment'];
-        
+
         foreach ($rfm as $customer) {
             $data[] = [
                 $customer['customer_name'],
                 $customer['customer_phone'],
                 $customer['recency_days'],
                 $customer['frequency'],
-                '₹' . number_format($customer['monetary'], 2),
+                '₹'.number_format($customer['monetary'], 2),
                 $customer['recency_score'],
                 $customer['frequency_score'],
                 $customer['monetary_score'],
@@ -293,8 +318,8 @@ class CustomerAnalyticsReport extends Page
             ];
         }
 
-        $filename = 'customer_analytics_' . $this->startDate . '_to_' . $this->endDate;
-        
+        $filename = 'customer_analytics_'.$this->startDate.'_to_'.$this->endDate;
+
         return app(ExportService::class)->downloadExcel($data, $filename);
     }
 }

@@ -38,7 +38,7 @@ return new class extends Migration
             $table->boolean('is_synced')->default(false);
             $table->timestamp('synced_at')->nullable();
             $table->timestamps();
-            
+
             $table->index('organization_id');
             $table->index('store_id');
             $table->index('terminal_id');

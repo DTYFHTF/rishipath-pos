@@ -3,7 +3,6 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\CustomerLedgerEntryResource\Pages;
-use App\Filament\Resources\CustomerLedgerEntryResource\RelationManagers;
 use App\Models\CustomerLedgerEntry;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -11,15 +10,17 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class CustomerLedgerEntryResource extends Resource
 {
     protected static ?string $model = CustomerLedgerEntry::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
+
     protected static ?string $navigationGroup = 'Customers';
+
     protected static ?string $navigationLabel = 'Ledger Entries';
+
     protected static ?int $navigationSort = 3;
 
     public static function form(Form $form): Form
@@ -30,7 +31,7 @@ class CustomerLedgerEntryResource extends Resource
                     ->relationship('customer', 'name')
                     ->required()
                     ->searchable(),
-                
+
                 Forms\Components\Select::make('entry_type')
                     ->options([
                         'sale' => 'Sale',
@@ -40,25 +41,25 @@ class CustomerLedgerEntryResource extends Resource
                         'adjustment' => 'Adjustment',
                     ])
                     ->required(),
-                
+
                 Forms\Components\DatePicker::make('transaction_date')
                     ->required()
                     ->default(now()),
-                
+
                 Forms\Components\TextInput::make('debit_amount')
                     ->numeric()
                     ->default(0)
                     ->prefix('₹'),
-                
+
                 Forms\Components\TextInput::make('credit_amount')
                     ->numeric()
                     ->default(0)
                     ->prefix('₹'),
-                
+
                 Forms\Components\Textarea::make('description')
                     ->required()
                     ->columnSpanFull(),
-                
+
                 Forms\Components\Select::make('payment_method')
                     ->options([
                         'cash' => 'Cash',
@@ -69,10 +70,10 @@ class CustomerLedgerEntryResource extends Resource
                         'credit' => 'Credit',
                     ])
                     ->visible(fn ($get) => $get('entry_type') === 'payment'),
-                
+
                 Forms\Components\TextInput::make('reference_number')
                     ->label('Reference/Invoice Number'),
-                
+
                 Forms\Components\Textarea::make('notes')
                     ->columnSpanFull(),
             ])
@@ -87,20 +88,20 @@ class CustomerLedgerEntryResource extends Resource
                     ->date('d M Y')
                     ->sortable()
                     ->label('Date'),
-                
+
                 Tables\Columns\TextColumn::make('customer.name')
                     ->searchable()
                     ->sortable()
                     ->label('Customer'),
-                
+
                 Tables\Columns\TextColumn::make('reference_number')
                     ->searchable()
                     ->label('Reference'),
-                
+
                 Tables\Columns\TextColumn::make('description')
                     ->limit(40)
                     ->searchable(),
-                
+
                 Tables\Columns\TextColumn::make('entry_type')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
@@ -111,25 +112,25 @@ class CustomerLedgerEntryResource extends Resource
                         default => 'gray',
                     })
                     ->formatStateUsing(fn ($state) => ucwords(str_replace('_', ' ', $state))),
-                
+
                 Tables\Columns\TextColumn::make('debit_amount')
                     ->money('INR')
                     ->color('danger')
                     ->label('Debit')
                     ->sortable(),
-                
+
                 Tables\Columns\TextColumn::make('credit_amount')
                     ->money('INR')
                     ->color('success')
                     ->label('Credit')
                     ->sortable(),
-                
+
                 Tables\Columns\TextColumn::make('balance')
                     ->money('INR')
                     ->color(fn ($record) => $record->balance > 0 ? 'danger' : 'success')
                     ->sortable()
                     ->label('Balance'),
-                
+
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
@@ -139,11 +140,11 @@ class CustomerLedgerEntryResource extends Resource
                         'cancelled' => 'gray',
                         default => 'gray',
                     }),
-                
+
                 Tables\Columns\TextColumn::make('store.name')
                     ->sortable()
                     ->toggleable(),
-                
+
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -158,7 +159,7 @@ class CustomerLedgerEntryResource extends Resource
                         'opening_balance' => 'Opening Balance',
                         'adjustment' => 'Adjustment',
                     ]),
-                
+
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
                         'pending' => 'Pending',
@@ -166,11 +167,11 @@ class CustomerLedgerEntryResource extends Resource
                         'cancelled' => 'Cancelled',
                         'overdue' => 'Overdue',
                     ]),
-                
+
                 Tables\Filters\SelectFilter::make('customer')
                     ->relationship('customer', 'name')
                     ->searchable(),
-                
+
                 Tables\Filters\Filter::make('transaction_date')
                     ->form([
                         Forms\Components\DatePicker::make('from'),

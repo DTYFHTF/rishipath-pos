@@ -9,9 +9,13 @@ use Filament\Pages\Page;
 class SupplierLedgerReport extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-building-storefront';
+
     protected static string $view = 'filament.pages.supplier-ledger-report';
+
     protected static ?string $navigationGroup = 'Reports';
+
     protected static ?string $navigationLabel = 'Supplier Ledger';
+
     protected static ?int $navigationSort = 11;
 
     public static function canAccess(): bool
@@ -20,7 +24,9 @@ class SupplierLedgerReport extends Page
     }
 
     public $supplierId;
+
     public $startDate;
+
     public $endDate;
 
     public function mount(): void
@@ -36,8 +42,8 @@ class SupplierLedgerReport extends Page
         $suppliers = $query->get()->map(function ($supplier) {
             $purchases = $supplier->purchases()
                 ->where('status', 'received')
-                ->when($this->startDate, fn($q) => $q->whereDate('purchase_date', '>=', $this->startDate))
-                ->when($this->endDate, fn($q) => $q->whereDate('purchase_date', '<=', $this->endDate));
+                ->when($this->startDate, fn ($q) => $q->whereDate('purchase_date', '>=', $this->startDate))
+                ->when($this->endDate, fn ($q) => $q->whereDate('purchase_date', '<=', $this->endDate));
 
             return [
                 'id' => $supplier->id,
@@ -56,13 +62,13 @@ class SupplierLedgerReport extends Page
     public function getOverallMetrics(): array
     {
         $suppliers = Supplier::where('active', true)->get();
-        
+
         $totalPayable = $suppliers->sum('current_balance');
         $suppliersWithBalance = $suppliers->where('current_balance', '>', 0)->count();
 
         $periodQuery = SupplierLedgerEntry::query()
-            ->when($this->startDate, fn($q) => $q->whereDate('created_at', '>=', $this->startDate))
-            ->when($this->endDate, fn($q) => $q->whereDate('created_at', '<=', $this->endDate));
+            ->when($this->startDate, fn ($q) => $q->whereDate('created_at', '>=', $this->startDate))
+            ->when($this->endDate, fn ($q) => $q->whereDate('created_at', '<=', $this->endDate));
 
         $purchases = (clone $periodQuery)->where('type', 'purchase')->sum('amount');
         $payments = abs((clone $periodQuery)->where('type', 'payment')->sum('amount'));
@@ -79,9 +85,9 @@ class SupplierLedgerReport extends Page
     public function getLedgerEntries(): \Illuminate\Database\Eloquent\Collection
     {
         $query = SupplierLedgerEntry::with(['supplier', 'purchase', 'createdBy'])
-            ->when($this->supplierId, fn($q) => $q->where('supplier_id', $this->supplierId))
-            ->when($this->startDate, fn($q) => $q->whereDate('created_at', '>=', $this->startDate))
-            ->when($this->endDate, fn($q) => $q->whereDate('created_at', '<=', $this->endDate))
+            ->when($this->supplierId, fn ($q) => $q->where('supplier_id', $this->supplierId))
+            ->when($this->startDate, fn ($q) => $q->whereDate('created_at', '>=', $this->startDate))
+            ->when($this->endDate, fn ($q) => $q->whereDate('created_at', '<=', $this->endDate))
             ->orderByDesc('created_at');
 
         return $query->limit(100)->get();
@@ -89,7 +95,7 @@ class SupplierLedgerReport extends Page
 
     public function getSelectedSupplier(): ?Supplier
     {
-        if (!$this->supplierId) {
+        if (! $this->supplierId) {
             return null;
         }
 

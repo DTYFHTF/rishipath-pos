@@ -16,14 +16,14 @@ class LoyaltyService
      */
     public function awardPointsForSale(Sale $sale): ?LoyaltyPoint
     {
-        if (!$sale->customer_id) {
+        if (! $sale->customer_id) {
             return null;
         }
 
         $customer = $sale->customer;
 
         // Enroll customer if not already enrolled
-        if (!$customer->isLoyaltyMember()) {
+        if (! $customer->isLoyaltyMember()) {
             $this->enrollCustomer($customer);
         }
 
@@ -54,7 +54,7 @@ class LoyaltyService
      */
     public function redeemReward(Customer $customer, Reward $reward, ?int $processedBy = null): array
     {
-        if (!$reward->canBeRedeemedBy($customer)) {
+        if (! $reward->canBeRedeemedBy($customer)) {
             return [
                 'success' => false,
                 'message' => 'Cannot redeem this reward',
@@ -92,6 +92,7 @@ class LoyaltyService
 
         } catch (\Exception $e) {
             DB::rollBack();
+
             return [
                 'success' => false,
                 'message' => $e->getMessage(),
@@ -151,7 +152,7 @@ class LoyaltyService
      */
     public function awardBirthdayBonus(Customer $customer, int $bonusPoints = 100): ?LoyaltyPoint
     {
-        if (!$customer->isBirthdayBonusDue()) {
+        if (! $customer->isBirthdayBonusDue()) {
             return null;
         }
 
@@ -248,7 +249,7 @@ class LoyaltyService
             // Only expire if not already processed
             if ($point->points > 0) {
                 $customer = $point->customer;
-                
+
                 $this->addPoints(
                     customer: $customer,
                     points: -$point->points,

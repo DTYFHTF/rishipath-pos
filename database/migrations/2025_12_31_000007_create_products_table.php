@@ -32,7 +32,7 @@ return new class extends Migration
             $table->boolean('active')->default(true);
             $table->softDeletes();
             $table->timestamps();
-            
+
             $table->index('organization_id');
             $table->index('category_id');
             $table->index('sku');

@@ -9,16 +9,15 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Support\Colors\Color;
 
 class RoleResource extends Resource
 {
     protected static ?string $model = Role::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-shield-check';
-    
+
     protected static ?string $navigationGroup = 'Settings';
-    
+
     protected static ?int $navigationSort = 1;
 
     public static function canViewAny(): bool
@@ -41,6 +40,7 @@ class RoleResource extends Resource
         if ($record->is_system_role || $record->users()->count() > 0) {
             return false;
         }
+
         return auth()->user()?->hasPermission('delete_roles') ?? false;
     }
 
@@ -146,7 +146,7 @@ class RoleResource extends Resource
     public static function form(Form $form): Form
     {
         $permissionGroups = static::getPermissionGroups();
-        
+
         return $form
             ->schema([
                 Forms\Components\Section::make('Role Information')
@@ -157,7 +157,7 @@ class RoleResource extends Resource
                             ->maxLength(100)
                             ->placeholder('e.g., Store Manager')
                             ->helperText('Descriptive name for this role'),
-                        
+
                         Forms\Components\TextInput::make('slug')
                             ->label('Role Slug')
                             ->required()
@@ -166,19 +166,19 @@ class RoleResource extends Resource
                             ->unique(ignoreRecord: true)
                             ->helperText('Unique identifier (lowercase, no spaces)')
                             ->rules(['alpha_dash']),
-                        
+
                         Forms\Components\Toggle::make('is_system_role')
                             ->label('System Role')
                             ->helperText('System roles cannot be deleted')
                             ->disabled(fn (?Role $record) => $record?->is_system_role === true)
                             ->default(false),
-                        
+
                         Forms\Components\Placeholder::make('users_count')
                             ->label('Users with this role')
                             ->content(fn (?Role $record) => $record ? $record->users()->count() : 0)
                             ->visible(fn (?Role $record) => $record !== null),
                     ])->columns(2),
-                
+
                 Forms\Components\Section::make('Permissions')
                     ->description('Select the permissions this role should have')
                     ->schema([
@@ -191,6 +191,7 @@ class RoleResource extends Resource
                                         $options[$key] = $label;
                                     }
                                 }
+
                                 return $options;
                             })
                             ->descriptions(function () use ($permissionGroups) {
@@ -204,6 +205,7 @@ class RoleResource extends Resource
                                         }
                                     }
                                 }
+
                                 return $descriptions;
                             })
                             ->columns(2)
@@ -223,14 +225,14 @@ class RoleResource extends Resource
                     ->searchable()
                     ->sortable()
                     ->weight('bold'),
-                
+
                 Tables\Columns\TextColumn::make('slug')
                     ->label('Slug')
                     ->searchable()
                     ->copyable()
                     ->badge()
                     ->color('gray'),
-                
+
                 Tables\Columns\IconColumn::make('is_system_role')
                     ->label('System Role')
                     ->boolean()
@@ -238,25 +240,25 @@ class RoleResource extends Resource
                     ->falseIcon('heroicon-o-user-group')
                     ->trueColor('warning')
                     ->falseColor('success'),
-                
+
                 Tables\Columns\TextColumn::make('users_count')
                     ->label('Users')
                     ->counts('users')
                     ->badge()
-                    ->color(fn (int $state) => match(true) {
+                    ->color(fn (int $state) => match (true) {
                         $state === 0 => 'gray',
                         $state < 5 => 'success',
                         $state < 10 => 'warning',
                         default => 'danger',
                     }),
-                
+
                 Tables\Columns\TextColumn::make('permissions')
                     ->label('Permissions')
                     ->formatStateUsing(fn ($state) => is_string($state) ? count(json_decode($state, true) ?? []) : count($state ?? []))
                     ->badge()
                     ->color('info')
                     ->suffix(' permissions'),
-                
+
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Created')
                     ->dateTime('M d, Y')
@@ -274,7 +276,7 @@ class RoleResource extends Resource
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make()
                     ->disabled(fn (Role $record) => $record->is_system_role || $record->users()->count() > 0)
-                    ->tooltip(fn (Role $record) => match(true) {
+                    ->tooltip(fn (Role $record) => match (true) {
                         $record->is_system_role => 'System roles cannot be deleted',
                         $record->users()->count() > 0 => 'Cannot delete role with assigned users',
                         default => 'Delete role',
@@ -297,7 +299,7 @@ class RoleResource extends Resource
             'edit' => Pages\EditRole::route('/{record}/edit'),
         ];
     }
-    
+
     public static function getNavigationBadge(): ?string
     {
         return static::getModel()::count();

@@ -42,15 +42,15 @@ class AlertRule extends Model
      */
     public function shouldCheck(): bool
     {
-        if (!$this->active) {
+        if (! $this->active) {
             return false;
         }
 
-        if (!$this->last_triggered_at) {
+        if (! $this->last_triggered_at) {
             return true;
         }
 
-        return match($this->frequency) {
+        return match ($this->frequency) {
             'immediate' => true,
             'hourly' => $this->last_triggered_at->addHour()->isPast(),
             'daily' => $this->last_triggered_at->addDay()->isPast(),
@@ -72,7 +72,7 @@ class AlertRule extends Model
      */
     public function getTypeNameAttribute(): string
     {
-        return match($this->type) {
+        return match ($this->type) {
             'low_stock' => 'Low Stock Alert',
             'high_value_sale' => 'High Value Sale',
             'cashier_variance' => 'Cashier Variance',
@@ -92,7 +92,7 @@ class AlertRule extends Model
         }
 
         $parts = [];
-        
+
         if (isset($this->conditions['threshold'])) {
             $parts[] = "Threshold: {$this->conditions['threshold']}";
         }

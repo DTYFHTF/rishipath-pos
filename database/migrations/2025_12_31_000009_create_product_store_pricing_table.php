@@ -17,7 +17,7 @@ return new class extends Migration
             $table->integer('reorder_level')->default(10);
             $table->integer('max_stock_level')->nullable();
             $table->timestamps();
-            
+
             $table->unique(['product_variant_id', 'store_id']);
             $table->index('store_id');
         });

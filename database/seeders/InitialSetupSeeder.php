@@ -137,7 +137,7 @@ class InitialSetupSeeder extends Seeder
         $this->command->info('✅ Initial setup complete!');
         $this->command->info('📧 Email: admin@rishipath.org');
         $this->command->info('🔑 Password: password');
-        $this->command->info('📍 Organization: ' . $org->name);
-        $this->command->info('🏪 Store: ' . $store->name);
+        $this->command->info('📍 Organization: '.$org->name);
+        $this->command->info('🏪 Store: '.$store->name);
     }
 }

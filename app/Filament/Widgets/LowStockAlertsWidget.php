@@ -9,7 +9,7 @@ use Filament\Widgets\TableWidget as BaseWidget;
 
 class LowStockAlertsWidget extends BaseWidget
 {
-    protected int | string | array $columnSpan = 'full';
+    protected int|string|array $columnSpan = 'full';
 
     protected static ?int $sort = 3;
 
@@ -31,7 +31,7 @@ class LowStockAlertsWidget extends BaseWidget
                     ->searchable(),
                 Tables\Columns\TextColumn::make('productVariant.pack_size')
                     ->label('Size')
-                    ->formatStateUsing(fn ($record) => $record->productVariant->pack_size . ' ' . $record->productVariant->unit),
+                    ->formatStateUsing(fn ($record) => $record->productVariant->pack_size.' '.$record->productVariant->unit),
                 Tables\Columns\TextColumn::make('store.name')
                     ->label('Store'),
                 Tables\Columns\TextColumn::make('quantity')

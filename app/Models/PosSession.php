@@ -101,10 +101,10 @@ class PosSession extends Model
 
     public function getItemCount(): int
     {
-        if (!$this->cart_items) {
+        if (! $this->cart_items) {
             return 0;
         }
-        
+
         return collect($this->cart_items)->sum('quantity');
     }
 
@@ -168,9 +168,9 @@ class PosSession extends Model
     public function updateCart(array $cartItems): bool
     {
         // Calculate totals
-        $subtotal = collect($cartItems)->sum(fn($item) => $item['price'] * $item['quantity']);
-        $discountAmount = collect($cartItems)->sum(fn($item) => $item['discount'] ?? 0);
-        $taxAmount = collect($cartItems)->sum(fn($item) => $item['tax'] ?? 0);
+        $subtotal = collect($cartItems)->sum(fn ($item) => $item['price'] * $item['quantity']);
+        $discountAmount = collect($cartItems)->sum(fn ($item) => $item['discount'] ?? 0);
+        $taxAmount = collect($cartItems)->sum(fn ($item) => $item['tax'] ?? 0);
         $totalAmount = $subtotal - $discountAmount + $taxAmount;
 
         return $this->update([

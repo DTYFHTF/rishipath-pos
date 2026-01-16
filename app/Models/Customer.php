@@ -44,7 +44,7 @@ class Customer extends Model
     protected static function boot()
     {
         parent::boot();
-        
+
         static::creating(function ($customer) {
             if (empty($customer->customer_code)) {
                 // Generate code: CUST-YYYYMMDD-XXXX
@@ -52,14 +52,14 @@ class Customer extends Model
                 $lastCustomer = static::where('customer_code', 'like', "CUST-{$date}-%")
                     ->orderBy('customer_code', 'desc')
                     ->first();
-                
+
                 if ($lastCustomer) {
                     $lastNumber = (int) substr($lastCustomer->customer_code, -4);
                     $newNumber = str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
                 } else {
                     $newNumber = '0001';
                 }
-                
+
                 $customer->customer_code = "CUST-{$date}-{$newNumber}";
             }
         });
@@ -103,7 +103,7 @@ class Customer extends Model
      */
     public function isBirthdayBonusDue(): bool
     {
-        if (!$this->birthday) {
+        if (! $this->birthday) {
             return false;
         }
 
@@ -111,12 +111,12 @@ class Customer extends Model
         $birthday = $this->birthday->setYear($today->year);
 
         // Check if today is birthday
-        if (!$today->isSameDay($birthday)) {
+        if (! $today->isSameDay($birthday)) {
             return false;
         }
 
         // Check if bonus already given this year
-        if ($this->last_birthday_bonus_at && 
+        if ($this->last_birthday_bonus_at &&
             $this->last_birthday_bonus_at->year === $today->year) {
             return false;
         }

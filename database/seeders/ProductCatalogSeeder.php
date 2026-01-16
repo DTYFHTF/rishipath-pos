@@ -6,14 +6,14 @@ use App\Models\Category;
 use App\Models\Organization;
 use App\Models\Product;
 use App\Models\ProductVariant;
-use App\Models\Store;
 use App\Models\StockLevel;
+use App\Models\Store;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Str;
 
 class ProductCatalogSeeder extends Seeder
 {
     private Organization $org;
+
     private Store $store;
 
     public function run(): void
@@ -21,8 +21,9 @@ class ProductCatalogSeeder extends Seeder
         $this->org = Organization::where('slug', 'rishipath')->first();
         $this->store = Store::where('code', 'MAIN')->first();
 
-        if (!$this->org || !$this->store) {
+        if (! $this->org || ! $this->store) {
             $this->command->error('Please run InitialSetupSeeder first!');
+
             return;
         }
 
@@ -250,8 +251,8 @@ class ProductCatalogSeeder extends Seeder
 
         foreach ($products as $productData) {
             $category = Category::where('slug', $productData['category_slug'])->first();
-            
-            $sku = 'RSH-' . strtoupper(substr($productData['product_type'], 0, 3)) . '-' . str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
+
+            $sku = 'RSH-'.strtoupper(substr($productData['product_type'], 0, 3)).'-'.str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
 
             $product = Product::create([
                 'organization_id' => $this->org->id,
@@ -273,8 +274,8 @@ class ProductCatalogSeeder extends Seeder
             ]);
 
             foreach ($productData['variants'] as $index => $variantData) {
-                $variantSku = $sku . '-' . $variantData['pack_size'] . $variantData['unit'];
-                
+                $variantSku = $sku.'-'.$variantData['pack_size'].$variantData['unit'];
+
                 $variant = ProductVariant::create([
                     'product_id' => $product->id,
                     'sku' => $variantSku,
@@ -302,7 +303,7 @@ class ProductCatalogSeeder extends Seeder
 
     private function getHsnCode(string $productType): string
     {
-        return match($productType) {
+        return match ($productType) {
             'choorna', 'tailam', 'ghritam', 'capsules' => '30049099', // Ayurvedic medicines
             'tea' => '09024000', // Black tea
             'honey' => '04090000', // Natural honey

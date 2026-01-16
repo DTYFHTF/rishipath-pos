@@ -7,8 +7,8 @@ use App\Models\Notification;
 use App\Models\ProductVariant;
 use App\Models\Sale;
 use App\Models\StockAdjustment;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class AlertService
 {
@@ -38,7 +38,7 @@ class AlertService
     public function checkAlert(AlertRule $rule): bool
     {
         try {
-            $triggered = match($rule->type) {
+            $triggered = match ($rule->type) {
                 'low_stock' => $this->checkLowStockAlert($rule),
                 'high_value_sale' => $this->checkHighValueSaleAlert($rule),
                 'cashier_variance' => $this->checkCashierVarianceAlert($rule),
@@ -49,7 +49,8 @@ class AlertService
 
             return $triggered;
         } catch (\Exception $e) {
-            Log::error("Failed to check alert {$rule->id}: " . $e->getMessage());
+            Log::error("Failed to check alert {$rule->id}: ".$e->getMessage());
+
             return false;
         }
     }
@@ -60,10 +61,10 @@ class AlertService
     protected function checkLowStockAlert(AlertRule $rule): bool
     {
         $threshold = $rule->conditions['threshold'] ?? 10;
-        
+
         $query = ProductVariant::with(['product', 'store'])
             ->where('stock_quantity', '<=', $threshold);
-        
+
         if ($rule->store_id) {
             $query->where('store_id', $rule->store_id);
         }
@@ -82,7 +83,7 @@ class AlertService
             severity: 'warning',
             recipients: $rule->recipients,
             data: [
-                'items' => $lowStockItems->map(fn($v) => [
+                'items' => $lowStockItems->map(fn ($v) => [
                     'product' => $v->product->name,
                     'variant' => $v->sku,
                     'stock' => $v->stock_quantity,
@@ -92,6 +93,7 @@ class AlertService
         );
 
         $rule->markAsTriggered();
+
         return true;
     }
 
@@ -102,10 +104,10 @@ class AlertService
     {
         $threshold = $rule->conditions['threshold'] ?? 10000;
         $checkSince = now()->subHour(); // Check last hour
-        
+
         $query = Sale::where('total_amount', '>=', $threshold)
             ->where('created_at', '>=', $checkSince);
-        
+
         if ($rule->store_id) {
             $query->where('store_id', $rule->store_id);
         }
@@ -120,7 +122,7 @@ class AlertService
             $this->createNotification(
                 type: 'high_value_sale',
                 title: 'High Value Sale Alert',
-                message: "High value sale of ₹" . number_format($sale->total_amount, 2) . " by " . $sale->user->name,
+                message: 'High value sale of ₹'.number_format($sale->total_amount, 2).' by '.$sale->user->name,
                 severity: 'info',
                 recipients: $rule->recipients,
                 data: [
@@ -136,6 +138,7 @@ class AlertService
         }
 
         $rule->markAsTriggered();
+
         return true;
     }
 
@@ -146,7 +149,7 @@ class AlertService
     {
         $threshold = $rule->conditions['threshold'] ?? 1000; // Variance threshold
         $checkDate = now()->toDateString();
-        
+
         // Check cash sessions with variance
         $sessions = \App\Models\CashSession::where('date', $checkDate)
             ->where('status', 'closed')
@@ -161,11 +164,11 @@ class AlertService
         foreach ($sessions as $session) {
             $variance = abs($session->actual_cash - $session->expected_cash);
             $type = $session->actual_cash > $session->expected_cash ? 'surplus' : 'shortage';
-            
+
             $this->createNotification(
                 type: 'cashier_variance',
                 title: 'Cash Variance Alert',
-                message: "Cash {$type} of ₹" . number_format($variance, 2) . " detected for " . $session->user->name,
+                message: "Cash {$type} of ₹".number_format($variance, 2).' detected for '.$session->user->name,
                 severity: 'warning',
                 recipients: $rule->recipients,
                 data: [
@@ -180,6 +183,7 @@ class AlertService
         }
 
         $rule->markAsTriggered();
+
         return true;
     }
 
@@ -190,11 +194,11 @@ class AlertService
     {
         $threshold = $rule->conditions['threshold'] ?? 50; // Adjustment quantity threshold
         $checkSince = now()->subDay();
-        
+
         $query = StockAdjustment::where('created_at', '>=', $checkSince)
             ->whereRaw('ABS(quantity) >= ?', [$threshold])
             ->with(['productVariant.product', 'store', 'adjustedBy']);
-        
+
         if ($rule->store_id) {
             $query->where('store_id', $rule->store_id);
         }
@@ -212,7 +216,7 @@ class AlertService
             severity: 'warning',
             recipients: $rule->recipients,
             data: [
-                'adjustments' => $adjustments->map(fn($a) => [
+                'adjustments' => $adjustments->map(fn ($a) => [
                     'product' => $a->productVariant->product->name,
                     'variant' => $a->productVariant->sku,
                     'quantity' => $a->quantity,
@@ -224,6 +228,7 @@ class AlertService
         );
 
         $rule->markAsTriggered();
+
         return true;
     }
 
@@ -234,8 +239,8 @@ class AlertService
     {
         $target = $rule->conditions['target'] ?? 100000;
         $period = $rule->conditions['period'] ?? 'daily'; // daily, weekly, monthly
-        
-        $dateRange = match($period) {
+
+        $dateRange = match ($period) {
             'daily' => [now()->startOfDay(), now()->endOfDay()],
             'weekly' => [now()->startOfWeek(), now()->endOfWeek()],
             'monthly' => [now()->startOfMonth(), now()->endOfMonth()],
@@ -243,7 +248,7 @@ class AlertService
         };
 
         $query = Sale::whereBetween('created_at', $dateRange);
-        
+
         if ($rule->store_id) {
             $query->where('store_id', $rule->store_id);
         }
@@ -256,7 +261,7 @@ class AlertService
             $this->createNotification(
                 type: 'sales_target',
                 title: 'Sales Target Achieved! 🎉',
-                message: "Sales target of ₹" . number_format($target, 2) . " achieved! Current sales: ₹" . number_format($totalSales, 2),
+                message: 'Sales target of ₹'.number_format($target, 2).' achieved! Current sales: ₹'.number_format($totalSales, 2),
                 severity: 'info',
                 recipients: $rule->recipients,
                 data: [
@@ -268,6 +273,7 @@ class AlertService
             );
 
             $rule->markAsTriggered();
+
             return true;
         }
 
@@ -314,7 +320,7 @@ class AlertService
                 // Skip actual email sending if mail is not configured
                 Log::info("Would send alert notification to {$recipient}: {$notification->title}");
                 $notification->markAsSent();
-                
+
                 // Uncomment below when mail is configured
                 /*
                 Mail::send('emails.alert-notification', [
@@ -327,7 +333,7 @@ class AlertService
                 $notification->markAsSent();
                 */
             } catch (\Exception $e) {
-                Log::error("Failed to send notification email to {$recipient}: " . $e->getMessage());
+                Log::error("Failed to send notification email to {$recipient}: ".$e->getMessage());
                 $notification->markAsFailed($e->getMessage());
             }
         }
