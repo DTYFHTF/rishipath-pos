@@ -1,4 +1,12 @@
 <x-filament-panels::page>
+    <style>
+        /* Ensure search dropdown hover uses dark background in dark mode */
+        .dark .pos-search-item:hover,
+        .dark .pos-customer-item:hover {
+            background-color: rgba(55,65,81,1) !important; /* Tailwind gray-700 */
+            color: rgb(255 255 255 / 1) !important;
+        }
+    </style>
     <div class="space-y-4" x-data="posSystem()" x-init="init()" @keydown.window="handleKeyboard($event)">
         
         {{-- Session Tabs --}}
@@ -92,7 +100,7 @@
                                             type="button"
                                             wire:click="addToCart({{ $result['id'] }})"
                                             @click="showResults = false"
-                                            class="w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-b-0 flex items-center gap-3"
+                                            class="w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-b-0 flex items-center gap-3 pos-search-item"
                                         >
                                             {{-- Product Image --}}
                                             @if(!empty($result['image']))
@@ -285,7 +293,7 @@
                                         type="button"
                                         wire:click="selectCustomer(null)"
                                         @click="open = false"
-                                        class="w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 flex items-center gap-3 transition"
+                                        class="w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 flex items-center gap-3 transition pos-customer-item"
                                     >
                                         <span class="text-xl">🚶</span>
                                         <div>
@@ -299,7 +307,7 @@
                                             type="button"
                                             wire:click="selectCustomer({{ $customer->id }})"
                                             @click="open = false"
-                                            class="w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 transition"
+                                            class="w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 transition pos-customer-item"
                                         >
                                             <span class="text-xl">👤</span>
                                             <div class="flex-1">
