@@ -2,17 +2,15 @@
 
 namespace App\Services;
 
-use App\Models\ReportSchedule;
-use App\Models\ScheduledReportRun;
-use App\Models\Notification;
-use App\Models\Sale;
-use App\Models\Product;
-use App\Models\ProductVariant;
 use App\Models\Customer;
+use App\Models\Notification;
+use App\Models\ReportSchedule;
+use App\Models\Sale;
+use App\Models\ScheduledReportRun;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Log;
-use Carbon\Carbon;
 
 class ReportScheduleService
 {
@@ -29,8 +27,8 @@ class ReportScheduleService
                 $this->generateAndSendReport($schedule);
                 $processedCount++;
             } catch (\Exception $e) {
-                Log::error("Failed to process schedule {$schedule->id}: " . $e->getMessage());
-                
+                Log::error("Failed to process schedule {$schedule->id}: ".$e->getMessage());
+
                 // Create notification for failed schedule
                 Notification::create([
                     'type' => 'report_failed',
@@ -63,20 +61,20 @@ class ReportScheduleService
 
             // Generate report based on type
             $reportData = $this->generateReportData($schedule);
-            
+
             // Save report files
             $files = $this->saveReportFiles($schedule, $reportData);
-            
+
             // Send emails
             $this->sendReportEmails($schedule, $files, $reportData);
-            
+
             // Mark as completed
             $filePath = $files['pdf'] ?? $files['excel'] ?? null;
             $fileSize = 0;
-            if ($filePath && file_exists(storage_path('app/' . $filePath))) {
-                $fileSize = filesize(storage_path('app/' . $filePath));
+            if ($filePath && file_exists(storage_path('app/'.$filePath))) {
+                $fileSize = filesize(storage_path('app/'.$filePath));
             }
-            
+
             $run->markAsCompleted(
                 $filePath,
                 $fileSize,
@@ -101,8 +99,8 @@ class ReportScheduleService
     protected function generateReportData(ReportSchedule $schedule): array
     {
         $params = $schedule->parameters ?? [];
-        
-        return match($schedule->report_type) {
+
+        return match ($schedule->report_type) {
             'sales' => $this->generateSalesReport($params),
             'inventory' => $this->generateInventoryReport($params),
             'customer_analytics' => $this->generateCustomerAnalyticsReport($params),
@@ -117,22 +115,22 @@ class ReportScheduleService
     protected function generateSalesReport(array $params): array
     {
         $dateRange = $this->getDateRange($params);
-        
+
         $query = Sale::whereBetween('created_at', $dateRange);
-        
-        if (!empty($params['store_id'])) {
+
+        if (! empty($params['store_id'])) {
             $query->where('store_id', $params['store_id']);
         }
 
         $sales = $query->with(['store', 'customer', 'cashier'])->get();
-        
+
         $totalSales = $sales->sum('total_amount');
         $totalTransactions = $sales->count();
         $averageTransaction = $totalTransactions > 0 ? $totalSales / $totalTransactions : 0;
 
         return [
             'title' => 'Sales Report',
-            'period' => $dateRange[0]->format('M d, Y') . ' - ' . $dateRange[1]->format('M d, Y'),
+            'period' => $dateRange[0]->format('M d, Y').' - '.$dateRange[1]->format('M d, Y'),
             'sales' => $sales,
             'summary' => [
                 'total_sales' => $totalSales,
@@ -149,17 +147,17 @@ class ReportScheduleService
     protected function generateInventoryReport(array $params): array
     {
         $lowStockThreshold = $params['low_stock_threshold'] ?? 10;
-        
+
         $query = \App\Models\StockLevel::with(['productVariant.product', 'store']);
-        
-        if (!empty($params['store_id'])) {
+
+        if (! empty($params['store_id'])) {
             $query->where('store_id', $params['store_id']);
         }
 
         $stockLevels = $query->get();
-        
-        $lowStock = $stockLevels->filter(fn($s) => $s->quantity <= $lowStockThreshold);
-        $totalValue = $stockLevels->sum(fn($s) => $s->quantity * ($s->productVariant->cost_price ?? 0));
+
+        $lowStock = $stockLevels->filter(fn ($s) => $s->quantity <= $lowStockThreshold);
+        $totalValue = $stockLevels->sum(fn ($s) => $s->quantity * ($s->productVariant->cost_price ?? 0));
 
         return [
             'title' => 'Inventory Report',
@@ -181,22 +179,22 @@ class ReportScheduleService
     protected function generateCustomerAnalyticsReport(array $params): array
     {
         $dateRange = $this->getDateRange($params);
-        
-        $customers = Customer::with(['sales' => function($q) use ($dateRange) {
+
+        $customers = Customer::with(['sales' => function ($q) use ($dateRange) {
             $q->whereBetween('created_at', $dateRange);
         }])->get();
 
-        $topCustomers = $customers->sortByDesc(function($customer) {
+        $topCustomers = $customers->sortByDesc(function ($customer) {
             return $customer->sales->sum('total_amount');
         })->take(20);
 
         return [
             'title' => 'Customer Analytics Report',
-            'period' => $dateRange[0]->format('M d, Y') . ' - ' . $dateRange[1]->format('M d, Y'),
+            'period' => $dateRange[0]->format('M d, Y').' - '.$dateRange[1]->format('M d, Y'),
             'customers' => $topCustomers,
             'summary' => [
                 'total_customers' => $customers->count(),
-                'active_customers' => $customers->filter(fn($c) => $c->sales->count() > 0)->count(),
+                'active_customers' => $customers->filter(fn ($c) => $c->sales->count() > 0)->count(),
             ],
             'record_count' => $topCustomers->count(),
         ];
@@ -208,15 +206,15 @@ class ReportScheduleService
     protected function generateCashierPerformanceReport(array $params): array
     {
         $dateRange = $this->getDateRange($params);
-        
+
         // Get cashiers (users with cashier role)
-        $cashiers = \App\Models\User::whereHas('role', function($q) {
+        $cashiers = \App\Models\User::whereHas('role', function ($q) {
             $q->where('slug', 'cashier');
-        })->with(['sales' => function($q) use ($dateRange) {
+        })->with(['sales' => function ($q) use ($dateRange) {
             $q->whereBetween('created_at', $dateRange);
         }])->get();
 
-        $performance = $cashiers->map(function($cashier) {
+        $performance = $cashiers->map(function ($cashier) {
             return [
                 'cashier' => $cashier,
                 'total_sales' => $cashier->sales->sum('total_amount'),
@@ -227,7 +225,7 @@ class ReportScheduleService
 
         return [
             'title' => 'Cashier Performance Report',
-            'period' => $dateRange[0]->format('M d, Y') . ' - ' . $dateRange[1]->format('M d, Y'),
+            'period' => $dateRange[0]->format('M d, Y').' - '.$dateRange[1]->format('M d, Y'),
             'performance' => $performance,
             'record_count' => $cashiers->count(),
         ];
@@ -240,7 +238,7 @@ class ReportScheduleService
     {
         $files = [];
         $timestamp = now()->format('Y-m-d_His');
-        $filename = str_replace(' ', '_', strtolower($schedule->name)) . '_' . $timestamp;
+        $filename = str_replace(' ', '_', strtolower($schedule->name)).'_'.$timestamp;
 
         // Generate PDF (if library is available)
         if (in_array($schedule->format, ['pdf', 'both'])) {
@@ -251,7 +249,7 @@ class ReportScheduleService
                 Storage::put($pdfPath, $content);
                 $files['pdf'] = $pdfPath;
             } catch (\Exception $e) {
-                Log::warning("PDF generation skipped: " . $e->getMessage());
+                Log::warning('PDF generation skipped: '.$e->getMessage());
             }
         }
 
@@ -274,7 +272,7 @@ class ReportScheduleService
             try {
                 // Skip actual email sending if mail is not configured
                 Log::info("Would send report email to {$recipient} for schedule: {$schedule->name}");
-                
+
                 // Uncomment below when mail is configured
                 /*
                 Mail::send('emails.scheduled-report', [
@@ -283,7 +281,7 @@ class ReportScheduleService
                 ], function ($message) use ($recipient, $schedule, $files) {
                     $message->to($recipient)
                             ->subject($schedule->name . ' - ' . now()->format('M d, Y'));
-                    
+
                     foreach ($files as $type => $path) {
                         if (Storage::exists($path)) {
                             $message->attach(storage_path('app/' . $path));
@@ -292,7 +290,7 @@ class ReportScheduleService
                 });
                 */
             } catch (\Exception $e) {
-                Log::error("Failed to send report email to {$recipient}: " . $e->getMessage());
+                Log::error("Failed to send report email to {$recipient}: ".$e->getMessage());
             }
         }
     }
@@ -322,10 +320,10 @@ class ReportScheduleService
     protected function generateSimpleReport(ReportSchedule $schedule, array $reportData): string
     {
         $content = "═══════════════════════════════════════════════════\n";
-        $content .= strtoupper($reportData['title']) . "\n";
+        $content .= strtoupper($reportData['title'])."\n";
         $content .= "═══════════════════════════════════════════════════\n\n";
         $content .= "Period: {$reportData['period']}\n";
-        $content .= "Generated: " . now()->format('M d, Y h:i A') . "\n";
+        $content .= 'Generated: '.now()->format('M d, Y h:i A')."\n";
         $content .= "Schedule: {$schedule->name}\n\n";
 
         if (isset($reportData['summary'])) {
@@ -335,7 +333,7 @@ class ReportScheduleService
                 $label = ucwords(str_replace('_', ' ', $key));
                 if (is_numeric($value)) {
                     if (str_contains($key, 'amount') || str_contains($key, 'value')) {
-                        $value = '₹' . number_format($value, 2);
+                        $value = '₹'.number_format($value, 2);
                     } else {
                         $value = number_format($value);
                     }
@@ -345,11 +343,10 @@ class ReportScheduleService
             $content .= "\n";
         }
 
-        $content .= "Record Count: " . ($reportData['record_count'] ?? 0) . "\n";
+        $content .= 'Record Count: '.($reportData['record_count'] ?? 0)."\n";
         $content .= "\n";
         $content .= "This is a simplified text report. Install barryvdh/laravel-dompdf for PDF generation.\n";
 
         return $content;
     }
 }
-

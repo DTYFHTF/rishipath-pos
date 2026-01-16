@@ -2,18 +2,13 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\Category;
 use App\Models\Sale;
 use App\Models\SaleItem;
-use App\Models\Category;
-use App\Models\Product;
 use App\Services\ExportService;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
-use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Illuminate\Support\Facades\DB;
 
 class ProfitReport extends Page implements HasForms
 {
@@ -35,8 +30,11 @@ class ProfitReport extends Page implements HasForms
     }
 
     public $startDate;
+
     public $endDate;
+
     public $storeId = null;
+
     public $categoryId = null;
 
     public function mount(): void
@@ -92,8 +90,8 @@ class ProfitReport extends Page implements HasForms
     {
         $query = SaleItem::whereHas('sale', function ($q) {
             $q->whereBetween('created_at', [$this->startDate, $this->endDate])
-              ->where('status', 'completed');
-            
+                ->where('status', 'completed');
+
             if ($this->storeId) {
                 $q->where('store_id', $this->storeId);
             }
@@ -107,7 +105,7 @@ class ProfitReport extends Page implements HasForms
             $category = $item->productVariant->product->category;
             $categoryName = $category ? $category->name : 'Uncategorized';
 
-            if (!isset($categoryData[$categoryName])) {
+            if (! isset($categoryData[$categoryName])) {
                 $categoryData[$categoryName] = [
                     'revenue' => 0,
                     'cost' => 0,
@@ -145,8 +143,8 @@ class ProfitReport extends Page implements HasForms
     {
         $query = SaleItem::whereHas('sale', function ($q) {
             $q->whereBetween('created_at', [$this->startDate, $this->endDate])
-              ->where('status', 'completed');
-            
+                ->where('status', 'completed');
+
             if ($this->storeId) {
                 $q->where('store_id', $this->storeId);
             }
@@ -158,9 +156,9 @@ class ProfitReport extends Page implements HasForms
 
         foreach ($items as $item) {
             $productKey = $item->product_variant_id;
-            $productName = $item->productVariant->product->name . ' - ' . $item->productVariant->pack_size . $item->productVariant->unit;
+            $productName = $item->productVariant->product->name.' - '.$item->productVariant->pack_size.$item->productVariant->unit;
 
-            if (!isset($productData[$productKey])) {
+            if (! isset($productData[$productKey])) {
                 $productData[$productKey] = [
                     'name' => $productName,
                     'revenue' => 0,
@@ -200,7 +198,7 @@ class ProfitReport extends Page implements HasForms
     public function getLeastProfitableProducts(int $limit = 10): array
     {
         $allProducts = $this->getTopProfitableProducts(PHP_INT_MAX);
-        
+
         // Sort by profit (ascending) and take bottom N
         uasort($allProducts, function ($a, $b) {
             return $a['profit'] <=> $b['profit'];
@@ -262,7 +260,7 @@ class ProfitReport extends Page implements HasForms
      */
     public function exportToExcel()
     {
-        $exportService = new ExportService();
+        $exportService = new ExportService;
         $profitData = $this->getTopProfitableProducts(PHP_INT_MAX);
 
         $data = collect($profitData)->map(function ($item) {

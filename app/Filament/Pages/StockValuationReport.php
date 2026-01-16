@@ -7,14 +7,17 @@ use App\Models\ProductVariant;
 use App\Models\StockLevel;
 use App\Models\Store;
 use Filament\Pages\Page;
-use Illuminate\Support\Facades\DB;
 
 class StockValuationReport extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-currency-rupee';
+
     protected static string $view = 'filament.pages.stock-valuation-report';
+
     protected static ?string $navigationGroup = 'Reports';
+
     protected static ?string $navigationLabel = 'Stock Valuation';
+
     protected static ?int $navigationSort = 10;
 
     public static function canAccess(): bool
@@ -23,6 +26,7 @@ class StockValuationReport extends Page
     }
 
     public $storeId;
+
     public $categoryId;
 
     public function mount(): void
@@ -53,8 +57,8 @@ class StockValuationReport extends Page
         ')->first();
 
         $potentialProfit = ($result->total_sale_value ?? 0) - ($result->total_cost_value ?? 0);
-        $marginPercent = ($result->total_sale_value ?? 0) > 0 
-            ? (($potentialProfit / $result->total_sale_value) * 100) 
+        $marginPercent = ($result->total_sale_value ?? 0) > 0
+            ? (($potentialProfit / $result->total_sale_value) * 100)
             : 0;
 
         return [
@@ -113,9 +117,10 @@ class StockValuationReport extends Page
             ->get()
             ->map(function ($item) {
                 $variant = ProductVariant::with('product')->find($item->product_variant_id);
+
                 return [
                     'product_name' => $variant->product->name ?? 'Unknown',
-                    'variant' => $variant->pack_size . $variant->unit,
+                    'variant' => $variant->pack_size.$variant->unit,
                     'sku' => $variant->sku,
                     'quantity' => $item->quantity,
                     'cost_price' => $variant->cost_price ?? 0,
@@ -142,7 +147,7 @@ class StockValuationReport extends Page
         // Get variants that have not had any sale movements recently
         $recentlySoldVariants = InventoryMovement::where('type', 'sale')
             ->where('created_at', '>=', $cutoffDate)
-            ->when($this->storeId, fn($q) => $q->where('store_id', $this->storeId))
+            ->when($this->storeId, fn ($q) => $q->where('store_id', $this->storeId))
             ->distinct()
             ->pluck('product_variant_id');
 
@@ -150,9 +155,10 @@ class StockValuationReport extends Page
             ->get()
             ->map(function ($item) {
                 $variant = $item->productVariant;
+
                 return [
                     'product_name' => $variant->product->name ?? 'Unknown',
-                    'variant' => $variant->pack_size . $variant->unit,
+                    'variant' => $variant->pack_size.$variant->unit,
                     'sku' => $variant->sku,
                     'quantity' => $item->quantity,
                     'cost_value' => $item->quantity * ($variant->cost_price ?? 0),

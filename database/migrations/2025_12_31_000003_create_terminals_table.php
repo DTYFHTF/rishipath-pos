@@ -20,7 +20,7 @@ return new class extends Migration
             $table->timestamp('last_synced_at')->nullable();
             $table->boolean('active')->default(true);
             $table->timestamps();
-            
+
             $table->unique(['store_id', 'code']);
             $table->index('store_id');
             $table->index('device_id');

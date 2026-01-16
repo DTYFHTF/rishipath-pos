@@ -18,7 +18,7 @@ return new class extends Migration
             $table->timestamp('last_counted_at')->nullable();
             $table->timestamp('last_movement_at')->nullable();
             $table->timestamp('updated_at')->nullable();
-            
+
             $table->unique(['product_variant_id', 'store_id']);
             $table->index('store_id');
             $table->index('product_variant_id');

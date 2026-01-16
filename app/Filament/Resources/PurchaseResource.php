@@ -3,8 +3,8 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\PurchaseResource\Pages;
-use App\Models\Purchase;
 use App\Models\ProductVariant;
+use App\Models\Purchase;
 use App\Models\Store;
 use App\Models\Supplier;
 use Filament\Forms;
@@ -82,7 +82,7 @@ class PurchaseResource extends Resource
                                         return ProductVariant::with('product')
                                             ->get()
                                             ->mapWithKeys(fn ($v) => [
-                                                $v->id => "{$v->product->name} - {$v->pack_size}{$v->unit} ({$v->sku})"
+                                                $v->id => "{$v->product->name} - {$v->pack_size}{$v->unit} ({$v->sku})",
                                             ]);
                                     })
                                     ->searchable()
@@ -160,15 +160,15 @@ class PurchaseResource extends Resource
 
                         Forms\Components\Placeholder::make('calculated_subtotal')
                             ->label('Subtotal')
-                            ->content(fn ($record) => '₹' . number_format($record?->subtotal ?? 0, 2)),
+                            ->content(fn ($record) => '₹'.number_format($record?->subtotal ?? 0, 2)),
 
                         Forms\Components\Placeholder::make('calculated_tax')
                             ->label('Tax')
-                            ->content(fn ($record) => '₹' . number_format($record?->tax_amount ?? 0, 2)),
+                            ->content(fn ($record) => '₹'.number_format($record?->tax_amount ?? 0, 2)),
 
                         Forms\Components\Placeholder::make('calculated_total')
                             ->label('Total')
-                            ->content(fn ($record) => '₹' . number_format($record?->total ?? 0, 2)),
+                            ->content(fn ($record) => '₹'.number_format($record?->total ?? 0, 2)),
 
                         Forms\Components\Textarea::make('notes')
                             ->label('Notes')

@@ -15,4 +15,3 @@ Schedule::command('loyalty:birthday-bonuses')->daily()->at('00:01');
 Schedule::command('reports:process-scheduled')->hourly();
 Schedule::command('alerts:check')->everyFifteenMinutes();
 Schedule::command('notifications:send-pending')->hourly();
-

@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Carbon\Carbon;
 
 class ReportSchedule extends Model
 {
@@ -52,8 +52,8 @@ class ReportSchedule extends Model
     public function calculateNextRun(): Carbon
     {
         $now = now();
-        
-        return match($this->frequency) {
+
+        return match ($this->frequency) {
             'daily' => $now->addDay()->startOfDay()->addHours(8), // 8 AM next day
             'weekly' => $now->addWeek()->startOfWeek()->addHours(8), // Monday 8 AM
             'monthly' => $now->addMonth()->startOfMonth()->addHours(8), // 1st of month 8 AM
@@ -73,11 +73,11 @@ class ReportSchedule extends Model
      */
     public function isDue(): bool
     {
-        if (!$this->active) {
+        if (! $this->active) {
             return false;
         }
 
-        if (!$this->next_run_at) {
+        if (! $this->next_run_at) {
             return true; // Never run before
         }
 
@@ -89,7 +89,7 @@ class ReportSchedule extends Model
      */
     public function getReportTypeNameAttribute(): string
     {
-        return match($this->report_type) {
+        return match ($this->report_type) {
             'sales' => 'Sales Report',
             'inventory' => 'Inventory Report',
             'customer_analytics' => 'Customer Analytics',
@@ -114,7 +114,7 @@ class ReportSchedule extends Model
         return $query->active()
             ->where(function ($q) {
                 $q->whereNull('next_run_at')
-                  ->orWhere('next_run_at', '<=', now());
+                    ->orWhere('next_run_at', '<=', now());
             });
     }
 }

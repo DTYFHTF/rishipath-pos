@@ -21,7 +21,7 @@ return new class extends Migration
             $table->integer('sort_order')->default(0);
             $table->boolean('active')->default(true);
             $table->timestamps();
-            
+
             $table->index('organization_id');
             $table->index('parent_id');
             $table->index('product_type');

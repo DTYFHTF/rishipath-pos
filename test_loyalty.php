@@ -6,12 +6,12 @@
 echo "🧪 LOYALTY PROGRAM TEST SUITE\n";
 echo "=============================\n\n";
 
-$loyaltyService = new \App\Services\LoyaltyService();
+$loyaltyService = new \App\Services\LoyaltyService;
 
 // Test 1: Get a customer
 echo "1️⃣ Getting test customer...\n";
 $customer = \App\Models\Customer::first();
-if (!$customer) {
+if (! $customer) {
     echo "❌ No customers found. Creating one...\n";
     $customer = \App\Models\Customer::create([
         'organization_id' => 1,
@@ -34,7 +34,7 @@ if ($customer->isLoyaltyMember()) {
     echo "   ✅ Enrolled! Welcome bonus: 50 points\n";
 }
 echo "   Current balance: {$customer->loyalty_points} points\n";
-echo "   Current tier: " . ($customer->loyaltyTier?->name ?? 'None') . "\n\n";
+echo '   Current tier: '.($customer->loyaltyTier?->name ?? 'None')."\n\n";
 
 // Test 3: Simulate a sale and award points
 echo "3️⃣ Simulating a ₹500 purchase...\n";
@@ -46,7 +46,7 @@ $sale = \App\Models\Sale::create([
     'organization_id' => 1,
     'store_id' => $store->id,
     'terminal_id' => $terminal->id,
-    'receipt_number' => 'TEST-' . time(),
+    'receipt_number' => 'TEST-'.time(),
     'date' => now()->toDateString(),
     'time' => now()->toTimeString(),
     'cashier_id' => $user->id,
@@ -95,7 +95,7 @@ $reward = \App\Models\Reward::firstOrCreate(
 echo "   ✅ Reward: {$reward->name} ({$reward->points_required} points)\n";
 
 $availableRewards = $loyaltyService->getAvailableRewards($customer);
-echo "   Available rewards for customer: " . count($availableRewards) . "\n\n";
+echo '   Available rewards for customer: '.count($availableRewards)."\n\n";
 
 // Test 6: Get all tiers
 echo "6️⃣ Loyalty tiers overview...\n";

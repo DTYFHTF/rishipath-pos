@@ -4,28 +4,37 @@ namespace App\Filament\Pages;
 
 use App\Models\Customer;
 use App\Models\CustomerLedgerEntry;
-use Filament\Pages\Page;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
+use Filament\Pages\Page;
 
 class CustomerLedgerReport extends Page implements HasForms
 {
     use InteractsWithForms;
 
     protected static ?string $navigationIcon = 'heroicon-o-book-open';
+
     protected static ?string $navigationGroup = 'Reports';
+
     protected static ?int $navigationSort = 7;
+
     protected static string $view = 'filament.pages.customer-ledger-report';
+
     protected static ?string $title = 'Customer Ledger';
 
     public ?int $customer_id = null;
+
     public ?string $start_date = null;
+
     public ?string $end_date = null;
+
     public $ledgerEntries = [];
+
     public $customerData = null;
+
     public $summary = [];
 
     public function mount(): void
@@ -65,15 +74,16 @@ class CustomerLedgerReport extends Page implements HasForms
 
     public function generateReport()
     {
-        if (!$this->customer_id) {
+        if (! $this->customer_id) {
             $this->ledgerEntries = [];
             $this->customerData = null;
             $this->summary = [];
+
             return;
         }
 
         $customer = Customer::find($this->customer_id);
-        if (!$customer) {
+        if (! $customer) {
             return;
         }
 

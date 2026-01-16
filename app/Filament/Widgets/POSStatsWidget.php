@@ -2,12 +2,12 @@
 
 namespace App\Filament\Widgets;
 
+use App\Models\Customer;
 use App\Models\Product;
 use App\Models\Sale;
-use App\Models\Customer;
-use Illuminate\Support\Facades\DB;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use Illuminate\Support\Facades\DB;
 
 class POSStatsWidget extends BaseWidget
 {
@@ -23,7 +23,7 @@ class POSStatsWidget extends BaseWidget
             ->sum('total_amount');
 
         $totalProducts = Product::where('active', true)->count();
-        
+
         $totalCustomers = Customer::where('active', true)->count();
 
         $lowStockCount = DB::table('stock_levels')
@@ -31,12 +31,12 @@ class POSStatsWidget extends BaseWidget
             ->count();
 
         return [
-            Stat::make('Today\'s Sales', '₹' . number_format($todaySales, 2))
+            Stat::make('Today\'s Sales', '₹'.number_format($todaySales, 2))
                 ->description('Total revenue today')
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
                 ->color('success'),
 
-            Stat::make('This Month', '₹' . number_format($monthSales, 2))
+            Stat::make('This Month', '₹'.number_format($monthSales, 2))
                 ->description('Monthly revenue')
                 ->descriptionIcon('heroicon-m-banknotes')
                 ->color('info'),

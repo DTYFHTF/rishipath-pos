@@ -7,9 +7,6 @@ use App\Models\ProductVariant;
 use App\Models\StockLevel;
 use App\Models\Store;
 use App\Services\InventoryService;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
@@ -21,9 +18,13 @@ class InventoryList extends Page implements HasForms
     use InteractsWithForms;
 
     protected static ?string $navigationIcon = 'heroicon-o-cube';
+
     protected static string $view = 'filament.pages.inventory-list';
+
     protected static ?string $navigationGroup = 'Inventory';
+
     protected static ?string $navigationLabel = 'Inventory';
+
     protected static ?int $navigationSort = 1;
 
     public static function canAccess(): bool
@@ -32,27 +33,37 @@ class InventoryList extends Page implements HasForms
     }
 
     public $storeId;
+
     public $categoryId;
+
     public $search = '';
+
     public $showLowStock = false;
+
     public $showOutOfStock = false;
 
     // Stock In/Out modal
     public $showStockModal = false;
+
     public $stockModalType = 'in'; // 'in' or 'out'
+
     public $stockModalVariantId;
+
     public $stockModalQuantity;
+
     public $stockModalReason = 'adjustment';
+
     public $stockModalNotes;
 
     // Timeline modal
     public $showTimelineModal = false;
+
     public $timelineVariantId;
 
     public function mount(): void
     {
         $stores = Auth::user()->stores ?? [];
-        $this->storeId = !empty($stores) ? $stores[0] : Store::first()?->id;
+        $this->storeId = ! empty($stores) ? $stores[0] : Store::first()?->id;
     }
 
     public function getInventory()
@@ -62,7 +73,7 @@ class InventoryList extends Page implements HasForms
 
         if ($this->showLowStock) {
             $query->whereColumn('quantity', '<=', 'reorder_level')
-                  ->where('quantity', '>', 0);
+                ->where('quantity', '>', 0);
         }
 
         if ($this->showOutOfStock) {
@@ -78,9 +89,9 @@ class InventoryList extends Page implements HasForms
         if ($this->search) {
             $query->whereHas('productVariant', function ($q) {
                 $q->where('sku', 'like', "%{$this->search}%")
-                  ->orWhereHas('product', function ($q2) {
-                      $q2->where('name', 'like', "%{$this->search}%");
-                  });
+                    ->orWhereHas('product', function ($q2) {
+                        $q2->where('name', 'like', "%{$this->search}%");
+                    });
             });
         }
 
@@ -90,12 +101,12 @@ class InventoryList extends Page implements HasForms
     public function getMetrics(): array
     {
         $baseQuery = StockLevel::where('store_id', $this->storeId);
-        
+
         $totalItems = (clone $baseQuery)->count();
         $lowStock = (clone $baseQuery)->whereColumn('quantity', '<=', 'reorder_level')->where('quantity', '>', 0)->count();
         $outOfStock = (clone $baseQuery)->where('quantity', '<=', 0)->count();
         $positiveStock = (clone $baseQuery)->where('quantity', '>', 0)->count();
-        
+
         // Stock value calculations
         $stockValue = StockLevel::where('store_id', $this->storeId)
             ->join('product_variants', 'stock_levels.product_variant_id', '=', 'product_variants.id')
@@ -143,7 +154,7 @@ class InventoryList extends Page implements HasForms
 
         try {
             $type = $this->stockModalReason === 'damage' ? 'damage' : 'adjustment';
-            $notes = "[{$this->stockModalReason}] " . ($this->stockModalNotes ?? '');
+            $notes = "[{$this->stockModalReason}] ".($this->stockModalNotes ?? '');
 
             if ($this->stockModalType === 'in') {
                 InventoryService::increaseStock(
@@ -196,7 +207,7 @@ class InventoryList extends Page implements HasForms
 
     public function getTimelineMovements()
     {
-        if (!$this->timelineVariantId) {
+        if (! $this->timelineVariantId) {
             return collect();
         }
 
@@ -210,7 +221,7 @@ class InventoryList extends Page implements HasForms
 
     public function getVariantDetails()
     {
-        if (!$this->timelineVariantId) {
+        if (! $this->timelineVariantId) {
             return null;
         }
 

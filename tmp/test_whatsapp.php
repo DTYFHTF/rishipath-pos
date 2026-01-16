@@ -1,8 +1,8 @@
 <?php
 
-require __DIR__ . '/../vendor/autoload.php';
+require __DIR__.'/../vendor/autoload.php';
 
-$app = require_once __DIR__ . '/../bootstrap/app.php';
+$app = require_once __DIR__.'/../bootstrap/app.php';
 $app->make('Illuminate\Contracts\Console\Kernel')->bootstrap();
 
 use App\Models\Customer;
@@ -14,8 +14,8 @@ use App\Services\WhatsAppService;
 // Find a customer with phone
 $customer = Customer::whereNotNull('phone')->first();
 
-if (!$customer) {
-    echo 'No customer with phone found. Creating test customer...' . PHP_EOL;
+if (! $customer) {
+    echo 'No customer with phone found. Creating test customer...'.PHP_EOL;
     $customer = Customer::create([
         'organization_id' => 1,
         'name' => 'Test WhatsApp Customer',
@@ -25,7 +25,7 @@ if (!$customer) {
     ]);
 }
 
-echo 'Using customer: ' . $customer->name . ' (' . $customer->phone . ')' . PHP_EOL;
+echo 'Using customer: '.$customer->name.' ('.$customer->phone.')'.PHP_EOL;
 
 // Get a product variant
 $variant = ProductVariant::with('product')->first();
@@ -38,8 +38,8 @@ $sale = Sale::create([
     'organization_id' => 1,
     'store_id' => 1,
     'terminal_id' => 1,
-    'receipt_number' => 'RCPT-WA-' . $ts . '-' . $rand,
-    'invoice_number' => 'INV-WA-' . $ts . '-' . $rand,
+    'receipt_number' => 'RCPT-WA-'.$ts.'-'.$rand,
+    'invoice_number' => 'INV-WA-'.$ts.'-'.$rand,
     'cashier_id' => 1,
     'customer_id' => $customer->id,
     'customer_name' => $customer->name,
@@ -74,11 +74,11 @@ SaleItem::create([
     'total' => 110,
 ]);
 
-echo 'Created Sale #' . $sale->id . PHP_EOL;
+echo 'Created Sale #'.$sale->id.PHP_EOL;
 
 // Test WhatsApp
 $whatsapp = app(WhatsAppService::class);
-echo 'WhatsApp configured: ' . ($whatsapp->isConfigured() ? 'Yes' : 'No (will log only)') . PHP_EOL;
+echo 'WhatsApp configured: '.($whatsapp->isConfigured() ? 'Yes' : 'No (will log only)').PHP_EOL;
 $result = $whatsapp->sendReceipt($sale->fresh(['customer', 'store', 'items.productVariant.product', 'cashier']), $customer->phone);
-echo 'Send result: ' . ($result ? 'SUCCESS' : 'FAILED') . PHP_EOL;
-echo PHP_EOL . '✅ Check storage/logs/laravel.log for the receipt content!' . PHP_EOL;
+echo 'Send result: '.($result ? 'SUCCESS' : 'FAILED').PHP_EOL;
+echo PHP_EOL.'✅ Check storage/logs/laravel.log for the receipt content!'.PHP_EOL;

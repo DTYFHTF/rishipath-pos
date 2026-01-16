@@ -2,8 +2,8 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
 use App\Services\ReportScheduleService;
+use Illuminate\Console\Command;
 
 class ProcessScheduledReports extends Command
 {
@@ -27,11 +27,11 @@ class ProcessScheduledReports extends Command
     public function handle(ReportScheduleService $service)
     {
         $this->info('Processing scheduled reports...');
-        
+
         $processedCount = $service->processDueSchedules();
-        
+
         $this->info("✅ Processed {$processedCount} scheduled reports");
-        
+
         return Command::SUCCESS;
     }
 }

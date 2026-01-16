@@ -5,7 +5,6 @@ namespace App\Filament\Pages;
 use App\Models\Customer;
 use App\Models\LoyaltyPoint;
 use App\Models\LoyaltyTier;
-use App\Services\LoyaltyService;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\DB;
 
@@ -56,7 +55,7 @@ class LoyaltyProgram extends Page
             ->with('loyaltyTier')
             ->get()
             ->mapWithKeys(fn ($item) => [
-                $item->loyaltyTier?->name ?? 'Unknown' => $item->count
+                $item->loyaltyTier?->name ?? 'Unknown' => $item->count,
             ]);
 
         return [

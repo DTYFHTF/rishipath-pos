@@ -21,7 +21,7 @@ return new class extends Migration
             $table->date('expires_at')->nullable();
             $table->foreignId('processed_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
-            
+
             $table->index('organization_id');
             $table->index('customer_id');
             $table->index('sale_id');

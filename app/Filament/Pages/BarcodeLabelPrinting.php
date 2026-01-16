@@ -23,7 +23,7 @@ class BarcodeLabelPrinting extends Page implements HasForms
     protected static ?string $navigationGroup = 'Inventory';
 
     protected static ?string $navigationLabel = 'Barcode Labels';
-    
+
     protected static ?int $navigationSort = 13;
 
     public static function canAccess(): bool
@@ -32,8 +32,11 @@ class BarcodeLabelPrinting extends Page implements HasForms
     }
 
     public ?array $data = [];
+
     public $showPrice = true;
+
     public $showSKU = true;
+
     public $generatedLabels = [];
 
     public function mount(): void
@@ -61,7 +64,7 @@ class BarcodeLabelPrinting extends Page implements HasForms
                             ->get()
                             ->mapWithKeys(function ($variant) {
                                 return [
-                                    $variant->id => $variant->product->name . ' - ' . $variant->pack_size . $variant->unit . ' (' . $variant->barcode . ')',
+                                    $variant->id => $variant->product->name.' - '.$variant->pack_size.$variant->unit.' ('.$variant->barcode.')',
                                 ];
                             });
                     })
@@ -98,11 +101,12 @@ class BarcodeLabelPrinting extends Page implements HasForms
                 ->title('No Products Selected')
                 ->body('Please select at least one product')
                 ->send();
+
             return;
         }
 
-        $barcodeService = new BarcodeService();
-        
+        $barcodeService = new BarcodeService;
+
         $this->generatedLabels = $barcodeService->generateBulkLabels(
             $data['selectedVariants'],
             $data['copiesPerLabel']
@@ -111,7 +115,7 @@ class BarcodeLabelPrinting extends Page implements HasForms
         Notification::make()
             ->success()
             ->title('Labels Generated')
-            ->body(count($this->generatedLabels) . ' labels ready to print')
+            ->body(count($this->generatedLabels).' labels ready to print')
             ->send();
     }
 
@@ -127,15 +131,16 @@ class BarcodeLabelPrinting extends Page implements HasForms
 
     public function generateAllBarcodes()
     {
-        $barcodeService = new BarcodeService();
+        $barcodeService = new BarcodeService;
         $variantsWithoutBarcode = ProductVariant::whereNull('barcode')->pluck('id')->toArray();
-        
+
         if (empty($variantsWithoutBarcode)) {
             Notification::make()
                 ->info()
                 ->title('All Products Have Barcodes')
                 ->body('No products need barcode generation')
                 ->send();
+
             return;
         }
 
@@ -151,7 +156,8 @@ class BarcodeLabelPrinting extends Page implements HasForms
 
     public function getBarcodeStats(): array
     {
-        $barcodeService = new BarcodeService();
+        $barcodeService = new BarcodeService;
+
         return $barcodeService->getBarcodeStats();
     }
 }

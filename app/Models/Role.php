@@ -44,7 +44,7 @@ class Role extends Model
      */
     public function hasAnyPermission(array $permissions): bool
     {
-        return !empty(array_intersect($permissions, $this->permissions ?? []));
+        return ! empty(array_intersect($permissions, $this->permissions ?? []));
     }
 
     /**
@@ -61,7 +61,7 @@ class Role extends Model
     public function grantPermission(string $permission): void
     {
         $permissions = $this->permissions ?? [];
-        if (!in_array($permission, $permissions)) {
+        if (! in_array($permission, $permissions)) {
             $permissions[] = $permission;
             $this->permissions = $permissions;
             $this->save();
@@ -82,4 +82,3 @@ class Role extends Model
         }
     }
 }
-

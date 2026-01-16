@@ -4,7 +4,6 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\UserResource\Pages;
 use App\Models\Role;
-use App\Models\Store;
 use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -44,6 +43,7 @@ class UserResource extends Resource
         if ($record->id === auth()->id()) {
             return false;
         }
+
         return auth()->user()?->hasPermission('delete_users') ?? false;
     }
 
@@ -125,16 +125,17 @@ class UserResource extends Resource
                             ->label('Role Permissions')
                             ->content(function ($get) {
                                 $roleId = $get('role_id');
-                                if (!$roleId) {
+                                if (! $roleId) {
                                     return 'Select a role to see permissions';
                                 }
-                                
+
                                 $role = Role::find($roleId);
-                                if (!$role) {
+                                if (! $role) {
                                     return 'Role not found';
                                 }
-                                
+
                                 $count = count($role->permissions ?? []);
+
                                 return "{$role->name} has {$count} permissions";
                             }),
                     ])->columns(1),

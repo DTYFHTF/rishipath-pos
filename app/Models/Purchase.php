@@ -64,11 +64,11 @@ class Purchase extends Model
         if ($storeId) {
             $store = Store::find($storeId);
             if ($store && $store->code) {
-                $prefix = $store->code . '-PUR';
+                $prefix = $store->code.'-PUR';
             }
         }
 
-        $lastPurchase = self::where('purchase_number', 'like', $prefix . '%')
+        $lastPurchase = self::where('purchase_number', 'like', $prefix.'%')
             ->orderByDesc('id')
             ->first();
 
@@ -78,7 +78,7 @@ class Purchase extends Model
             $lastNumber = (int) ($matches[1] ?? 0);
         }
 
-        return $prefix . '-' . str_pad($lastNumber + 1, 6, '0', STR_PAD_LEFT);
+        return $prefix.'-'.str_pad($lastNumber + 1, 6, '0', STR_PAD_LEFT);
     }
 
     public function organization(): BelongsTo
@@ -140,7 +140,7 @@ class Purchase extends Model
         DB::transaction(function () use ($userId) {
             foreach ($this->items as $item) {
                 $qtyToReceive = $item->quantity_ordered - $item->quantity_received;
-                
+
                 if ($qtyToReceive > 0) {
                     // Update stock with audit trail
                     InventoryService::increaseStock(
@@ -186,13 +186,13 @@ class Purchase extends Model
     {
         DB::transaction(function () use ($amount, $paymentMethod, $reference, $notes) {
             $this->amount_paid += $amount;
-            
+
             if ($this->amount_paid >= $this->total) {
                 $this->payment_status = 'paid';
             } elseif ($this->amount_paid > 0) {
                 $this->payment_status = 'partial';
             }
-            
+
             $this->save();
 
             if ($this->supplier_id) {

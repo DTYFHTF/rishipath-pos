@@ -27,7 +27,7 @@ return new class extends Migration
             $table->json('config')->nullable();
             $table->boolean('active')->default(true);
             $table->timestamps();
-            
+
             $table->unique(['organization_id', 'code']);
             $table->index('organization_id');
             $table->index('active');

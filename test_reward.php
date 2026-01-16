@@ -1,8 +1,8 @@
 <?php
 
-require __DIR__ . '/vendor/autoload.php';
+require __DIR__.'/vendor/autoload.php';
 
-$app = require_once __DIR__ . '/bootstrap/app.php';
+$app = require_once __DIR__.'/bootstrap/app.php';
 $app->make('Illuminate\Contracts\Console\Kernel')->bootstrap();
 
 use App\Models\Customer;
@@ -15,7 +15,7 @@ echo "=========================\n\n";
 // Get test customer
 $customer = Customer::where('name', 'Test Loyalty Customer')->first();
 
-if (!$customer) {
+if (! $customer) {
     echo "❌ Test customer not found. Please run the first test.\n";
     exit;
 }
@@ -39,16 +39,16 @@ echo "   ✅ Reward created: {$reward->name} (500 points)\n\n";
 // Check if customer can redeem
 echo "2. Checking Eligibility:\n";
 $canRedeem = $reward->canBeRedeemedBy($customer);
-echo "   Can redeem? " . ($canRedeem ? "✅ YES" : "❌ NO") . "\n";
+echo '   Can redeem? '.($canRedeem ? '✅ YES' : '❌ NO')."\n";
 echo "   Customer has: {$customer->loyalty_points} points\n";
 echo "   Reward needs: {$reward->points_required} points\n\n";
 
 // Redeem the reward
 if ($canRedeem) {
     echo "3. Redeeming Reward:\n";
-    $loyaltyService = new LoyaltyService();
+    $loyaltyService = new LoyaltyService;
     $result = $loyaltyService->redeemReward($customer, $reward);
-    
+
     if ($result['success']) {
         $customer->refresh();
         echo "   ✅ Redemption successful!\n";

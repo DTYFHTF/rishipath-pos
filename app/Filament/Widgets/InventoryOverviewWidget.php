@@ -35,7 +35,7 @@ class InventoryOverviewWidget extends BaseWidget
         $outOfStockCount = StockLevel::where('quantity', '<=', 0)->count();
 
         return [
-            Stat::make('Inventory Value', '₹' . number_format($inventoryValue, 2))
+            Stat::make('Inventory Value', '₹'.number_format($inventoryValue, 2))
                 ->description('Total stock value')
                 ->descriptionIcon('heroicon-m-currency-rupee')
                 ->color('success'),
