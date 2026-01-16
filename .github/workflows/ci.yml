@@ -73,8 +73,15 @@ jobs:
           DB_USERNAME: root
           DB_PASSWORD: root
         run: |
-          vendor/bin/phpunit --configuration phpunit.xml
+          vendor/bin/phpunit --configuration phpunit.xml --coverage-clover=coverage.xml
           php test_inventory_system.php
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.xml
+          fail_ci_if_error: false
+          # token optional for public repos; set CODECOV_TOKEN secret if private
 
       - name: Style and static analysis
         run: |
