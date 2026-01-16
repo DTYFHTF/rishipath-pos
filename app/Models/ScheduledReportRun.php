@@ -72,7 +72,7 @@ class ScheduledReportRun extends Model
      */
     public function getDurationAttribute(): ?int
     {
-        if (!$this->started_at || !$this->completed_at) {
+        if (! $this->started_at || ! $this->completed_at) {
             return null;
         }
 
@@ -84,7 +84,7 @@ class ScheduledReportRun extends Model
      */
     public function getFormattedFileSizeAttribute(): ?string
     {
-        if (!$this->file_size) {
+        if (! $this->file_size) {
             return null;
         }
 
@@ -97,7 +97,7 @@ class ScheduledReportRun extends Model
             $unit++;
         }
 
-        return round($size, 2) . ' ' . $units[$unit];
+        return round($size, 2).' '.$units[$unit];
     }
 
     /**

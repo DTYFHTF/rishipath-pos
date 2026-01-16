@@ -23,7 +23,7 @@ return new class extends Migration
             $table->integer('order')->default(0);
             $table->boolean('active')->default(true);
             $table->timestamps();
-            
+
             $table->index('organization_id');
             $table->index('slug');
             $table->index(['min_points', 'max_points']);

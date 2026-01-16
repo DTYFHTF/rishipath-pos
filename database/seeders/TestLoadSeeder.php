@@ -2,14 +2,14 @@
 
 namespace Database\Seeders;
 
-use App\Models\Organization;
-use App\Models\Store;
-use App\Models\Role;
-use App\Models\User;
-use App\Models\LoyaltyTier;
-use App\Models\Reward;
 use App\Models\Customer;
+use App\Models\LoyaltyTier;
+use App\Models\Organization;
+use App\Models\Reward;
+use App\Models\Role;
 use App\Models\Sale;
+use App\Models\Store;
+use App\Models\User;
 use App\Services\LoyaltyService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
@@ -20,17 +20,19 @@ class TestLoadSeeder extends Seeder
     {
         // Use existing organization (don't create a new one)
         $org = Organization::first();
-        
-        if (!$org) {
+
+        if (! $org) {
             $this->command->error('No organization found! Please run the main database seeder first.');
+
             return;
         }
 
         // Use existing store
         $store = Store::where('organization_id', $org->id)->first();
-        
-        if (!$store) {
+
+        if (! $store) {
             $this->command->error('No store found! Please run the main database seeder first.');
+
             return;
         }
 
@@ -45,9 +47,9 @@ class TestLoadSeeder extends Seeder
 
         // Ensure a cashier role exists
         $cashierRole = Role::firstOrCreate([
-            'slug' => 'cashier'
+            'slug' => 'cashier',
         ], [
-            'name' => 'Cashier'
+            'name' => 'Cashier',
         ]);
 
         // Create 2 cashier users
@@ -128,7 +130,7 @@ class TestLoadSeeder extends Seeder
             // Create 1-3 sample sales for each customer
             $salesCount = rand(1, 3);
             for ($s = 0; $s < $salesCount; $s++) {
-                $receipt = 'RCPT-' . Str::upper(Str::random(8));
+                $receipt = 'RCPT-'.Str::upper(Str::random(8));
                 $total = rand(100, 5000) / 1; // integer amount
 
                 $sale = Sale::create([

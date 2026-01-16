@@ -23,15 +23,15 @@ class CustomerLedgerService
     public function recordPayment(Customer $customer, array $data): CustomerLedgerEntry
     {
         DB::beginTransaction();
-        
+
         try {
             $entry = CustomerLedgerEntry::createPaymentEntry($customer, $data);
-            
+
             // Update pending sales if applicable
             $this->allocatePaymentToSales($customer, $data['amount']);
-            
+
             DB::commit();
-            
+
             return $entry;
         } catch (\Exception $e) {
             DB::rollBack();
@@ -78,8 +78,8 @@ class CustomerLedgerService
     ): array {
         $customer = Customer::find($customerId);
 
-        if (!$customer) {
-            throw new \Exception("Customer not found");
+        if (! $customer) {
+            throw new \Exception('Customer not found');
         }
 
         $query = CustomerLedgerEntry::forCustomer($customerId)
@@ -158,7 +158,7 @@ class CustomerLedgerService
     /**
      * Create opening balance entry
      */
-    public function createOpeningBalance(Customer $customer, float $amount, string $date, string $notes = null): CustomerLedgerEntry
+    public function createOpeningBalance(Customer $customer, float $amount, string $date, ?string $notes = null): CustomerLedgerEntry
     {
         return CustomerLedgerEntry::create([
             'organization_id' => $customer->organization_id,

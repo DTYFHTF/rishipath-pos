@@ -18,7 +18,7 @@ return new class extends Migration
             $table->enum('payment_status', ['pending', 'completed', 'failed', 'refunded'])->default('completed');
             $table->json('payment_response')->nullable();
             $table->timestamps();
-            
+
             $table->index('sale_id');
             $table->index('transaction_id');
         });

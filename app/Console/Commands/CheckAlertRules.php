@@ -2,8 +2,8 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
 use App\Services\AlertService;
+use Illuminate\Console\Command;
 
 class CheckAlertRules extends Command
 {
@@ -27,15 +27,15 @@ class CheckAlertRules extends Command
     public function handle(AlertService $service)
     {
         $this->info('Checking alert rules...');
-        
+
         $alertsFired = $service->checkAllAlerts();
-        
+
         if ($alertsFired > 0) {
             $this->warn("⚠️  {$alertsFired} alerts triggered");
         } else {
             $this->info('✅ No alerts triggered');
         }
-        
+
         return Command::SUCCESS;
     }
 }

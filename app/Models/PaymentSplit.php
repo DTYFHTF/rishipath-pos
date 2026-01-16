@@ -37,7 +37,7 @@ class PaymentSplit extends Model
      */
     public function getPaymentMethodLabel(): string
     {
-        return match($this->payment_method) {
+        return match ($this->payment_method) {
             'cash' => 'Cash',
             'card' => 'Card',
             'upi' => 'UPI',
@@ -51,18 +51,18 @@ class PaymentSplit extends Model
 
     public function hasCardDetails(): bool
     {
-        return !empty($this->card_last4) || !empty($this->card_type);
+        return ! empty($this->card_last4) || ! empty($this->card_type);
     }
 
     public function getFormattedCardInfo(): ?string
     {
-        if (!$this->hasCardDetails()) {
+        if (! $this->hasCardDetails()) {
             return null;
         }
 
         $parts = array_filter([
             $this->card_type,
-            $this->card_last4 ? "****{$this->card_last4}" : null
+            $this->card_last4 ? "****{$this->card_last4}" : null,
         ]);
 
         return implode(' ', $parts);

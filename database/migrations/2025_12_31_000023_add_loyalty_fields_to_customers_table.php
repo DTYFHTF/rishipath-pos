@@ -13,7 +13,7 @@ return new class extends Migration
             $table->date('birthday')->nullable()->after('loyalty_tier_id');
             $table->date('last_birthday_bonus_at')->nullable()->after('birthday');
             $table->timestamp('loyalty_enrolled_at')->nullable()->after('last_birthday_bonus_at');
-            
+
             $table->index('loyalty_tier_id');
             $table->index('birthday');
         });

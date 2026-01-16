@@ -58,7 +58,7 @@ class SupplierLedgerEntry extends Model
     {
         return DB::transaction(function () use ($purchase) {
             $supplier = Supplier::lockForUpdate()->find($purchase->supplier_id);
-            
+
             $newBalance = ($supplier->current_balance ?? 0) + $purchase->total;
             $supplier->current_balance = $newBalance;
             $supplier->save();
@@ -89,7 +89,7 @@ class SupplierLedgerEntry extends Model
     ): self {
         return DB::transaction(function () use ($purchase, $amount, $paymentMethod, $reference, $notes) {
             $supplier = Supplier::lockForUpdate()->find($purchase->supplier_id);
-            
+
             $newBalance = ($supplier->current_balance ?? 0) - $amount;
             $supplier->current_balance = $newBalance;
             $supplier->save();
@@ -120,7 +120,7 @@ class SupplierLedgerEntry extends Model
     ): self {
         return DB::transaction(function () use ($purchase, $amount, $notes) {
             $supplier = Supplier::lockForUpdate()->find($purchase->supplier_id);
-            
+
             $newBalance = ($supplier->current_balance ?? 0) - $amount;
             $supplier->current_balance = $newBalance;
             $supplier->save();

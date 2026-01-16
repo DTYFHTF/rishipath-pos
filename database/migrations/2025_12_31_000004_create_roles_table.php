@@ -16,7 +16,7 @@ return new class extends Migration
             $table->json('permissions');
             $table->boolean('is_system_role')->default(false);
             $table->timestamps();
-            
+
             $table->unique(['organization_id', 'slug']);
             $table->index('organization_id');
         });

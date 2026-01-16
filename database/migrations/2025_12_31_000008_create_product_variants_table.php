@@ -23,7 +23,7 @@ return new class extends Migration
             $table->decimal('weight', 10, 3)->nullable();
             $table->boolean('active')->default(true);
             $table->timestamps();
-            
+
             $table->index('product_id');
             $table->index('sku');
             $table->index('barcode');

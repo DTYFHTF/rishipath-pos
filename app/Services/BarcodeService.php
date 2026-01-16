@@ -3,8 +3,8 @@
 namespace App\Services;
 
 use App\Models\ProductVariant;
-use Picqer\Barcode\BarcodeGeneratorPNG;
 use Picqer\Barcode\BarcodeGeneratorHTML;
+use Picqer\Barcode\BarcodeGeneratorPNG;
 use Picqer\Barcode\BarcodeGeneratorSVG;
 
 class BarcodeService
@@ -13,8 +13,11 @@ class BarcodeService
      * Supported barcode types
      */
     const TYPE_CODE128 = 'C128';
+
     const TYPE_EAN13 = 'EAN13';
+
     const TYPE_CODE39 = 'C39';
+
     const TYPE_QR = 'QR';
 
     /**
@@ -28,11 +31,11 @@ class BarcodeService
         }
 
         // Generate new barcode using pattern: RSH-{variant_id}-{random}
-        $barcode = 'RSH' . str_pad($variant->id, 6, '0', STR_PAD_LEFT) . mt_rand(100, 999);
-        
+        $barcode = 'RSH'.str_pad($variant->id, 6, '0', STR_PAD_LEFT).mt_rand(100, 999);
+
         // Update variant with new barcode
         $variant->update(['barcode' => $barcode]);
-        
+
         return $barcode;
     }
 
@@ -41,10 +44,10 @@ class BarcodeService
      */
     public function generateBarcodeImage(string $code, string $type = self::TYPE_CODE128, int $widthFactor = 2, int $height = 50): string
     {
-        $generator = new BarcodeGeneratorPNG();
-        
+        $generator = new BarcodeGeneratorPNG;
+
         $barcodeType = $this->getBarcodeType($type);
-        
+
         return base64_encode($generator->getBarcode($code, $barcodeType, $widthFactor, $height));
     }
 
@@ -53,10 +56,10 @@ class BarcodeService
      */
     public function generateBarcodeHTML(string $code, string $type = self::TYPE_CODE128): string
     {
-        $generator = new BarcodeGeneratorHTML();
-        
+        $generator = new BarcodeGeneratorHTML;
+
         $barcodeType = $this->getBarcodeType($type);
-        
+
         return $generator->getBarcode($code, $barcodeType);
     }
 
@@ -65,10 +68,10 @@ class BarcodeService
      */
     public function generateBarcodeSVG(string $code, string $type = self::TYPE_CODE128, int $widthFactor = 2, int $height = 50): string
     {
-        $generator = new BarcodeGeneratorSVG();
-        
+        $generator = new BarcodeGeneratorSVG;
+
         $barcodeType = $this->getBarcodeType($type);
-        
+
         return $generator->getBarcode($code, $barcodeType, $widthFactor, $height);
     }
 
@@ -86,7 +89,7 @@ class BarcodeService
     public function validateBarcode(string $barcode): bool
     {
         // Basic validation: barcode should be alphanumeric and not empty
-        return !empty($barcode) && preg_match('/^[A-Za-z0-9\-]+$/', $barcode);
+        return ! empty($barcode) && preg_match('/^[A-Za-z0-9\-]+$/', $barcode);
     }
 
     /**
@@ -96,15 +99,15 @@ class BarcodeService
     {
         // Ensure variant has a barcode
         $barcode = $variant->barcode ?? $this->generateBarcodeForVariant($variant);
-        
+
         // Generate barcode image
         $barcodeImage = $this->generateBarcodeImage($barcode);
-        
+
         return [
             'barcode' => $barcode,
             'barcode_image' => $barcodeImage,
             'product_name' => $variant->product->name,
-            'variant_name' => $variant->pack_size . ' ' . $variant->unit,
+            'variant_name' => $variant->pack_size.' '.$variant->unit,
             'mrp' => $variant->mrp_india,
             'sku' => $variant->sku,
             'product_id' => $variant->product_id,
@@ -118,20 +121,20 @@ class BarcodeService
     public function generateBulkLabels(array $variantIds, int $copiesPerVariant = 1): array
     {
         $labels = [];
-        
+
         foreach ($variantIds as $variantId) {
             $variant = ProductVariant::find($variantId);
-            
+
             if ($variant) {
                 $labelData = $this->generateLabelData($variant);
-                
+
                 // Add multiple copies if requested
                 for ($i = 0; $i < $copiesPerVariant; $i++) {
                     $labels[] = $labelData;
                 }
             }
         }
-        
+
         return $labels;
     }
 
@@ -141,19 +144,19 @@ class BarcodeService
     public function isValidEAN13(string $barcode): bool
     {
         // EAN-13 must be exactly 13 digits
-        if (!preg_match('/^\d{13}$/', $barcode)) {
+        if (! preg_match('/^\d{13}$/', $barcode)) {
             return false;
         }
 
         // Calculate checksum
         $sum = 0;
         for ($i = 0; $i < 12; $i++) {
-            $sum += (int)$barcode[$i] * (($i % 2 === 0) ? 1 : 3);
+            $sum += (int) $barcode[$i] * (($i % 2 === 0) ? 1 : 3);
         }
-        
+
         $checksum = (10 - ($sum % 10)) % 10;
-        
-        return (int)$barcode[12] === $checksum;
+
+        return (int) $barcode[12] === $checksum;
     }
 
     /**
@@ -164,12 +167,12 @@ class BarcodeService
     {
         // Remove whitespace and newlines
         $barcode = trim($input);
-        
+
         // Validate format
         if ($this->validateBarcode($barcode)) {
             return $barcode;
         }
-        
+
         return null;
     }
 
@@ -178,7 +181,7 @@ class BarcodeService
      */
     private function getBarcodeType(string $type): string
     {
-        return match($type) {
+        return match ($type) {
             self::TYPE_CODE128 => BarcodeGeneratorPNG::TYPE_CODE_128,
             self::TYPE_EAN13 => BarcodeGeneratorPNG::TYPE_EAN_13,
             self::TYPE_CODE39 => BarcodeGeneratorPNG::TYPE_CODE_39,
@@ -192,16 +195,16 @@ class BarcodeService
     public function generateBatchBarcodes(array $variantIds): array
     {
         $results = [];
-        
+
         foreach ($variantIds as $variantId) {
             $variant = ProductVariant::find($variantId);
-            
-            if ($variant && !$variant->barcode) {
+
+            if ($variant && ! $variant->barcode) {
                 $barcode = $this->generateBarcodeForVariant($variant);
                 $results[$variantId] = [
                     'success' => true,
                     'barcode' => $barcode,
-                    'variant' => $variant->product->name . ' - ' . $variant->pack_size . $variant->unit,
+                    'variant' => $variant->product->name.' - '.$variant->pack_size.$variant->unit,
                 ];
             } else {
                 $results[$variantId] = [
@@ -210,7 +213,7 @@ class BarcodeService
                 ];
             }
         }
-        
+
         return $results;
     }
 
@@ -222,7 +225,7 @@ class BarcodeService
         $totalVariants = ProductVariant::count();
         $withBarcode = ProductVariant::whereNotNull('barcode')->count();
         $withoutBarcode = $totalVariants - $withBarcode;
-        
+
         return [
             'total_variants' => $totalVariants,
             'with_barcode' => $withBarcode,

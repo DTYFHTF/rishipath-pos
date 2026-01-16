@@ -1,17 +1,15 @@
 <?php
 
-require __DIR__ . '/vendor/autoload.php';
+require __DIR__.'/vendor/autoload.php';
 
-$app = require_once __DIR__ . '/bootstrap/app.php';
+$app = require_once __DIR__.'/bootstrap/app.php';
 $app->make('Illuminate\Contracts\Console\Kernel')->bootstrap();
 
-use App\Models\ReportSchedule;
 use App\Models\AlertRule;
 use App\Models\Notification;
+use App\Models\ReportSchedule;
 use App\Models\Store;
 use App\Models\User;
-use App\Services\ReportScheduleService;
-use App\Services\AlertService;
 
 echo "🧪 PHASE 7: REPORT SCHEDULING & AUTOMATION TEST\n";
 echo "================================================\n\n";
@@ -44,9 +42,9 @@ echo "   ID: {$schedule->id}\n";
 echo "   Name: {$schedule->name}\n";
 echo "   Type: {$schedule->report_type_name}\n";
 echo "   Frequency: {$schedule->frequency}\n";
-echo "   Recipients: " . count($schedule->recipients) . "\n";
+echo '   Recipients: '.count($schedule->recipients)."\n";
 echo "   Next Run: {$schedule->next_run_at->format('M d, Y h:i A')}\n";
-echo "   Status: " . ($schedule->active ? 'Active' : 'Inactive') . "\n\n";
+echo '   Status: '.($schedule->active ? 'Active' : 'Inactive')."\n\n";
 
 // Test 2: Create alert rules
 echo "🔔 TEST 2: Creating Alert Rules\n";
@@ -91,7 +89,7 @@ echo "✅ High Value Sale Alert Created:\n";
 echo "   ID: {$highValueAlert->id}\n";
 echo "   Name: {$highValueAlert->name}\n";
 echo "   Type: {$highValueAlert->type_name}\n";
-echo "   Threshold: ₹" . number_format($highValueAlert->conditions['threshold'], 2) . "\n";
+echo '   Threshold: ₹'.number_format($highValueAlert->conditions['threshold'], 2)."\n";
 echo "   Frequency: {$highValueAlert->frequency}\n\n";
 
 // Test 3: Check if alerts should run
@@ -99,10 +97,10 @@ echo "⏰ TEST 3: Testing Alert Frequency Logic\n";
 echo "-----------------------------------------\n";
 
 $shouldCheck = $lowStockAlert->shouldCheck();
-echo "Low Stock Alert should check: " . ($shouldCheck ? '✅ Yes' : '❌ No') . "\n";
+echo 'Low Stock Alert should check: '.($shouldCheck ? '✅ Yes' : '❌ No')."\n";
 
 $shouldCheck = $highValueAlert->shouldCheck();
-echo "High Value Alert should check: " . ($shouldCheck ? '✅ Yes' : '❌ No') . "\n\n";
+echo 'High Value Alert should check: '.($shouldCheck ? '✅ Yes' : '❌ No')."\n\n";
 
 // Test 4: Create a manual notification
 echo "📧 TEST 4: Creating Manual Notification\n";
@@ -128,8 +126,8 @@ echo "   ID: {$notification->id}\n";
 echo "   Type: {$notification->type}\n";
 echo "   Title: {$notification->title}\n";
 echo "   Severity: {$notification->severity} ({$notification->severity_color})\n";
-echo "   Recipients: " . count($notification->recipients) . "\n";
-echo "   Sent: " . ($notification->sent ? 'Yes' : 'No') . "\n\n";
+echo '   Recipients: '.count($notification->recipients)."\n";
+echo '   Sent: '.($notification->sent ? 'Yes' : 'No')."\n\n";
 
 // Test 5: Test schedule due checking
 echo "⏱️  TEST 5: Testing Schedule Due Logic\n";
@@ -150,8 +148,8 @@ $dueSchedule = ReportSchedule::create([
 
 echo "Due Schedule Created:\n";
 echo "   Next Run: {$dueSchedule->next_run_at->format('M d, Y h:i A')}\n";
-echo "   Is Due: " . ($dueSchedule->isDue() ? '✅ Yes' : '❌ No') . "\n";
-echo "   First Schedule Is Due: " . ($schedule->isDue() ? '✅ Yes' : '❌ No') . "\n\n";
+echo '   Is Due: '.($dueSchedule->isDue() ? '✅ Yes' : '❌ No')."\n";
+echo '   First Schedule Is Due: '.($schedule->isDue() ? '✅ Yes' : '❌ No')."\n\n";
 
 // Test 6: Calculate next run times
 echo "📅 TEST 6: Testing Next Run Calculations\n";
@@ -200,17 +198,17 @@ $totalNotifications = Notification::count();
 echo "Report Schedules:\n";
 echo "   Active: {$activeSchedules}\n";
 echo "   Total: {$totalSchedules}\n";
-echo "   Inactive: " . ($totalSchedules - $activeSchedules) . "\n\n";
+echo '   Inactive: '.($totalSchedules - $activeSchedules)."\n\n";
 
 echo "Alert Rules:\n";
 echo "   Active: {$activeAlerts}\n";
 echo "   Total: {$totalAlerts}\n";
-echo "   Inactive: " . ($totalAlerts - $activeAlerts) . "\n\n";
+echo '   Inactive: '.($totalAlerts - $activeAlerts)."\n\n";
 
 echo "Notifications:\n";
 echo "   Pending: {$unsentNotifications}\n";
 echo "   Total: {$totalNotifications}\n";
-echo "   Sent: " . ($totalNotifications - $unsentNotifications) . "\n\n";
+echo '   Sent: '.($totalNotifications - $unsentNotifications)."\n\n";
 
 // Test 8: Test scopes and queries
 echo "🔍 TEST 8: Testing Model Scopes\n";

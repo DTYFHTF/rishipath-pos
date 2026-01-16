@@ -25,7 +25,7 @@ return new class extends Migration
             $table->decimal('quantity_returned', 10, 3)->default(0);
             $table->text('notes')->nullable();
             $table->timestamps();
-            
+
             $table->unique(['store_id', 'product_variant_id', 'batch_number']);
             $table->index('store_id');
             $table->index('product_variant_id');

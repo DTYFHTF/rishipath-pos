@@ -6,8 +6,8 @@ use App\Models\ProductVariant;
 use App\Models\Store;
 use App\Services\InventoryService;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
@@ -20,9 +20,13 @@ class StockTransfer extends Page implements HasForms
     use InteractsWithForms;
 
     protected static ?string $navigationIcon = 'heroicon-o-arrows-right-left';
+
     protected static string $view = 'filament.pages.stock-transfer';
+
     protected static ?string $navigationGroup = 'Inventory';
+
     protected static ?string $navigationLabel = 'Stock Transfer';
+
     protected static ?int $navigationSort = 4;
 
     public static function canAccess(): bool
@@ -31,11 +35,17 @@ class StockTransfer extends Page implements HasForms
     }
 
     public $productVariantId;
+
     public $fromStoreId;
+
     public $toStoreId;
+
     public $quantity;
+
     public $notes;
+
     public $fromStock = 0;
+
     public $toStock = 0;
 
     public function mount(): void
@@ -59,7 +69,7 @@ class StockTransfer extends Page implements HasForms
                         return ProductVariant::with('product')
                             ->get()
                             ->mapWithKeys(fn ($variant) => [
-                                $variant->id => "{$variant->product->name} - {$variant->pack_size}{$variant->unit} ({$variant->sku})"
+                                $variant->id => "{$variant->product->name} - {$variant->pack_size}{$variant->unit} ({$variant->sku})",
                             ]);
                     })
                     ->searchable()
@@ -101,10 +111,10 @@ class StockTransfer extends Page implements HasForms
     public function updateStockLevels(): void
     {
         if ($this->productVariantId) {
-            $this->fromStock = $this->fromStoreId 
+            $this->fromStock = $this->fromStoreId
                 ? InventoryService::getStock($this->productVariantId, $this->fromStoreId)
                 : 0;
-            $this->toStock = $this->toStoreId 
+            $this->toStock = $this->toStoreId
                 ? InventoryService::getStock($this->productVariantId, $this->toStoreId)
                 : 0;
         }
@@ -116,7 +126,7 @@ class StockTransfer extends Page implements HasForms
             'productVariantId' => 'required',
             'fromStoreId' => 'required',
             'toStoreId' => 'required|different:fromStoreId',
-            'quantity' => 'required|numeric|min:0.001|max:' . $this->fromStock,
+            'quantity' => 'required|numeric|min:0.001|max:'.$this->fromStock,
         ]);
 
         try {

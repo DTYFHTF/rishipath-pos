@@ -25,7 +25,7 @@ return new class extends Migration
             $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
             $table->text('notes')->nullable();
             $table->timestamp('created_at')->useCurrent();
-            
+
             $table->index('organization_id');
             $table->index('store_id');
             $table->index('product_variant_id');

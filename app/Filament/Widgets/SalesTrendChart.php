@@ -10,8 +10,10 @@ use Illuminate\Support\Facades\DB;
 class SalesTrendChart extends ChartWidget
 {
     protected static ?string $heading = 'Sales Trend (Last 30 Days)';
+
     protected static ?int $sort = 2;
-    protected int | string | array $columnSpan = 'full';
+
+    protected int|string|array $columnSpan = 'full';
 
     public static function canView(): bool
     {

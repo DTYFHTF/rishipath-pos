@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Collection;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ExportService
 {
@@ -12,8 +12,10 @@ class ExportService
      */
     public function exportToExcel(Collection $data, array $headers, string $filename): string
     {
-        $export = new class($data, $headers) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings, \Maatwebsite\Excel\Concerns\WithStyles, \Maatwebsite\Excel\Concerns\ShouldAutoSize {
+        $export = new class($data, $headers) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\ShouldAutoSize, \Maatwebsite\Excel\Concerns\WithHeadings, \Maatwebsite\Excel\Concerns\WithStyles
+        {
             private $data;
+
             private $headers;
 
             public function __construct($data, $headers)
@@ -40,14 +42,14 @@ class ExportService
             }
         };
 
-        $filePath = storage_path('app/exports/' . $filename);
-        
+        $filePath = storage_path('app/exports/'.$filename);
+
         // Ensure directory exists
-        if (!file_exists(dirname($filePath))) {
+        if (! file_exists(dirname($filePath))) {
             mkdir(dirname($filePath), 0755, true);
         }
 
-        Excel::store($export, 'exports/' . $filename);
+        Excel::store($export, 'exports/'.$filename);
 
         return $filePath;
     }
@@ -57,8 +59,10 @@ class ExportService
      */
     public function exportToCSV(Collection $data, array $headers, string $filename): string
     {
-        $export = new class($data, $headers) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
+        $export = new class($data, $headers) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings
+        {
             private $data;
+
             private $headers;
 
             public function __construct($data, $headers)
@@ -78,14 +82,14 @@ class ExportService
             }
         };
 
-        $filePath = storage_path('app/exports/' . $filename);
-        
+        $filePath = storage_path('app/exports/'.$filename);
+
         // Ensure directory exists
-        if (!file_exists(dirname($filePath))) {
+        if (! file_exists(dirname($filePath))) {
             mkdir(dirname($filePath), 0755, true);
         }
 
-        Excel::store($export, 'exports/' . $filename, null, \Maatwebsite\Excel\Excel::CSV);
+        Excel::store($export, 'exports/'.$filename, null, \Maatwebsite\Excel\Excel::CSV);
 
         return $filePath;
     }
@@ -105,19 +109,21 @@ class ExportService
             // 3-arg style: (data, headers, filename)
             $headers = $headersOrFilename;
         }
-        
+
         // Convert array to collection if needed
         if (is_array($data)) {
             $data = collect($data);
         }
-        
+
         // Ensure filename has extension
-        if (!str_ends_with($filename, '.xlsx')) {
+        if (! str_ends_with($filename, '.xlsx')) {
             $filename .= '.xlsx';
         }
 
-        $export = new class($data, $headers) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings, \Maatwebsite\Excel\Concerns\WithStyles, \Maatwebsite\Excel\Concerns\ShouldAutoSize {
+        $export = new class($data, $headers) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\ShouldAutoSize, \Maatwebsite\Excel\Concerns\WithHeadings, \Maatwebsite\Excel\Concerns\WithStyles
+        {
             private $data;
+
             private $headers;
 
             public function __construct($data, $headers)
@@ -152,8 +158,10 @@ class ExportService
      */
     public function downloadCSV(Collection $data, array $headers, string $filename)
     {
-        $export = new class($data, $headers) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
+        $export = new class($data, $headers) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings
+        {
             private $data;
+
             private $headers;
 
             public function __construct($data, $headers)
@@ -181,7 +189,7 @@ class ExportService
      */
     public function generateFilename(string $prefix, string $extension = 'xlsx'): string
     {
-        return $prefix . '_' . now()->format('Y-m-d_His') . '.' . $extension;
+        return $prefix.'_'.now()->format('Y-m-d_His').'.'.$extension;
     }
 
     /**
@@ -190,12 +198,12 @@ class ExportService
     public function cleanOldExports(): int
     {
         $exportPath = storage_path('app/exports');
-        
-        if (!file_exists($exportPath)) {
+
+        if (! file_exists($exportPath)) {
             return 0;
         }
 
-        $files = glob($exportPath . '/*');
+        $files = glob($exportPath.'/*');
         $deleted = 0;
         $threshold = now()->subDay()->timestamp;
 

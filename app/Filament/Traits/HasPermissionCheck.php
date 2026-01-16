@@ -13,18 +13,19 @@ trait HasPermissionCheck
     public static function canViewAny(): bool
     {
         $user = Auth::user();
-        
-        if (!$user) {
+
+        if (! $user) {
             return false;
         }
-        
+
         // Super admins have full access
         if ($user->isSuperAdmin()) {
             return true;
         }
-        
+
         // Check specific permission
         $permission = static::getPermissionName('view');
+
         return $user->hasPermission($permission);
     }
 
@@ -34,16 +35,17 @@ trait HasPermissionCheck
     public static function canCreate(): bool
     {
         $user = Auth::user();
-        
-        if (!$user) {
+
+        if (! $user) {
             return false;
         }
-        
+
         if ($user->isSuperAdmin()) {
             return true;
         }
-        
+
         $permission = static::getPermissionName('create');
+
         return $user->hasPermission($permission);
     }
 
@@ -53,16 +55,17 @@ trait HasPermissionCheck
     public static function canEdit($record): bool
     {
         $user = Auth::user();
-        
-        if (!$user) {
+
+        if (! $user) {
             return false;
         }
-        
+
         if ($user->isSuperAdmin()) {
             return true;
         }
-        
+
         $permission = static::getPermissionName('edit');
+
         return $user->hasPermission($permission);
     }
 
@@ -72,16 +75,17 @@ trait HasPermissionCheck
     public static function canDelete($record): bool
     {
         $user = Auth::user();
-        
-        if (!$user) {
+
+        if (! $user) {
             return false;
         }
-        
+
         if ($user->isSuperAdmin()) {
             return true;
         }
-        
+
         $permission = static::getPermissionName('delete');
+
         return $user->hasPermission($permission);
     }
 
@@ -92,7 +96,7 @@ trait HasPermissionCheck
     {
         $modelName = class_basename(static::getModel());
         $resourceName = strtolower(str_replace('_', '', Str::snake($modelName)));
-        
+
         // Map resource names to permission names
         $permissionMap = [
             'product' => 'products',
@@ -106,9 +110,9 @@ trait HasPermissionCheck
             'role' => 'roles',
             'user' => 'users',
         ];
-        
+
         $permissionResource = $permissionMap[$resourceName] ?? $resourceName;
-        
+
         return "{$action}_{$permissionResource}";
     }
 }

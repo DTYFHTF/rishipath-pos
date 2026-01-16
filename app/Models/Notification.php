@@ -70,7 +70,7 @@ class Notification extends Model
      */
     public function getSeverityColorAttribute(): string
     {
-        return match($this->severity) {
+        return match ($this->severity) {
             'info' => 'blue',
             'warning' => 'yellow',
             'error' => 'orange',
@@ -84,7 +84,7 @@ class Notification extends Model
      */
     public function getSeverityIconAttribute(): string
     {
-        return match($this->severity) {
+        return match ($this->severity) {
             'info' => 'heroicon-o-information-circle',
             'warning' => 'heroicon-o-exclamation-triangle',
             'error' => 'heroicon-o-x-circle',

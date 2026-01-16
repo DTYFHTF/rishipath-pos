@@ -3,13 +3,13 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Filament\Models\Contracts\FilamentUser;
-use Filament\Panel;
 
 class User extends Authenticatable implements FilamentUser
 {
@@ -77,12 +77,12 @@ class User extends Authenticatable implements FilamentUser
         if (in_array($permission, $this->permissions ?? [])) {
             return true;
         }
-        
+
         // Check role permissions
         if ($this->role) {
             return $this->role->hasPermission($permission);
         }
-        
+
         return false;
     }
 
@@ -96,6 +96,7 @@ class User extends Authenticatable implements FilamentUser
                 return true;
             }
         }
+
         return false;
     }
 
@@ -105,10 +106,11 @@ class User extends Authenticatable implements FilamentUser
     public function hasAllPermissions(array $permissions): bool
     {
         foreach ($permissions as $permission) {
-            if (!$this->hasPermission($permission)) {
+            if (! $this->hasPermission($permission)) {
                 return false;
             }
         }
+
         return true;
     }
 

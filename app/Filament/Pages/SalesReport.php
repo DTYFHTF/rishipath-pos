@@ -31,8 +31,11 @@ class SalesReport extends Page implements HasForms
     }
 
     public $startDate;
+
     public $endDate;
+
     public $storeId = null;
+
     public $paymentMethod = null;
 
     public function mount(): void
@@ -65,8 +68,8 @@ class SalesReport extends Page implements HasForms
                         'khalti' => 'Khalti',
                     ])
                     ->placeholder('All Methods'),
-                ])
-                ->columns(4);
+            ])
+            ->columns(4);
     }
 
     public function getSalesData()
@@ -114,7 +117,7 @@ class SalesReport extends Page implements HasForms
         $saleIds = Sale::query()
             ->whereBetween('date', [$this->startDate, $this->endDate])
             ->where('status', 'completed')
-            ->when($this->storeId, fn($q) => $q->where('store_id', $this->storeId))
+            ->when($this->storeId, fn ($q) => $q->where('store_id', $this->storeId))
             ->pluck('id');
 
         return SaleItem::query()
@@ -154,26 +157,26 @@ class SalesReport extends Page implements HasForms
         $dailySales = $this->getDailySales();
 
         $data = [];
-        
+
         // Add summary
         $data[] = ['SALES REPORT'];
-        $data[] = ['Period', $this->startDate . ' to ' . $this->endDate];
+        $data[] = ['Period', $this->startDate.' to '.$this->endDate];
         if ($this->storeId) {
             $store = \App\Models\Store::find($this->storeId);
             $data[] = ['Store', $store?->name ?? 'Unknown'];
         }
         $data[] = [''];
-        
+
         // Add summary metrics
         $data[] = ['SUMMARY METRICS'];
-        $data[] = ['Total Sales', '₹' . number_format($salesData['total_sales'], 2)];
+        $data[] = ['Total Sales', '₹'.number_format($salesData['total_sales'], 2)];
         $data[] = ['Total Transactions', $salesData['total_transactions']];
         $data[] = ['Total Items Sold', $salesData['total_items_sold']];
-        $data[] = ['Average Sale', '₹' . number_format($salesData['average_sale'], 2)];
-        $data[] = ['Total Tax', '₹' . number_format($salesData['total_tax'], 2)];
-        $data[] = ['Total Discount', '₹' . number_format($salesData['total_discount'], 2)];
+        $data[] = ['Average Sale', '₹'.number_format($salesData['average_sale'], 2)];
+        $data[] = ['Total Tax', '₹'.number_format($salesData['total_tax'], 2)];
+        $data[] = ['Total Discount', '₹'.number_format($salesData['total_discount'], 2)];
         $data[] = [''];
-        
+
         // Add payment methods
         $data[] = ['SALES BY PAYMENT METHOD'];
         $data[] = ['Payment Method', 'Count', 'Total Amount'];
@@ -181,11 +184,11 @@ class SalesReport extends Page implements HasForms
             $data[] = [
                 ucfirst($method->payment_method),
                 $method->count,
-                '₹' . number_format($method->total, 2),
+                '₹'.number_format($method->total, 2),
             ];
         }
         $data[] = [''];
-        
+
         // Add top products
         $data[] = ['TOP 10 PRODUCTS'];
         $data[] = ['Product Name', 'Quantity Sold', 'Total Revenue'];
@@ -193,11 +196,11 @@ class SalesReport extends Page implements HasForms
             $data[] = [
                 $product->product_name,
                 $product->total_quantity,
-                '₹' . number_format($product->total_revenue, 2),
+                '₹'.number_format($product->total_revenue, 2),
             ];
         }
         $data[] = [''];
-        
+
         // Add daily sales
         $data[] = ['DAILY SALES'];
         $data[] = ['Date', 'Transactions', 'Total Amount'];
@@ -205,12 +208,12 @@ class SalesReport extends Page implements HasForms
             $data[] = [
                 $day->date,
                 $day->count,
-                '₹' . number_format($day->total, 2),
+                '₹'.number_format($day->total, 2),
             ];
         }
 
-        $filename = 'sales_report_' . $this->startDate . '_to_' . $this->endDate;
-        
+        $filename = 'sales_report_'.$this->startDate.'_to_'.$this->endDate;
+
         return app(ExportService::class)->downloadExcel($data, $filename);
     }
 }

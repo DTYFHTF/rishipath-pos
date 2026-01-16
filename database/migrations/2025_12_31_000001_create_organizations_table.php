@@ -20,7 +20,7 @@ return new class extends Migration
             $table->json('config')->nullable();
             $table->boolean('active')->default(true);
             $table->timestamps();
-            
+
             $table->index('slug');
             $table->index('country_code');
             $table->index('active');

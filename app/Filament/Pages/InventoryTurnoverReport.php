@@ -3,8 +3,8 @@
 namespace App\Filament\Pages;
 
 use App\Models\Product;
-use App\Models\ProductVariant;
 use App\Models\ProductBatch;
+use App\Models\ProductVariant;
 use App\Models\SaleItem;
 use App\Services\ExportService;
 use Carbon\Carbon;
@@ -14,14 +14,21 @@ use Illuminate\Support\Facades\DB;
 class InventoryTurnoverReport extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-arrow-path';
+
     protected static ?string $navigationLabel = 'Inventory Turnover';
+
     protected static ?string $navigationGroup = 'Reports';
+
     protected static ?int $navigationSort = 32;
+
     protected static string $view = 'filament.pages.inventory-turnover-report';
 
     public $startDate;
+
     public $endDate;
+
     public $storeId = '';
+
     public $categoryId = '';
 
     public function mount(): void
@@ -40,7 +47,7 @@ class InventoryTurnoverReport extends Page
             ->with(['sale', 'productVariant.product.category']);
 
         if ($this->storeId) {
-            $query->whereHas('sale', fn($q) => $q->where('store_id', $this->storeId));
+            $query->whereHas('sale', fn ($q) => $q->where('store_id', $this->storeId));
         }
 
         // Calculate COGS (Cost of Goods Sold)
@@ -48,17 +55,17 @@ class InventoryTurnoverReport extends Page
 
         // Calculate average inventory value
         $avgInventory = ProductBatch::query()
-            ->when($this->storeId, fn($q) => $q->where('store_id', $this->storeId))
+            ->when($this->storeId, fn ($q) => $q->where('store_id', $this->storeId))
             ->where('quantity_remaining', '>', 0)
             ->avg(DB::raw('quantity_remaining * COALESCE(purchase_price, 0)'));
 
         $turnoverRate = $avgInventory > 0 ? $cogs / $avgInventory : 0;
         $daysToSell = $turnoverRate > 0 ? 365 / $turnoverRate : 0;
 
-        $totalProducts = Product::when($this->categoryId, fn($q) => $q->where('category_id', $this->categoryId))->count();
+        $totalProducts = Product::when($this->categoryId, fn ($q) => $q->where('category_id', $this->categoryId))->count();
         $activeProducts = SaleItem::query()
             ->whereBetween('created_at', [$this->startDate, $this->endDate])
-            ->when($this->storeId, fn($q) => $q->whereHas('sale', fn($sq) => $sq->where('store_id', $this->storeId)))
+            ->when($this->storeId, fn ($q) => $q->whereHas('sale', fn ($sq) => $sq->where('store_id', $this->storeId)))
             ->distinct('product_variant_id')
             ->count();
 
@@ -86,8 +93,7 @@ class InventoryTurnoverReport extends Page
                 DB::raw('SUM(quantity * price_per_unit) as revenue'),
             ])
             ->whereBetween('created_at', [$this->startDate, $this->endDate])
-            ->when($this->storeId, fn($q) => 
-                $q->whereHas('sale', fn($sq) => $sq->where('store_id', $this->storeId))
+            ->when($this->storeId, fn ($q) => $q->whereHas('sale', fn ($sq) => $sq->where('store_id', $this->storeId))
             )
             ->groupBy('product_variant_id');
 
@@ -96,16 +102,18 @@ class InventoryTurnoverReport extends Page
         $products = [];
         foreach ($sales as $sale) {
             $variant = ProductVariant::with('product.category')->find($sale->product_variant_id);
-            if (!$variant) continue;
+            if (! $variant) {
+                continue;
+            }
 
             // Get current inventory
             $currentStock = ProductBatch::where('product_variant_id', $variant->id)
-                ->when($this->storeId, fn($q) => $q->where('store_id', $this->storeId))
+                ->when($this->storeId, fn ($q) => $q->where('store_id', $this->storeId))
                 ->sum('quantity_remaining');
 
             // Get average inventory during period
             $avgStock = ProductBatch::where('product_variant_id', $variant->id)
-                ->when($this->storeId, fn($q) => $q->where('store_id', $this->storeId))
+                ->when($this->storeId, fn ($q) => $q->where('store_id', $this->storeId))
                 ->where('created_at', '<=', $this->endDate)
                 ->avg('quantity_remaining') ?? 0;
 
@@ -128,7 +136,7 @@ class InventoryTurnoverReport extends Page
         }
 
         // Sort by revenue for ABC classification
-        usort($products, fn($a, $b) => $b['revenue'] <=> $a['revenue']);
+        usort($products, fn ($a, $b) => $b['revenue'] <=> $a['revenue']);
 
         // Calculate cumulative revenue percentage
         $totalRevenue = array_sum(array_column($products, 'revenue'));
@@ -159,7 +167,8 @@ class InventoryTurnoverReport extends Page
     public function getFastMovingProducts(int $limit = 10): array
     {
         $products = $this->getProductTurnover();
-        usort($products, fn($a, $b) => $b['turnover_rate'] <=> $a['turnover_rate']);
+        usort($products, fn ($a, $b) => $b['turnover_rate'] <=> $a['turnover_rate']);
+
         return array_slice($products, 0, $limit);
     }
 
@@ -169,7 +178,8 @@ class InventoryTurnoverReport extends Page
     public function getSlowMovingProducts(int $limit = 10): array
     {
         $products = $this->getProductTurnover();
-        usort($products, fn($a, $b) => $a['turnover_rate'] <=> $b['turnover_rate']);
+        usort($products, fn ($a, $b) => $a['turnover_rate'] <=> $b['turnover_rate']);
+
         return array_slice($products, 0, $limit);
     }
 
@@ -190,7 +200,7 @@ class InventoryTurnoverReport extends Page
             $class = $product['abc_class'];
             $analysis[$class]['count']++;
             $analysis[$class]['revenue'] += $product['revenue'];
-            
+
             // Estimate current stock value using average cost
             $avgCost = $product['cogs'] / max($product['total_sold'], 1);
             $analysis[$class]['stock_value'] += $product['current_stock'] * $avgCost;
@@ -208,37 +218,37 @@ class InventoryTurnoverReport extends Page
         $products = $this->getProductTurnover();
 
         $data = [];
-        
+
         // Add summary
         $data[] = ['INVENTORY TURNOVER REPORT'];
-        $data[] = ['Period', $this->startDate . ' to ' . $this->endDate];
+        $data[] = ['Period', $this->startDate.' to '.$this->endDate];
         $data[] = [''];
         $data[] = ['SUMMARY METRICS'];
-        $data[] = ['Turnover Rate', $metrics['turnover_rate'] . 'x'];
-        $data[] = ['Average Days to Sell', $metrics['days_to_sell'] . ' days'];
-        $data[] = ['COGS', '₹' . number_format($metrics['cogs'], 2)];
-        $data[] = ['Avg Inventory Value', '₹' . number_format($metrics['avg_inventory_value'], 2)];
+        $data[] = ['Turnover Rate', $metrics['turnover_rate'].'x'];
+        $data[] = ['Average Days to Sell', $metrics['days_to_sell'].' days'];
+        $data[] = ['COGS', '₹'.number_format($metrics['cogs'], 2)];
+        $data[] = ['Avg Inventory Value', '₹'.number_format($metrics['avg_inventory_value'], 2)];
         $data[] = [''];
-        
+
         // Add product details
         $data[] = ['Product', 'Variant', 'Category', 'Total Sold', 'Revenue', 'Current Stock', 'Turnover Rate', 'Days to Sell', 'ABC Class'];
-        
+
         foreach ($products as $product) {
             $data[] = [
                 $product['product_name'],
                 $product['variant_name'],
                 $product['category'],
                 $product['total_sold'],
-                '₹' . number_format($product['revenue'], 2),
+                '₹'.number_format($product['revenue'], 2),
                 $product['current_stock'],
-                $product['turnover_rate'] . 'x',
-                round($product['days_to_sell'], 1) . ' days',
+                $product['turnover_rate'].'x',
+                round($product['days_to_sell'], 1).' days',
                 $product['abc_class'],
             ];
         }
 
-        $filename = 'inventory_turnover_' . $this->startDate . '_to_' . $this->endDate;
-        
+        $filename = 'inventory_turnover_'.$this->startDate.'_to_'.$this->endDate;
+
         return app(ExportService::class)->downloadExcel($data, $filename);
     }
 }

@@ -11,14 +11,14 @@ use Illuminate\Support\Facades\Hash;
 
 /**
  * UserRoleSeeder - Creates test users with different roles
- * 
+ *
  * This seeder creates:
  * - 1 Super Admin (full access)
  * - 1 Store Manager (most features except system admin)
  * - 2 Cashiers (POS only)
  * - 1 Inventory Clerk (inventory management)
  * - 1 Accountant (reports only)
- * 
+ *
  * Run with: php artisan db:seed --class=UserRoleSeeder
  */
 class UserRoleSeeder extends Seeder

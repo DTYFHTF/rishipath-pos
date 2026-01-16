@@ -12,8 +12,9 @@ class SupplierSeeder extends Seeder
     {
         $org = Organization::where('slug', 'rishipath')->first();
 
-        if (!$org) {
+        if (! $org) {
             $this->command->error('Please run InitialSetupSeeder first!');
+
             return;
         }
 
@@ -69,6 +70,6 @@ class SupplierSeeder extends Seeder
             Supplier::create($supplierData);
         }
 
-        $this->command->info('✅ ' . count($suppliers) . ' suppliers seeded successfully!');
+        $this->command->info('✅ '.count($suppliers).' suppliers seeded successfully!');
     }
 }

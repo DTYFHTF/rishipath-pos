@@ -25,7 +25,7 @@ return new class extends Migration
             $table->decimal('tax_amount', 10, 2);
             $table->decimal('total', 10, 2);
             $table->timestamps();
-            
+
             $table->index('sale_id');
             $table->index('product_variant_id');
             $table->index('batch_id');

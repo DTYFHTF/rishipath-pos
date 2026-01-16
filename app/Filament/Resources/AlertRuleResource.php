@@ -3,23 +3,23 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\AlertRuleResource\Pages;
-use App\Filament\Resources\AlertRuleResource\RelationManagers;
 use App\Models\AlertRule;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class AlertRuleResource extends Resource
 {
     protected static ?string $model = AlertRule::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-bell-alert';
+
     protected static ?string $navigationGroup = 'Reports & Alerts';
+
     protected static ?int $navigationSort = 2;
+
     protected static ?string $navigationLabel = 'Alert Rules';
 
     public static function form(Form $form): Form
@@ -31,7 +31,7 @@ class AlertRuleResource extends Resource
                         Forms\Components\TextInput::make('name')
                             ->required()
                             ->maxLength(255),
-                        
+
                         Forms\Components\Select::make('type')
                             ->options([
                                 'low_stock' => 'Low Stock Alert',
@@ -42,7 +42,7 @@ class AlertRuleResource extends Resource
                             ])
                             ->required()
                             ->reactive(),
-                        
+
                         Forms\Components\Select::make('frequency')
                             ->options([
                                 'immediate' => 'Immediate',
@@ -51,18 +51,18 @@ class AlertRuleResource extends Resource
                             ])
                             ->required()
                             ->default('hourly'),
-                        
+
                         Forms\Components\Toggle::make('active')
                             ->required()
                             ->default(true),
-                        
+
                         Forms\Components\Select::make('store_id')
                             ->relationship('store', 'name')
                             ->label('Specific Store (Optional)')
                             ->placeholder('All stores'),
                     ])
                     ->columns(2),
-                
+
                 Forms\Components\Section::make('Alert Conditions')
                     ->schema([
                         Forms\Components\KeyValue::make('conditions')
@@ -71,7 +71,7 @@ class AlertRuleResource extends Resource
                             ->valueLabel('Value')
                             ->required(),
                     ]),
-                
+
                 Forms\Components\Section::make('Recipients')
                     ->schema([
                         Forms\Components\TagsInput::make('recipients')
@@ -89,40 +89,40 @@ class AlertRuleResource extends Resource
                 Tables\Columns\TextColumn::make('name')
                     ->searchable()
                     ->sortable(),
-                
+
                 Tables\Columns\TextColumn::make('type')
                     ->badge()
                     ->formatStateUsing(fn ($state) => ucwords(str_replace('_', ' ', $state)))
                     ->searchable(),
-                
+
                 Tables\Columns\IconColumn::make('active')
                     ->boolean()
                     ->sortable(),
-                
+
                 Tables\Columns\TextColumn::make('frequency')
                     ->badge()
-                    ->color(fn ($state) => match($state) {
+                    ->color(fn ($state) => match ($state) {
                         'immediate' => 'danger',
                         'hourly' => 'warning',
                         'daily' => 'success',
                         default => 'gray',
                     }),
-                
+
                 Tables\Columns\TextColumn::make('trigger_count')
                     ->label('Triggered')
                     ->numeric()
                     ->sortable(),
-                
+
                 Tables\Columns\TextColumn::make('store.name')
                     ->label('Store')
                     ->sortable()
                     ->placeholder('All Stores'),
-                
+
                 Tables\Columns\TextColumn::make('last_triggered_at')
                     ->dateTime()
                     ->sortable()
                     ->since(),
-                
+
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -137,7 +137,7 @@ class AlertRuleResource extends Resource
                         'inventory_discrepancy' => 'Inventory Discrepancy',
                         'sales_target' => 'Sales Target',
                     ]),
-                
+
                 Tables\Filters\TernaryFilter::make('active')
                     ->label('Status')
                     ->placeholder('All')

@@ -68,7 +68,7 @@ class PurchaseItem extends Model
         if ($this->product_variant_id && empty($this->product_name)) {
             $variant = ProductVariant::with('product')->find($this->product_variant_id);
             if ($variant) {
-                $this->product_name = $variant->product->name . ' - ' . $variant->pack_size . $variant->unit;
+                $this->product_name = $variant->product->name.' - '.$variant->pack_size.$variant->unit;
                 $this->product_sku = $variant->sku;
                 $this->unit = $variant->unit;
             }

@@ -13,16 +13,9 @@ class InventoryService
     /**
      * Adjust stock with full audit trail.
      *
-     * @param int $variantId
-     * @param int $storeId
-     * @param float $quantityChange Positive = increase, negative = decrease
-     * @param string $type One of: purchase, sale, adjustment, transfer, damage, return
-     * @param string|null $referenceType e.g. 'Sale', 'Purchase', 'StockAdjustment'
-     * @param int|null $referenceId
-     * @param float|null $costPrice
-     * @param string|null $notes
-     * @param int|null $userId
-     * @return StockLevel
+     * @param  float  $quantityChange  Positive = increase, negative = decrease
+     * @param  string  $type  One of: purchase, sale, adjustment, transfer, damage, return
+     * @param  string|null  $referenceType  e.g. 'Sale', 'Purchase', 'StockAdjustment'
      */
     public static function adjustStock(
         int $variantId,
@@ -158,7 +151,7 @@ class InventoryService
                 'StoreTransfer',
                 $toStoreId,
                 null,
-                "Transfer out to store {$toStoreId}" . ($notes ? ": {$notes}" : ''),
+                "Transfer out to store {$toStoreId}".($notes ? ": {$notes}" : ''),
                 $userId
             );
 
@@ -170,7 +163,7 @@ class InventoryService
                 'StoreTransfer',
                 $fromStoreId,
                 null,
-                "Transfer in from store {$fromStoreId}" . ($notes ? ": {$notes}" : ''),
+                "Transfer in from store {$fromStoreId}".($notes ? ": {$notes}" : ''),
                 $userId
             );
 

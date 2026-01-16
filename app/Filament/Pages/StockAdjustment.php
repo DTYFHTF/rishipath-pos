@@ -6,8 +6,8 @@ use App\Models\InventoryMovement;
 use App\Models\ProductVariant;
 use App\Models\StockLevel;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
@@ -34,17 +34,23 @@ class StockAdjustment extends Page implements HasForms
     }
 
     public $productVariantId;
+
     public $storeId;
+
     public $adjustmentType = 'increase';
+
     public $quantity;
+
     public $reason;
+
     public $notes;
+
     public $currentStock = 0;
 
     public function mount(): void
     {
         $stores = Auth::user()->stores ?? [];
-        $this->storeId = !empty($stores) ? $stores[0] : 1;
+        $this->storeId = ! empty($stores) ? $stores[0] : 1;
     }
 
     public function form(Form $form): Form
@@ -57,25 +63,26 @@ class StockAdjustment extends Page implements HasForms
                     ->required()
                     ->default(function () {
                         $stores = Auth::user()->stores ?? [];
-                        return !empty($stores) ? $stores[0] : 1;
+
+                        return ! empty($stores) ? $stores[0] : 1;
                     })
                     ->live()
                     ->afterStateUpdated(fn () => $this->updateCurrentStock()),
-                
+
                 Select::make('productVariantId')
                     ->label('Product Variant')
                     ->options(function () {
                         return ProductVariant::with('product')
                             ->get()
                             ->mapWithKeys(fn ($variant) => [
-                                $variant->id => "{$variant->product->name} - {$variant->pack_size}{$variant->unit} ({$variant->sku})"
+                                $variant->id => "{$variant->product->name} - {$variant->pack_size}{$variant->unit} ({$variant->sku})",
                             ]);
                     })
                     ->searchable()
                     ->required()
                     ->live()
                     ->afterStateUpdated(fn () => $this->updateCurrentStock()),
-                
+
                 Select::make('adjustmentType')
                     ->label('Adjustment Type')
                     ->options([
@@ -86,7 +93,7 @@ class StockAdjustment extends Page implements HasForms
                     ->required()
                     ->default('increase')
                     ->live(),
-                
+
                 TextInput::make('quantity')
                     ->label(fn ($get) => $get('adjustmentType') === 'set' ? 'New Stock Level' : 'Adjustment Quantity')
                     ->required()
@@ -95,7 +102,7 @@ class StockAdjustment extends Page implements HasForms
                     ->step(0.001)
                     ->live()
                     ->helperText(fn () => "Current stock: {$this->currentStock}"),
-                
+
                 Select::make('reason')
                     ->label('Reason')
                     ->options([
@@ -108,7 +115,7 @@ class StockAdjustment extends Page implements HasForms
                         'other' => 'Other',
                     ])
                     ->required(),
-                
+
                 Textarea::make('notes')
                     ->label('Notes')
                     ->rows(3)
@@ -122,18 +129,18 @@ class StockAdjustment extends Page implements HasForms
             $stock = StockLevel::where('product_variant_id', $this->productVariantId)
                 ->where('store_id', $this->storeId)
                 ->first();
-            
+
             $this->currentStock = $stock ? $stock->quantity : 0;
         }
     }
 
     public function getNewStockLevel(): float
     {
-        if (!$this->quantity) {
+        if (! $this->quantity) {
             return $this->currentStock;
         }
 
-        return match($this->adjustmentType) {
+        return match ($this->adjustmentType) {
             'increase' => $this->currentStock + $this->quantity,
             'decrease' => max(0, $this->currentStock - $this->quantity),
             'set' => $this->quantity,
@@ -168,7 +175,7 @@ class StockAdjustment extends Page implements HasForms
 
             $oldQuantity = $stock->quantity;
             $newQuantity = $this->getNewStockLevel();
-            
+
             $stock->quantity = $newQuantity;
             $stock->last_movement_at = now();
             $stock->save();
@@ -205,7 +212,7 @@ class StockAdjustment extends Page implements HasForms
 
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             Notification::make()
                 ->danger()
                 ->title('Error adjusting stock')

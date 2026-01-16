@@ -7,20 +7,21 @@ use App\Models\ProductVariant;
 use App\Services\BarcodeService;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Notifications\Notification;
 
 class ProductVariantResource extends Resource
 {
     protected static ?string $model = ProductVariant::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
-    
+
     protected static ?string $navigationGroup = 'Product Catalog';
-    
+
     protected static ?int $navigationSort = 2;
+
     public static function form(Form $form): Form
     {
         return $form
@@ -140,6 +141,7 @@ class ProductVariantResource extends Resource
                     ]),
             ]);
     }
+
     public static function table(Table $table): Table
     {
         return $table
@@ -148,16 +150,16 @@ class ProductVariantResource extends Resource
                     ->label('Product')
                     ->searchable()
                     ->sortable(),
-                    
+
                 Tables\Columns\TextColumn::make('pack_size')
                     ->label('Size')
-                    ->formatStateUsing(fn ($record) => $record->pack_size . ' ' . $record->unit),
-                    
+                    ->formatStateUsing(fn ($record) => $record->pack_size.' '.$record->unit),
+
                 Tables\Columns\TextColumn::make('sku')
                     ->label('SKU')
                     ->searchable()
                     ->copyable(),
-                    
+
                 Tables\Columns\TextColumn::make('barcode')
                     ->label('Barcode')
                     ->searchable()
@@ -165,12 +167,12 @@ class ProductVariantResource extends Resource
                     ->placeholder('No barcode')
                     ->badge()
                     ->color(fn ($state) => $state ? 'success' : 'gray'),
-                    
+
                 Tables\Columns\TextColumn::make('mrp_india')
                     ->label('MRP')
                     ->money('INR')
                     ->sortable(),
-                    
+
                 Tables\Columns\IconColumn::make('active')
                     ->boolean(),
             ])
@@ -190,31 +192,31 @@ class ProductVariantResource extends Resource
                     ->label('Generate')
                     ->icon('heroicon-o-qr-code')
                     ->color('primary')
-                    ->visible(fn (ProductVariant $record) => !$record->barcode)
+                    ->visible(fn (ProductVariant $record) => ! $record->barcode)
                     ->action(function (ProductVariant $record) {
-                        $barcodeService = new BarcodeService();
+                        $barcodeService = new BarcodeService;
                         $barcode = $barcodeService->generateBarcodeForVariant($record);
-                        
+
                         Notification::make()
                             ->success()
                             ->title('Barcode Generated')
                             ->body("Barcode: {$barcode}")
                             ->send();
                     }),
-                    
+
                 Tables\Actions\Action::make('view_barcode')
                     ->label('View')
                     ->icon('heroicon-o-eye')
                     ->color('info')
-                    ->visible(fn (ProductVariant $record) => (bool)$record->barcode)
-                    ->modalHeading(fn (ProductVariant $record) => 'Barcode: ' . $record->barcode)
+                    ->visible(fn (ProductVariant $record) => (bool) $record->barcode)
+                    ->modalHeading(fn (ProductVariant $record) => 'Barcode: '.$record->barcode)
                     ->modalContent(fn (ProductVariant $record) => view('filament.components.barcode-display', [
                         'record' => $record,
-                        'barcodeImage' => (new BarcodeService())->generateBarcodeImage($record->barcode),
+                        'barcodeImage' => (new BarcodeService)->generateBarcodeImage($record->barcode),
                     ]))
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Close'),
-                    
+
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
@@ -224,16 +226,16 @@ class ProductVariantResource extends Resource
                         ->icon('heroicon-o-qr-code')
                         ->color('primary')
                         ->action(function ($records) {
-                            $barcodeService = new BarcodeService();
+                            $barcodeService = new BarcodeService;
                             $generated = 0;
-                            
+
                             foreach ($records as $record) {
-                                if (!$record->barcode) {
+                                if (! $record->barcode) {
                                     $barcodeService->generateBarcodeForVariant($record);
                                     $generated++;
                                 }
                             }
-                            
+
                             Notification::make()
                                 ->success()
                                 ->title('Barcodes Generated')
@@ -241,7 +243,7 @@ class ProductVariantResource extends Resource
                                 ->send();
                         })
                         ->deselectRecordsAfterCompletion(),
-                        
+
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
@@ -256,13 +258,14 @@ class ProductVariantResource extends Resource
             'edit' => Pages\EditProductVariant::route('/{record}/edit'),
         ];
     }
-    
+
     public static function getNavigationBadge(): ?string
     {
         $withoutBarcode = static::getModel()::whereNull('barcode')->count();
+
         return $withoutBarcode > 0 ? (string) $withoutBarcode : null;
     }
-    
+
     public static function getNavigationBadgeColor(): ?string
     {
         return 'warning';

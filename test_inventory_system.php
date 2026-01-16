@@ -1,18 +1,17 @@
 <?php
 
-require __DIR__ . '/vendor/autoload.php';
+require __DIR__.'/vendor/autoload.php';
 
-$app = require_once __DIR__ . '/bootstrap/app.php';
+$app = require_once __DIR__.'/bootstrap/app.php';
 $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 
-use App\Services\InventoryService;
-use App\Models\ProductVariant;
-use App\Models\StockLevel;
 use App\Models\InventoryMovement;
+use App\Models\ProductVariant;
 use App\Models\Purchase;
 use App\Models\PurchaseItem;
-use App\Models\Supplier;
 use App\Models\Store;
+use App\Models\Supplier;
+use App\Services\InventoryService;
 
 echo "=== INVENTORY SYSTEM TEST ===\n\n";
 
@@ -20,7 +19,7 @@ echo "=== INVENTORY SYSTEM TEST ===\n\n";
 echo "1. Testing InventoryService...\n";
 
 $variant = ProductVariant::first();
-if (!$variant) {
+if (! $variant) {
     echo "   ERROR: No product variants found\n";
     exit(1);
 }
@@ -62,7 +61,7 @@ if ($movement) {
 echo "2. Testing Purchase Creation...\n";
 
 $supplier = Supplier::first();
-if (!$supplier) {
+if (! $supplier) {
     echo "   Creating test supplier...\n";
     $supplier = Supplier::create([
         'organization_id' => 1,
@@ -149,18 +148,18 @@ $stores = Store::take(2)->get();
 if ($stores->count() >= 2) {
     $fromStore = $stores[0];
     $toStore = $stores[1];
-    
+
     $fromBefore = InventoryService::getStock($variant->id, $fromStore->id);
     $toBefore = InventoryService::getStock($variant->id, $toStore->id);
-    
+
     echo "   From store ({$fromStore->name}) before: {$fromBefore}\n";
     echo "   To store ({$toStore->name}) before: {$toBefore}\n";
-    
+
     InventoryService::transferStock($variant->id, $fromStore->id, $toStore->id, 5, 'Test transfer');
-    
+
     $fromAfter = InventoryService::getStock($variant->id, $fromStore->id);
     $toAfter = InventoryService::getStock($variant->id, $toStore->id);
-    
+
     echo "   From store after: {$fromAfter}\n";
     echo "   To store after: {$toAfter}\n";
     echo "   ✅ Stock Transfer PASSED\n\n";

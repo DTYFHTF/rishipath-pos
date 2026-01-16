@@ -58,7 +58,7 @@ class Reward extends Model
      */
     public function isValid(): bool
     {
-        if (!$this->active) {
+        if (! $this->active) {
             return false;
         }
 
@@ -78,7 +78,7 @@ class Reward extends Model
      */
     public function canBeRedeemedBy(Customer $customer): bool
     {
-        if (!$this->isValid()) {
+        if (! $this->isValid()) {
             return false;
         }
 
@@ -88,8 +88,8 @@ class Reward extends Model
         }
 
         // Check tier restrictions
-        if (!empty($this->tier_restrictions) && $customer->loyaltyTier) {
-            if (!in_array($customer->loyaltyTier->id, $this->tier_restrictions)) {
+        if (! empty($this->tier_restrictions) && $customer->loyaltyTier) {
+            if (! in_array($customer->loyaltyTier->id, $this->tier_restrictions)) {
                 return false;
             }
         }

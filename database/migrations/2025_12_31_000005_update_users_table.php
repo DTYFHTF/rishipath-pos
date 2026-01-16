@@ -17,7 +17,7 @@ return new class extends Migration
             $table->json('permissions')->after('stores')->nullable();
             $table->boolean('active')->after('permissions')->default(true);
             $table->timestamp('last_login_at')->after('active')->nullable();
-            
+
             $table->index('organization_id');
             $table->index('role_id');
         });
@@ -36,7 +36,7 @@ return new class extends Migration
                 'stores',
                 'permissions',
                 'active',
-                'last_login_at'
+                'last_login_at',
             ]);
         });
     }

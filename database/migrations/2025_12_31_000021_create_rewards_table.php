@@ -26,7 +26,7 @@ return new class extends Migration
             $table->string('image_url')->nullable();
             $table->boolean('active')->default(true);
             $table->timestamps();
-            
+
             $table->index('organization_id');
             $table->index('type');
             $table->index('points_required');
