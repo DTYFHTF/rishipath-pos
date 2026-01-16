@@ -94,7 +94,7 @@ class EnhancedPOS extends Page
 
         // Use a single DRY query with weighted relevance
         return ProductVariant::query()
-            ->with('product')
+            ->with(['product', 'storePricing'])
             ->where('active', true)
             ->whereHas('product', fn ($q) => $q->where('active', true))
             ->where(function ($query) use ($search) {
@@ -123,13 +123,17 @@ class EnhancedPOS extends Page
             ->limit(10)
             ->get()
             ->map(function ($variant) {
+                $storeId = $this->resolveStoreId();
+                $storePricing = $variant->storePricing->firstWhere('store_id', $storeId);
+                $price = $storePricing?->custom_price ?? $variant->selling_price_nepal ?? $variant->base_price ?? 0;
+
                 return [
                     'id' => $variant->id,
                     'product_name' => $variant->product->name,
                     'variant_name' => $variant->pack_size.' '.$variant->unit,
                     'sku' => $variant->sku,
                     'barcode' => $variant->barcode,
-                    'price' => $variant->selling_price_nepal,
+                    'price' => $price,
                     'image' => $variant->product->image_url,
                     'other_names' => collect([
                         $variant->product->name_hindi,
