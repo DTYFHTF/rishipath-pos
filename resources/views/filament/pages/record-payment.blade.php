@@ -73,7 +73,7 @@
                         </thead>
                         <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                             @foreach($recentPayments as $payment)
-                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
+                                <tr class="hover:bg-gray-200/30 dark:hover:bg-gray-700/50 transition-colors">
                                     <td class="px-4 py-3 text-gray-900 dark:text-gray-100">
                                         {{ $payment->created_at->format('h:i A') }}
                                     </td>

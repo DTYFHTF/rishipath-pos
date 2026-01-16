@@ -11,10 +11,14 @@ use App\Models\Customer;
 use App\Models\PosSession;
 use App\Models\PaymentSplit;
 use App\Models\CustomerLedgerEntry;
+use App\Models\Store;
+use App\Models\Terminal;
 use App\Services\BarcodeService;
 use App\Services\LoyaltyService;
 use App\Services\CustomerLedgerService;
 use App\Services\WhatsAppService;
+use App\Services\InventoryService;
+use Illuminate\Support\Facades\Log;
 use Filament\Pages\Page;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
@@ -25,8 +29,13 @@ class EnhancedPOS extends Page
     protected static ?string $navigationIcon = 'heroicon-o-shopping-cart';
     protected static string $view = 'filament.pages.enhanced-p-o-s';
     protected static ?string $navigationLabel = 'POS';
-    protected static ?string $title = 'Point of Sale';
     protected static ?int $navigationSort = 1;
+
+    public function getTitle(): string
+    {
+        $storeName = $this->currentTerminal?->store?->name ?? 'POS';
+        return "Point of Sale - {$storeName}";
+    }
 
     public static function canAccess(): bool
     {
@@ -46,9 +55,15 @@ class EnhancedPOS extends Page
     
     // WhatsApp receipt
     public $sendWhatsApp = false;
+    // Prevent duplicate sale submissions
+    public $processingSale = false;
     
     // Keyboard shortcuts enabled
     public $shortcutsEnabled = true;
+    // Available stores for selector
+    public $stores = [];
+    // Terminal tied to this POS instance (by device or active terminal)
+    public $currentTerminal = null;
 
     protected $listeners = [
         'switchSession' => 'switchToSession',
@@ -142,6 +157,38 @@ class EnhancedPOS extends Page
                     ->send();
             }
         }
+
+        // Load stores for current user's organization
+        $this->stores = Store::where('organization_id', auth()->user()->organization_id)
+            ->orderBy('name')
+            ->get();
+
+        // Determine current terminal: prefer device-specific env, else any active terminal
+        $deviceId = env('POS_DEVICE_ID');
+        $this->currentTerminal = null;
+        if ($deviceId) {
+            $this->currentTerminal = Terminal::where('device_id', $deviceId)->first();
+        }
+        if (! $this->currentTerminal) {
+            $this->currentTerminal = Terminal::where('active', true)->first();
+        }
+    }
+
+    /**
+     * Resolve the store id to use for POS actions: prefer terminal->store_id, fall back to user's first store or first store in system.
+     */
+    protected function resolveStoreId(): ?int
+    {
+        if ($this->currentTerminal?->store_id) {
+            return $this->currentTerminal->store_id;
+        }
+
+        $userStores = auth()->user()->stores ?? [];
+        if (!empty($userStores)) {
+            return $userStores[0];
+        }
+
+        return Store::first()?->id;
     }
 
     /**
@@ -160,6 +207,8 @@ class EnhancedPOS extends Page
                 'id' => $session->id,
                 'key' => $session->session_key,
                 'name' => $session->session_name,
+                'store_id' => $session->store_id,
+                'store_name' => $session->store?->name,
                 'customer_id' => $session->customer_id,
                 'customer_name' => $session->customer?->name,
                 'cart' => $session->cart_items ?? [],
@@ -272,7 +321,7 @@ class EnhancedPOS extends Page
 
         $session = PosSession::createNew([
             'organization_id' => auth()->user()->organization_id,
-            'store_id' => (!empty(auth()->user()->stores) ? auth()->user()->stores[0] : \App\Models\Store::first()?->id),
+            'store_id' => $this->resolveStoreId(),
             'cashier_id' => auth()->id(),
             'session_name' => "Cart #{$sessionCount}",
         ]);
@@ -281,6 +330,8 @@ class EnhancedPOS extends Page
             'id' => $session->id,
             'key' => $session->session_key,
             'name' => $session->session_name,
+            'store_id' => $session->store_id,
+            'store_name' => $session->store?->name,
             'customer_id' => null,
             'customer_name' => null,
             'cart' => [],
@@ -305,6 +356,15 @@ class EnhancedPOS extends Page
     }
 
     /**
+     * Computed property for the active store name (used by the view)
+     */
+    public function getActiveStoreNameProperty(): ?string
+    {
+        $session = $this->getCurrentSession();
+        return $session ? ($session['store_name'] ?? null) : null;
+    }
+
+    /**
      * Switch to a different session
      */
     public function switchToSession($sessionKey): void
@@ -326,6 +386,54 @@ class EnhancedPOS extends Page
             $session?->resume();
             $this->sessions[$sessionKey]['status'] = 'active';
         }
+    }
+
+    /**
+     * Change the store associated with a POS session.
+     * Only users with `switch_store` permission or super-admin may change stores.
+     */
+    public function changeSessionStore(string $sessionKey, $storeId): void
+    {
+        $user = auth()->user();
+
+        if (! ($user?->hasPermission('switch_store') || $user?->isSuperAdmin())) {
+            Notification::make()->warning()->title('Not allowed')->body('You do not have permission to change store.')->send();
+            return;
+        }
+
+        if (!isset($this->sessions[$sessionKey])) {
+            return;
+        }
+
+        // Prevent switching if cart has items
+        if (!empty($this->sessions[$sessionKey]['cart'])) {
+            Notification::make()->warning()->title('Cannot change store')->body('Please empty the cart before changing the store.')->send();
+            return;
+        }
+
+        $session = PosSession::where('session_key', $sessionKey)->first();
+        if (!$session) {
+            Notification::make()->danger()->title('Session not found')->send();
+            return;
+        }
+
+        $oldStoreId = $session->store_id;
+        $newStoreId = (int) $storeId;
+
+        $session->update(['store_id' => $newStoreId]);
+
+        // Update local session cache
+        $this->sessions[$sessionKey]['store_id'] = $newStoreId;
+        $this->sessions[$sessionKey]['store_name'] = Store::find($newStoreId)?->name;
+
+        Log::info('POS session store changed', [
+            'session_key' => $sessionKey,
+            'old_store_id' => $oldStoreId,
+            'new_store_id' => $newStoreId,
+            'user_id' => $user?->id,
+        ]);
+
+        Notification::make()->success()->title('Store Updated')->body('Session store updated successfully')->send();
     }
 
     /**
@@ -610,6 +718,18 @@ class EnhancedPOS extends Page
      */
     public function completeSale(): void
     {
+        // Prevent duplicate submissions from double-clicks or concurrent requests
+        if ($this->processingSale) {
+            Notification::make()
+                ->warning()
+                ->title('Processing')
+                ->body('Sale is already being processed. Please wait.')
+                ->send();
+            return;
+        }
+
+        $this->processingSale = true;
+
         $session = $this->getCurrentSession();
         
         if (!$session || empty($session['cart'])) {
@@ -623,11 +743,21 @@ class EnhancedPOS extends Page
         DB::beginTransaction();
         
         try {
-            $storeId = (!empty(auth()->user()->stores) ? auth()->user()->stores[0] : \App\Models\Store::first()?->id);
+            $storeId = $this->resolveStoreId();
             $terminal = \App\Models\Terminal::where('store_id', $storeId)->where('active', true)->first();
             
             // Create sale
             $receiptNumber = 'RCPT-' . strtoupper(substr(md5(uniqid()), 0, 8));
+
+            // Normalize payment method to match DB enum: ['cash','upi','card','esewa','khalti','other']
+            $allowedPaymentMethods = ['cash', 'upi', 'card', 'esewa', 'khalti'];
+            $paymentMethod = $session['payment_method'] ?? 'other';
+            if ($this->showSplitPayment) {
+                $paymentMethod = 'other';
+            } else {
+                $paymentMethod = in_array($paymentMethod, $allowedPaymentMethods, true) ? $paymentMethod : 'other';
+            }
+
             $sale = Sale::create([
                 'organization_id' => auth()->user()->organization_id,
                 'store_id' => $storeId,
@@ -642,7 +772,7 @@ class EnhancedPOS extends Page
                 'discount_amount' => $session['discount'],
                 'tax_amount' => $session['tax'],
                 'total_amount' => $session['total'],
-                'payment_method' => $this->showSplitPayment ? 'split' : $session['payment_method'],
+                'payment_method' => $paymentMethod,
                 'payment_status' => 'paid',
                 'amount_paid' => $session['amount_received'] ?: $session['total'],
                 'amount_change' => max(0, ($session['amount_received'] ?: $session['total']) - $session['total']),
@@ -676,10 +806,17 @@ class EnhancedPOS extends Page
                     'total' => $total,
                 ]);
 
-                // Update stock
-                StockLevel::where('product_variant_id', $item['variant_id'])
-                    ->where('store_id', (!empty(auth()->user()->stores) ? auth()->user()->stores[0] : \App\Models\Store::first()?->id))
-                    ->decrement('quantity', $item['quantity']);
+                // Update stock with audit trail
+                InventoryService::decreaseStock(
+                    $item['variant_id'],
+                    $this->resolveStoreId(),
+                    $item['quantity'],
+                    'sale',
+                    'Sale',
+                    $sale->id,
+                    $item['cost_price'] ?? null,
+                    "Sale {$sale->invoice_number}"
+                );
             }
 
             // Save split payments
@@ -722,10 +859,7 @@ class EnhancedPOS extends Page
                 ->send();
 
             // Reset WhatsApp toggle
-            $this->sendWhatsApp = falses()
-                ->title('Sale Completed')
-                ->body("Invoice: {$sale->invoice_number}")
-                ->send();
+            $this->sendWhatsApp = false;
 
             // Create new session or switch
             if (empty($this->sessions)) {
@@ -742,6 +876,9 @@ class EnhancedPOS extends Page
                 ->title('Error')
                 ->body($e->getMessage())
                 ->send();
+        } finally {
+            // Always reset processing flag so UI can continue
+            $this->processingSale = false;
         }
     }
 

@@ -42,6 +42,9 @@
         @endphp
 
         @if($session)
+            <div class="flex items-center justify-end mb-2">
+                <div class="text-sm text-gray-500">Session: <span class="font-medium">{{ $session['name'] }}</span></div>
+            </div>
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 {{-- Left: Product Search & Cart --}}
                 <div class="lg:col-span-2 space-y-4">
@@ -413,7 +416,7 @@
                     @endif
 
                     {{-- WhatsApp Receipt Toggle --}}
-                    @if($session['customer_id'] && $session['customer']?->phone)
+                    @if(!empty($session['customer_id']) && data_get($session, 'customer.phone'))
                         <x-filament::card>
                             <label class="flex items-center cursor-pointer">
                                 <input
@@ -424,7 +427,7 @@
                                 <div class="ml-3 flex-1">
                                     <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Send receipt via WhatsApp</span>
                                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                        To: {{ $session['customer']->phone }}
+                                        To: {{ data_get($session, 'customer.phone') }}
                                     </p>
                                 </div>
                                 <x-heroicon-o-chat-bubble-left-right class="w-5 h-5 text-green-600 dark:text-green-400" />
@@ -527,7 +530,7 @@
                         <div class="flex gap-3">
                             <button
                                 wire:click="$set('showSplitPayment', false)"
-                                class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                                class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-200/30 dark:hover:bg-gray-700/50 transition-colors"
                             >
                                 Cancel
                             </button>

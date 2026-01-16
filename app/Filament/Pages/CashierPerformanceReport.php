@@ -161,9 +161,13 @@ class CashierPerformanceReport extends Page
             return [];
         }
 
+        // Use a DB-driver compatible hour extraction. SQLite does not have HOUR(), use strftime instead.
+        $driver = DB::connection()->getDriverName();
+        $hourExpr = $driver === 'sqlite' ? "strftime('%H', created_at)" : 'HOUR(created_at)';
+
         $sales = Sale::query()
             ->select([
-                DB::raw('HOUR(created_at) as hour'),
+                DB::raw("{$hourExpr} as hour"),
                 DB::raw('COUNT(*) as total_sales'),
                 DB::raw('SUM(total_amount) as total_revenue'),
                 DB::raw('AVG(total_amount) as avg_sale_value'),
@@ -209,10 +213,17 @@ class CashierPerformanceReport extends Page
 
         $dailyData = [];
         foreach ($query as $sale) {
-            $date = $sale->date;
-            if (!isset($dailyData[$date])) {
-                $dailyData[$date] = [
-                    'date' => $date,
+            // Ensure date is a string key (cast Carbon to Y-m-d if necessary)
+            $dateValue = $sale->date;
+            if ($dateValue instanceof \Illuminate\Support\Carbon) {
+                $dateKey = $dateValue->toDateString();
+            } else {
+                $dateKey = (string) $dateValue;
+            }
+
+            if (!isset($dailyData[$dateKey])) {
+                $dailyData[$dateKey] = [
+                    'date' => $dateKey,
                     'cashiers' => [],
                     'total_sales' => 0,
                     'total_revenue' => 0,
@@ -220,14 +231,14 @@ class CashierPerformanceReport extends Page
             }
 
             $cashier = User::find($sale->cashier_id);
-            $dailyData[$date]['cashiers'][] = [
+            $dailyData[$dateKey]['cashiers'][] = [
                 'name' => $cashier?->name ?? 'Unknown',
                 'sales' => $sale->total_sales,
                 'revenue' => $sale->total_revenue,
             ];
 
-            $dailyData[$date]['total_sales'] += $sale->total_sales;
-            $dailyData[$date]['total_revenue'] += $sale->total_revenue;
+            $dailyData[$dateKey]['total_sales'] += $sale->total_sales;
+            $dailyData[$dateKey]['total_revenue'] += $sale->total_revenue;
         }
 
         return array_values($dailyData);

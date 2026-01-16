@@ -61,25 +61,25 @@
         @endphp
         
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg shadow p-6 text-white">
+            <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg shadow p-6 text-gray-900 dark:text-white">
                 <div class="text-sm opacity-90">Turnover Rate</div>
                 <div class="text-3xl font-bold mt-2">{{ $metrics['turnover_rate'] }}x</div>
                 <div class="text-xs opacity-75 mt-1">Times inventory sold</div>
             </div>
             
-            <div class="bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-lg shadow p-6 text-white">
+            <div class="bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-lg shadow p-6 text-gray-900 dark:text-white">
                 <div class="text-sm opacity-90">Days to Sell</div>
                 <div class="text-3xl font-bold mt-2">{{ $metrics['days_to_sell'] }}</div>
                 <div class="text-xs opacity-75 mt-1">Average inventory age</div>
             </div>
             
-            <div class="bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg shadow p-6 text-white">
+            <div class="bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg shadow p-6 text-gray-900 dark:text-white">
                 <div class="text-sm opacity-90">Active Products</div>
                 <div class="text-3xl font-bold mt-2">{{ $metrics['active_products'] }}</div>
                 <div class="text-xs opacity-75 mt-1">{{ $metrics['inactive_products'] }} inactive</div>
             </div>
             
-            <div class="bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg shadow p-6 text-white">
+            <div class="bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg shadow p-6 text-gray-900 dark:text-white">
                 <div class="text-sm opacity-90">Avg Inventory Value</div>
                 <div class="text-3xl font-bold mt-2">₹{{ number_format($metrics['avg_inventory_value'], 0) }}</div>
                 <div class="text-xs opacity-75 mt-1">COGS: ₹{{ number_format($metrics['cogs'], 0) }}</div>
@@ -135,7 +135,7 @@
                     </div>
                 </div>
 
-                <div class="border-2 border-gray-300 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-900/20">
+                <div class="border-2 border-gray-300 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800/20">
                     <div class="text-2xl font-bold text-gray-600 dark:text-gray-400 mb-1">Class C</div>
                     <div class="text-sm text-gray-600 dark:text-gray-400">Low Priority</div>
                     <div class="mt-3 space-y-1">
@@ -163,7 +163,7 @@
                 <h3 class="text-lg font-semibold mb-4 text-green-600 dark:text-green-400">🚀 Fast Moving Products</h3>
                 <div class="space-y-3">
                     @foreach($this->getFastMovingProducts(10) as $product)
-                        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-200/30 dark:hover:bg-gray-700/50 transition-colors">
                             <div class="flex items-center justify-between mb-2">
                                 <div>
                                     <div class="font-semibold text-sm">{{ $product['product_name'] }}</div>
@@ -201,7 +201,7 @@
                 <h3 class="text-lg font-semibold mb-4 text-orange-600 dark:text-orange-400">🐌 Slow Moving Products</h3>
                 <div class="space-y-3">
                     @foreach($this->getSlowMovingProducts(10) as $product)
-                        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-200/30 dark:hover:bg-gray-700/50 transition-colors">
                             <div class="flex items-center justify-between mb-2">
                                 <div>
                                     <div class="font-semibold text-sm">{{ $product['product_name'] }}</div>
@@ -254,7 +254,7 @@
                     </thead>
                     <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                         @foreach($this->getProductTurnover() as $product)
-                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <tr class="hover:bg-gray-200/30 dark:hover:bg-gray-700/50 transition-colors">
                                 <td class="px-3 py-2">
                                     <div class="font-medium">{{ $product['product_name'] }}</div>
                                     <div class="text-xs text-gray-500">{{ $product['variant_name'] }}</div>

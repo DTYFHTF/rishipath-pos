@@ -30,13 +30,16 @@ echo 'Using customer: ' . $customer->name . ' (' . $customer->phone . ')' . PHP_
 // Get a product variant
 $variant = ProductVariant::with('product')->first();
 
-// Create test sale
+// Create test sale (use unique receipt/invoice to avoid UNIQUE constraint)
+$rand = substr(md5(uniqid((string) mt_rand(), true)), 0, 6);
+$ts = time();
+
 $sale = Sale::create([
     'organization_id' => 1,
     'store_id' => 1,
     'terminal_id' => 1,
-    'receipt_number' => 'RCPT-WA-TEST',
-    'invoice_number' => 'INV-WA-TEST',
+    'receipt_number' => 'RCPT-WA-' . $ts . '-' . $rand,
+    'invoice_number' => 'INV-WA-' . $ts . '-' . $rand,
     'cashier_id' => 1,
     'customer_id' => $customer->id,
     'customer_name' => $customer->name,
