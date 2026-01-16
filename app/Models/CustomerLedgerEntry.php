@@ -127,7 +127,10 @@ class CustomerLedgerEntry extends Model
     {
         $customer = $sale->customer;
         $previousBalance = self::getCustomerBalance($customer->id);
-        
+        // Normalize payment method to allowed ledger methods
+        $allowed = ['cash', 'card', 'upi', 'bank_transfer', 'cheque', 'credit'];
+        $ledgerPaymentMethod = in_array($sale->payment_method, $allowed, true) ? $sale->payment_method : null;
+
         return self::create([
             'organization_id' => $sale->organization_id,
             'store_id' => $sale->store_id,
@@ -142,7 +145,7 @@ class CustomerLedgerEntry extends Model
             'description' => "Sale - Invoice #{$sale->invoice_number}",
             'transaction_date' => $sale->date,
             'due_date' => $sale->payment_method === 'credit' ? now()->addDays(30) : null,
-            'payment_method' => $sale->payment_method === 'credit' ? null : $sale->payment_method,
+            'payment_method' => $ledgerPaymentMethod,
             'status' => $sale->payment_method === 'credit' ? 'pending' : 'completed',
             'created_by' => $sale->cashier_id,
         ]);

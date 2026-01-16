@@ -61,25 +61,25 @@
         @endphp
         
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow p-6 text-white">
+            <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow p-6 text-gray-900 dark:text-white">
                 <div class="text-sm opacity-90">Total Sales</div>
                 <div class="text-3xl font-bold mt-2">{{ number_format($metrics['total_sales']) }}</div>
                 <div class="text-xs opacity-75 mt-1">{{ $metrics['active_cashiers'] }} active cashiers</div>
             </div>
             
-            <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow p-6 text-white">
+            <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow p-6 text-gray-900 dark:text-white">
                 <div class="text-sm opacity-90">Total Revenue</div>
                 <div class="text-3xl font-bold mt-2">₹{{ number_format($metrics['total_revenue'], 0) }}</div>
                 <div class="text-xs opacity-75 mt-1">Avg: ₹{{ number_format($metrics['avg_sale_value'], 0) }}/sale</div>
             </div>
             
-            <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow p-6 text-white">
+            <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow p-6 text-gray-900 dark:text-white">
                 <div class="text-sm opacity-90">Items Sold</div>
                 <div class="text-3xl font-bold mt-2">{{ number_format($metrics['total_items']) }}</div>
                 <div class="text-xs opacity-75 mt-1">Avg: {{ number_format($metrics['avg_items_per_sale'], 1) }} items/sale</div>
             </div>
             
-            <div class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg shadow p-6 text-white">
+            <div class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg shadow p-6 text-gray-900 dark:text-white">
                 <div class="text-sm opacity-90">Sales Per Hour</div>
                 <div class="text-3xl font-bold mt-2">{{ number_format($metrics['avg_sales_per_hour'], 1) }}</div>
                 <div class="text-xs opacity-75 mt-1">Average across all cashiers</div>
@@ -132,7 +132,7 @@
                     </thead>
                     <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                         @foreach($this->getCashierPerformance() as $cashier)
-                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <tr class="hover:bg-gray-200/30 dark:hover:bg-gray-700/50 transition-colors">
                                 <td class="px-3 py-2 font-medium">{{ $cashier['cashier_name'] }}</td>
                                 <td class="px-3 py-2 text-right">{{ number_format($cashier['total_sales']) }}</td>
                                 <td class="px-3 py-2 text-right text-green-600 dark:text-green-400 font-semibold">₹{{ number_format($cashier['total_revenue'], 0) }}</td>
@@ -175,7 +175,7 @@
                     <h3 class="text-lg font-semibold mb-4">⏰ Hourly Performance Breakdown</h3>
                     <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
                         @foreach($hourlyData as $hour)
-                            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-center hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-center hover:bg-gray-200/30 dark:hover:bg-gray-700/50 transition-colors">
                                 <div class="text-lg font-bold text-blue-600 dark:text-blue-400">{{ $hour['hour'] }}</div>
                                 <div class="text-2xl font-bold mt-1">{{ $hour['total_sales'] }}</div>
                                 <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">sales</div>
@@ -227,7 +227,7 @@
                         </thead>
                         <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                             @foreach($dailyData as $day)
-                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                <tr class="hover:bg-gray-200/30 dark:hover:bg-gray-700/50 transition-colors">
                                     <td class="px-3 py-2 font-medium">{{ \Carbon\Carbon::parse($day['date'])->format('M d, Y') }}</td>
                                     <td class="px-3 py-2">
                                         <div class="space-y-1">

@@ -92,73 +92,57 @@ class ExportService
 
     /**
      * Download Excel file
-     * @param Collection|array $data Data to export
-     * @param array|string $headersOrFilename Either headers array (if 3 args) or filename (if 2 args)
-     * @param string|null $filename Filename (optional if passed as 2nd arg)
+     * Supports both 2-arg (data, filename) and 3-arg (data, headers, filename) usage
      */
-    public function downloadExcel(Collection|array $data, array|string $headersOrFilename, ?string $filename = null)
+    public function downloadExcel(array|Collection $data, array|string $headersOrFilename, ?string $filename = null)
     {
-        // Handle 2-argument calls: downloadExcel($data, $filename)
+        // Handle flexible arguments
         if (is_string($headersOrFilename)) {
+            // 2-arg style: (data, filename)
             $filename = $headersOrFilename;
             $headers = [];
         } else {
-            // Handle 3-argument calls: downloadExcel($data, $headers, $filename)
+            // 3-arg style: (data, headers, filename)
             $headers = $headersOrFilename;
         }
-
-        // Ensure $filename has .xlsx extension
+        
+        // Convert array to collection if needed
+        if (is_array($data)) {
+            $data = collect($data);
+        }
+        
+        // Ensure filename has extension
         if (!str_ends_with($filename, '.xlsx')) {
             $filename .= '.xlsx';
         }
 
-        // Convert array to Collection if needed
-        $collection = $data instanceof Collection ? $data : collect($data);
+        $export = new class($data, $headers) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings, \Maatwebsite\Excel\Concerns\WithStyles, \Maatwebsite\Excel\Concerns\ShouldAutoSize {
+            private $data;
+            private $headers;
 
-        // If no headers provided, just export data as-is (headers are inline in data)
-        if (empty($headers)) {
-            $export = new class($collection) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\ShouldAutoSize {
-                private $data;
+            public function __construct($data, $headers)
+            {
+                $this->data = $data;
+                $this->headers = $headers;
+            }
 
-                public function __construct($data)
-                {
-                    $this->data = $data;
-                }
+            public function collection()
+            {
+                return $this->data;
+            }
 
-                public function collection()
-                {
-                    return $this->data;
-                }
-            };
-        } else {
-            $export = new class($collection, $headers) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings, \Maatwebsite\Excel\Concerns\WithStyles, \Maatwebsite\Excel\Concerns\ShouldAutoSize {
-                private $data;
-                private $headers;
+            public function headings(): array
+            {
+                return $this->headers;
+            }
 
-                public function __construct($data, $headers)
-                {
-                    $this->data = $data;
-                    $this->headers = $headers;
-                }
-
-                public function collection()
-                {
-                    return $this->data;
-                }
-
-                public function headings(): array
-                {
-                    return $this->headers;
-                }
-
-                public function styles(\PhpOffice\PhpSpreadsheet\Worksheet\Worksheet $sheet)
-                {
-                    return [
-                        1 => ['font' => ['bold' => true], 'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'E2E8F0']]],
-                    ];
-                }
-            };
-        }
+            public function styles(\PhpOffice\PhpSpreadsheet\Worksheet\Worksheet $sheet)
+            {
+                return [
+                    1 => ['font' => ['bold' => true], 'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'E2E8F0']]],
+                ];
+            }
+        };
 
         return Excel::download($export, $filename);
     }

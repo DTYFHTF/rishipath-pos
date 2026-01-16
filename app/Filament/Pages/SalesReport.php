@@ -65,9 +65,8 @@ class SalesReport extends Page implements HasForms
                         'khalti' => 'Khalti',
                     ])
                     ->placeholder('All Methods'),
-            ])
-            ->columns(4)
-            ->statePath('data');
+                ])
+                ->columns(4);
     }
 
     public function getSalesData()

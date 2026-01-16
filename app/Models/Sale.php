@@ -13,6 +13,7 @@ class Sale extends Model
         'store_id',
         'terminal_id',
         'receipt_number',
+        'invoice_number',
         'date',
         'time',
         'cashier_id',

@@ -34,9 +34,11 @@ class CustomerResource extends Resource
                     ->maxLength(255),
                 Forms\Components\TextInput::make('phone')
                     ->tel()
+                    ->unique(ignoreRecord: true)
                     ->maxLength(20),
                 Forms\Components\TextInput::make('email')
                     ->email()
+                    ->unique(ignoreRecord: true)
                     ->maxLength(255),
                 Forms\Components\Textarea::make('address')
                     ->rows(2),

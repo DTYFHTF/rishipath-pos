@@ -22,10 +22,12 @@ class Supplier extends Model
         'tax_number',
         'notes',
         'active',
+        'current_balance',
     ];
 
     protected $casts = [
         'active' => 'boolean',
+        'current_balance' => 'decimal:2',
     ];
 
     public function organization(): BelongsTo
@@ -36,5 +38,15 @@ class Supplier extends Model
     public function batches(): HasMany
     {
         return $this->hasMany(ProductBatch::class);
+    }
+
+    public function purchases(): HasMany
+    {
+        return $this->hasMany(Purchase::class);
+    }
+
+    public function ledgerEntries(): HasMany
+    {
+        return $this->hasMany(SupplierLedgerEntry::class);
     }
 }

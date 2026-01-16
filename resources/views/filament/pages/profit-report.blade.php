@@ -49,25 +49,25 @@
         @endphp
         
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow p-6 text-white">
+            <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow p-6 text-gray-900 dark:text-white">
                 <div class="text-sm opacity-90">Total Revenue</div>
                 <div class="text-3xl font-bold mt-2">₹{{ number_format($summary['total_revenue'], 2) }}</div>
                 <div class="text-xs opacity-75 mt-1">{{ $summary['transaction_count'] }} transactions</div>
             </div>
             
-            <div class="bg-gradient-to-br from-red-500 to-red-600 rounded-lg shadow p-6 text-white">
+            <div class="bg-gradient-to-br from-red-500 to-red-600 rounded-lg shadow p-6 text-gray-900 dark:text-white">
                 <div class="text-sm opacity-90">Total Cost</div>
                 <div class="text-3xl font-bold mt-2">₹{{ number_format($summary['total_cost'], 2) }}</div>
                 <div class="text-xs opacity-75 mt-1">COGS (Cost of Goods Sold)</div>
             </div>
             
-            <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow p-6 text-white">
+            <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow p-6 text-gray-900 dark:text-white">
                 <div class="text-sm opacity-90">Total Profit</div>
                 <div class="text-3xl font-bold mt-2">₹{{ number_format($summary['total_profit'], 2) }}</div>
                 <div class="text-xs opacity-75 mt-1">After tax & costs</div>
             </div>
             
-            <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow p-6 text-white">
+            <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow p-6 text-gray-900 dark:text-white">
                 <div class="text-sm opacity-90">Profit Margin</div>
                 <div class="text-3xl font-bold mt-2">{{ number_format($summary['profit_margin'], 2) }}%</div>
                 <div class="text-xs opacity-75 mt-1">Avg: ₹{{ number_format($summary['average_profit_per_sale'], 2) }}/sale</div>
@@ -91,7 +91,7 @@
                     </thead>
                     <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                         @foreach($this->getProfitByCategory() as $category => $data)
-                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <tr class="hover:bg-gray-200/30 dark:hover:bg-gray-700/50 transition-colors">
                                 <td class="px-4 py-3 font-medium">{{ $category }}</td>
                                 <td class="px-4 py-3 text-right">{{ number_format($data['quantity_sold']) }}</td>
                                 <td class="px-4 py-3 text-right text-blue-600 dark:text-blue-400">₹{{ number_format($data['revenue'], 2) }}</td>
@@ -120,7 +120,7 @@
                 <h3 class="text-lg font-semibold mb-4 text-green-600 dark:text-green-400">🏆 Top 10 Profitable Products</h3>
                 <div class="space-y-3">
                     @foreach($this->getTopProfitableProducts(10) as $product)
-                        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-200/30 dark:hover:bg-gray-700/50 transition-colors">
                             <div class="flex items-center justify-between mb-2">
                                 <div class="font-semibold text-sm text-gray-900 dark:text-gray-100">{{ $product['name'] }}</div>
                                 <span class="text-green-600 dark:text-green-400 font-bold">₹{{ number_format($product['profit'], 2) }}</span>
@@ -149,7 +149,7 @@
                 <h3 class="text-lg font-semibold mb-4 text-red-600 dark:text-red-400">⚠️ Least Profitable Products</h3>
                 <div class="space-y-3">
                     @foreach($this->getLeastProfitableProducts(10) as $product)
-                        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-200/30 dark:hover:bg-gray-700/50 transition-colors">
                             <div class="flex items-center justify-between mb-2">
                                 <div class="font-semibold text-sm text-gray-900 dark:text-gray-100">{{ $product['name'] }}</div>
                                 <span class="text-red-600 dark:text-red-400 font-bold">₹{{ number_format($product['profit'], 2) }}</span>
@@ -191,7 +191,7 @@
                     </thead>
                     <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                         @foreach($this->getDailyProfitTrend() as $day)
-                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <tr class="hover:bg-gray-200/30 dark:hover:bg-gray-700/50 transition-colors">
                                 <td class="px-4 py-3 font-medium">{{ \Carbon\Carbon::parse($day['date'])->format('M d, Y') }}</td>
                                 <td class="px-4 py-3 text-right">{{ $day['transactions'] }}</td>
                                 <td class="px-4 py-3 text-right text-blue-600 dark:text-blue-400">₹{{ number_format($day['revenue'], 2) }}</td>

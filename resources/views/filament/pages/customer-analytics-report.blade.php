@@ -49,25 +49,25 @@
         @endphp
         
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow p-6 text-white">
+            <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow p-6 text-gray-900 dark:text-white">
                 <div class="text-sm opacity-90">Total Customers</div>
                 <div class="text-3xl font-bold mt-2">{{ number_format($metrics['total_customers']) }}</div>
                 <div class="text-xs opacity-75 mt-1">{{ $metrics['new_customers'] }} new this period</div>
             </div>
             
-            <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow p-6 text-white">
+            <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow p-6 text-gray-900 dark:text-white">
                 <div class="text-sm opacity-90">Active Customers</div>
                 <div class="text-3xl font-bold mt-2">{{ number_format($metrics['active_customers']) }}</div>
                 <div class="text-xs opacity-75 mt-1">{{ number_format(($metrics['active_customers'] / max($metrics['total_customers'], 1)) * 100, 1) }}% of total</div>
             </div>
             
-            <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow p-6 text-white">
+            <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow p-6 text-gray-900 dark:text-white">
                 <div class="text-sm opacity-90">Avg Transaction Value</div>
                 <div class="text-3xl font-bold mt-2">₹{{ number_format($metrics['avg_transaction_value'], 0) }}</div>
                 <div class="text-xs opacity-75 mt-1">{{ number_format($metrics['total_transactions']) }} transactions</div>
             </div>
             
-            <div class="bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg shadow p-6 text-white">
+            <div class="bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg shadow p-6 text-gray-900 dark:text-white">
                 <div class="text-sm opacity-90">Avg Lifetime Value</div>
                 <div class="text-3xl font-bold mt-2">₹{{ number_format($metrics['avg_lifetime_value'], 0) }}</div>
                 <div class="text-xs opacity-75 mt-1">Per active customer</div>
@@ -83,7 +83,7 @@
             <h3 class="text-lg font-semibold mb-4">Customer Segments (RFM Analysis)</h3>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 @foreach($segments as $segment => $data)
-                    <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                    <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-200/30 dark:hover:bg-gray-700/50 transition-colors">
                         <div class="flex items-center justify-between mb-2">
                             <div class="font-semibold">{{ $segment }}</div>
                             <span class="text-2xl">
@@ -141,7 +141,7 @@
                     </thead>
                     <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                         @foreach($this->getTopCustomers(10) as $index => $customer)
-                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <tr class="hover:bg-gray-200/30 dark:hover:bg-gray-700/50 transition-colors">
                                 <td class="px-4 py-3">
                                     <span class="inline-flex items-center justify-center w-8 h-8 rounded-full 
                                         @if($index === 0) bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200
@@ -226,7 +226,7 @@
                     </thead>
                     <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                         @foreach($this->getRfmAnalysis() as $customer)
-                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <tr class="hover:bg-gray-200/30 dark:hover:bg-gray-700/50 transition-colors">
                                 <td class="px-3 py-2 font-medium">{{ $customer['customer_name'] }}</td>
                                 <td class="px-3 py-2 text-gray-600 dark:text-gray-400">{{ $customer['customer_phone'] }}</td>
                                 <td class="px-3 py-2 text-right">{{ $customer['recency_days'] }} days</td>

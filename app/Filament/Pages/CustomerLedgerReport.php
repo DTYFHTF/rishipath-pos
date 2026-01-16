@@ -60,8 +60,7 @@ class CustomerLedgerReport extends Page implements HasForms
                     ->live()
                     ->afterStateUpdated(fn () => $this->generateReport()),
             ])
-            ->columns(3)
-            ->statePath('data');
+            ->columns(3);
     }
 
     public function generateReport()
