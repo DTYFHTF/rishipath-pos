@@ -37,10 +37,24 @@ jobs:
         run: composer install --prefer-dist --no-dev --optimize-autoloader --no-interaction
 
       - name: Build assets (if needed)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Build assets (if needed)
         run: |
           if [ -f "package.json" ]; then
-            npm ci
-            npm run build
+            if [ -f "package-lock.json" ]; then
+              npm ci || npm install
+            else
+              npm install
+            fi
+
+            if grep -q '"build"' package.json; then
+              npm run build
+            else
+              echo "No build script found in package.json; skipping build"
+            fi
           fi
 
       - name: Deploy via SSH
