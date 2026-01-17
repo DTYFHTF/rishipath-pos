@@ -88,11 +88,16 @@ class PurchaseResource extends Resource
                                     ->searchable()
                                     ->required()
                                     ->reactive()
-                                    ->afterStateUpdated(function ($state, callable $set) {
+                                    ->afterStateUpdated(function ($state, callable $set, callable $get) {
                                         if ($state) {
-                                            $variant = ProductVariant::find($state);
+                                            $variant = ProductVariant::with('storePricing')->find($state);
                                             if ($variant) {
-                                                $set('unit_cost', $variant->cost_price ?? 0);
+                                                // Get store-specific pricing if available
+                                                $storeId = $get('../../store_id');
+                                                $storePricing = $variant->storePricing->firstWhere('store_id', $storeId);
+                                                $costPrice = $storePricing?->cost_price ?? $variant->cost_price ?? 0;
+                                                
+                                                $set('unit_cost', $costPrice);
                                                 $set('unit', $variant->unit);
                                             }
                                         }
@@ -104,7 +109,8 @@ class PurchaseResource extends Resource
                                     ->numeric()
                                     ->required()
                                     ->default(1)
-                                    ->minValue(0.001)
+                                    ->minValue(0.01)
+                                    ->reactive()
                                     ->columnSpan(1),
 
                                 Forms\Components\TextInput::make('unit')
@@ -117,31 +123,54 @@ class PurchaseResource extends Resource
                                     ->label('Unit Cost')
                                     ->numeric()
                                     ->required()
+                                    ->minValue(0.01)
                                     ->prefix('₹')
+                                    ->reactive()
                                     ->columnSpan(1),
 
                                 Forms\Components\TextInput::make('tax_rate')
                                     ->label('Tax %')
                                     ->numeric()
                                     ->default(0)
+                                    ->minValue(0)
+                                    ->maxValue(100)
                                     ->suffix('%')
+                                    ->reactive()
                                     ->columnSpan(1),
 
                                 Forms\Components\TextInput::make('discount_amount')
                                     ->label('Discount')
                                     ->numeric()
                                     ->default(0)
+                                    ->minValue(0)
                                     ->prefix('₹')
+                                    ->reactive()
+                                    ->columnSpan(1),
+
+                                Forms\Components\Placeholder::make('line_total')
+                                    ->label('Line Total')
+                                    ->content(function (callable $get) {
+                                        $qty = floatval($get('quantity_ordered') ?? 0);
+                                        $cost = floatval($get('unit_cost') ?? 0);
+                                        $tax = floatval($get('tax_rate') ?? 0);
+                                        $discount = floatval($get('discount_amount') ?? 0);
+                                        
+                                        $subtotal = $qty * $cost;
+                                        $taxAmount = $subtotal * ($tax / 100);
+                                        $total = $subtotal + $taxAmount - $discount;
+                                        
+                                        return '₹' . number_format($total, 2);
+                                    })
                                     ->columnSpan(1),
 
                                 Forms\Components\DatePicker::make('expiry_date')
                                     ->label('Expiry')
-                                    ->columnSpan(1),
+                                    ->columnSpan(2),
 
                                 Forms\Components\Textarea::make('notes')
                                     ->label('Notes')
                                     ->rows(1)
-                                    ->columnSpan(3),
+                                    ->columnSpan(4),
                             ])
                             ->columns(12)
                             ->defaultItems(1)

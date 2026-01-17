@@ -42,9 +42,19 @@
         <!-- Recent Adjustments -->
         <div>
             <x-filament::card>
-                <h3 class="text-lg font-semibold mb-4">Recent Adjustments</h3>
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold">Recent Adjustments</h3>
+                    <div class="flex gap-2">
+                        <select wire:model.live="filterDays" class="text-sm rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700">
+                            <option value="7">Last 7 days</option>
+                            <option value="30">Last 30 days</option>
+                            <option value="90">Last 90 days</option>
+                            <option value="365">Last year</option>
+                        </select>
+                    </div>
+                </div>
                 
-                <div class="space-y-3">
+                <div class="space-y-3 max-h-[600px] overflow-y-auto">
                     @forelse($this->getRecentAdjustments() as $movement)
                         <div class="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                             <div class="flex justify-between items-start">

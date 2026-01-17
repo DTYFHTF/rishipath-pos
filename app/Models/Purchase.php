@@ -8,9 +8,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Purchase extends Model
 {
+    use HasFactory;
     protected $fillable = [
         'organization_id',
         'store_id',
@@ -135,11 +137,12 @@ class Purchase extends Model
     /**
      * Mark purchase as received and update stock.
      */
-    public function receive(?int $userId = null): void
+    public function receive(?int $quantity = null, ?int $userId = null): void
     {
-        DB::transaction(function () use ($userId) {
+        DB::transaction(function () use ($quantity, $userId) {
             foreach ($this->items as $item) {
-                $qtyToReceive = $item->quantity_ordered - $item->quantity_received;
+                $remaining = $item->quantity_ordered - $item->quantity_received;
+                $qtyToReceive = $quantity ? min($quantity, $remaining) : $remaining;
 
                 if ($qtyToReceive > 0) {
                     // Update stock with audit trail

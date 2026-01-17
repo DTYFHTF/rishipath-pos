@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Models\InventoryMovement;
 use App\Models\ProductVariant;
 use App\Models\StockLevel;
+use App\Services\InventoryService;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -46,6 +47,10 @@ class StockAdjustment extends Page implements HasForms
     public $notes;
 
     public $currentStock = 0;
+    
+    // Filters for audit view
+    public $filterProductId = null;
+    public $filterDays = 30;
 
     public function mount(): void
     {
@@ -161,46 +166,44 @@ class StockAdjustment extends Page implements HasForms
         DB::beginTransaction();
 
         try {
-            $stock = StockLevel::firstOrCreate(
-                [
-                    'product_variant_id' => $this->productVariantId,
-                    'store_id' => $this->storeId,
-                ],
-                [
-                    'quantity' => 0,
-                    'reserved_quantity' => 0,
-                    'reorder_level' => 10,
-                ]
-            );
-
-            $oldQuantity = $stock->quantity;
+            $inventoryService = app(InventoryService::class);
+            
+            // Get current stock level
+            $currentStock = $inventoryService->getStock($this->productVariantId, $this->storeId);
             $newQuantity = $this->getNewStockLevel();
+            $quantityDiff = $newQuantity - $currentStock;
 
-            $stock->quantity = $newQuantity;
-            $stock->last_movement_at = now();
-            $stock->save();
-
-            // Record movement
-            InventoryMovement::create([
-                'organization_id' => Auth::user()->organization_id,
-                'store_id' => $this->storeId,
-                'product_variant_id' => $this->productVariantId,
-                'type' => 'adjustment',
-                'quantity' => abs($newQuantity - $oldQuantity),
-                'unit' => ProductVariant::find($this->productVariantId)->unit,
-                'from_quantity' => $oldQuantity,
-                'to_quantity' => $newQuantity,
-                'reference_type' => 'StockAdjustment',
-                'user_id' => Auth::id(),
-                'notes' => "[{$this->reason}] {$this->notes}",
-            ]);
+            // Use InventoryService to adjust stock
+            if ($quantityDiff > 0) {
+                $inventoryService->increaseStock(
+                    productVariantId: $this->productVariantId,
+                    storeId: $this->storeId,
+                    quantity: $quantityDiff,
+                    type: 'adjustment',
+                    referenceType: 'StockAdjustment',
+                    referenceId: null,
+                    notes: "[{$this->reason}] {$this->notes}",
+                    userId: Auth::id()
+                );
+            } elseif ($quantityDiff < 0) {
+                $inventoryService->decreaseStock(
+                    productVariantId: $this->productVariantId,
+                    storeId: $this->storeId,
+                    quantity: abs($quantityDiff),
+                    type: 'adjustment',
+                    referenceType: 'StockAdjustment',
+                    referenceId: null,
+                    notes: "[{$this->reason}] {$this->notes}",
+                    userId: Auth::id()
+                );
+            }
 
             DB::commit();
 
             Notification::make()
                 ->success()
                 ->title('Stock adjusted successfully')
-                ->body("Stock updated from {$oldQuantity} to {$newQuantity}")
+                ->body("Stock updated from {$currentStock} to {$newQuantity}")
                 ->send();
 
             // Reset form
@@ -223,10 +226,16 @@ class StockAdjustment extends Page implements HasForms
 
     public function getRecentAdjustments()
     {
-        return InventoryMovement::with(['productVariant.product', 'user', 'store'])
+        $query = InventoryMovement::with(['productVariant.product', 'user', 'store'])
             ->where('type', 'adjustment')
-            ->orderBy('created_at', 'desc')
-            ->limit(10)
+            ->where('created_at', '>=', now()->subDays($this->filterDays));
+            
+        if ($this->filterProductId) {
+            $query->where('product_variant_id', $this->filterProductId);
+        }
+            
+        return $query->orderBy('created_at', 'desc')
+            ->limit(20)
             ->get();
     }
 }
