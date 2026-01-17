@@ -114,7 +114,11 @@ class ProfitReport extends Page implements HasForms
                 ];
             }
 
-            $revenue = $item->price * $item->quantity;
+            $unitPrice = $item->price > 0
+                ? $item->price
+                : ($item->productVariant->selling_price_nepal ?? $item->productVariant->selling_price ?? $item->productVariant->base_price ?? 0);
+
+            $revenue = $unitPrice * $item->quantity;
             $cost = ($item->productVariant->cost_price ?? 0) * $item->quantity;
             $profit = $revenue - $cost;
 
@@ -170,7 +174,11 @@ class ProfitReport extends Page implements HasForms
                 ];
             }
 
-            $revenue = $item->price * $item->quantity;
+            $unitPrice = $item->price > 0
+                ? $item->price
+                : ($item->productVariant->selling_price_nepal ?? $item->productVariant->selling_price ?? $item->productVariant->base_price ?? 0);
+
+            $revenue = $unitPrice * $item->quantity;
             $cost = ($item->productVariant->cost_price ?? 0) * $item->quantity;
 
             $productData[$productKey]['revenue'] += $revenue;

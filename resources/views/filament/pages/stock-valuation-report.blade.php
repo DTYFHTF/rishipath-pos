@@ -1,32 +1,49 @@
 <x-filament-panels::page>
     <div class="space-y-6">
-        <!-- Filters -->
+        <!-- Filters & Actions -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                    <label class="block text-sm font-medium mb-1">Store</label>
-                    <select 
-                        wire:model.live="storeId"
-                        class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900"
-                    >
-                        <option value="">All Stores</option>
-                        @foreach(\App\Models\Store::where('active', true)->get() as $store)
-                            <option value="{{ $store->id }}">{{ $store->name }}</option>
-                        @endforeach
-                    </select>
+            <div class="flex items-end gap-4">
+                <div class="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Store</label>
+                        <select 
+                            wire:model.live="storeId"
+                            class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900"
+                        >
+                            <option value="">All Stores</option>
+                            @foreach(\App\Models\Store::where('active', true)->get() as $store)
+                                <option value="{{ $store->id }}">{{ $store->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Category</label>
+                        <select 
+                            wire:model.live="categoryId"
+                            class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900"
+                        >
+                            <option value="">All Categories</option>
+                            @foreach(\App\Models\Category::all() as $category)
+                                <option value="{{ $category->id }}">{{ $category->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">As of Date</label>
+                        <input 
+                            type="date" 
+                            wire:model.live="asOfDate"
+                            class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900"
+                        />
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">Category</label>
-                    <select 
-                        wire:model.live="categoryId"
-                        class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900"
-                    >
-                        <option value="">All Categories</option>
-                        @foreach(\App\Models\Category::all() as $category)
-                            <option value="{{ $category->id }}">{{ $category->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
+                <button 
+                    wire:click="exportCSV"
+                    class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2"
+                >
+                    <x-heroicon-o-arrow-down-tray class="w-5 h-5" />
+                    Export CSV
+                </button>
             </div>
         </div>
 

@@ -18,7 +18,7 @@ class InventoryService
      * @param  string|null  $referenceType  e.g. 'Sale', 'Purchase', 'StockAdjustment'
      */
     public static function adjustStock(
-        int $variantId,
+        int $productVariantId,
         int $storeId,
         float $quantityChange,
         string $type,
@@ -28,12 +28,12 @@ class InventoryService
         ?string $notes = null,
         ?int $userId = null
     ): StockLevel {
-        return DB::transaction(function () use ($variantId, $storeId, $quantityChange, $type, $referenceType, $referenceId, $costPrice, $notes, $userId) {
-            $variant = ProductVariant::findOrFail($variantId);
+        return DB::transaction(function () use ($productVariantId, $storeId, $quantityChange, $type, $referenceType, $referenceId, $costPrice, $notes, $userId) {
+            $variant = ProductVariant::findOrFail($productVariantId);
 
             $stock = StockLevel::lockForUpdate()->firstOrCreate(
                 [
-                    'product_variant_id' => $variantId,
+                    'product_variant_id' => $productVariantId,
                     'store_id' => $storeId,
                 ],
                 [
@@ -46,9 +46,9 @@ class InventoryService
             $fromQuantity = $stock->quantity;
             $toQuantity = $fromQuantity + $quantityChange;
 
-            // Prevent negative stock (optional: remove if allowing negative)
+            // Prevent negative stock and throw when insufficient
             if ($toQuantity < 0) {
-                $toQuantity = 0;
+                throw new \Exception('Insufficient stock');
             }
 
             $stock->quantity = $toQuantity;
@@ -59,7 +59,7 @@ class InventoryService
             InventoryMovement::create([
                 'organization_id' => $variant->product->organization_id ?? Auth::user()?->organization_id ?? 1,
                 'store_id' => $storeId,
-                'product_variant_id' => $variantId,
+                'product_variant_id' => $productVariantId,
                 'batch_id' => null,
                 'type' => $type,
                 'quantity' => abs($quantityChange),
@@ -81,7 +81,7 @@ class InventoryService
      * Decrease stock (convenience wrapper for sales).
      */
     public static function decreaseStock(
-        int $variantId,
+        int $productVariantId,
         int $storeId,
         float $quantity,
         string $type = 'sale',
@@ -92,7 +92,7 @@ class InventoryService
         ?int $userId = null
     ): StockLevel {
         return self::adjustStock(
-            $variantId,
+            $productVariantId,
             $storeId,
             -abs($quantity),
             $type,
@@ -108,7 +108,7 @@ class InventoryService
      * Increase stock (convenience wrapper for purchases).
      */
     public static function increaseStock(
-        int $variantId,
+        int $productVariantId,
         int $storeId,
         float $quantity,
         string $type = 'purchase',
@@ -119,7 +119,7 @@ class InventoryService
         ?int $userId = null
     ): StockLevel {
         return self::adjustStock(
-            $variantId,
+            $productVariantId,
             $storeId,
             abs($quantity),
             $type,
@@ -135,16 +135,16 @@ class InventoryService
      * Transfer stock between stores.
      */
     public static function transferStock(
-        int $variantId,
+        int $productVariantId,
         int $fromStoreId,
         int $toStoreId,
         float $quantity,
         ?string $notes = null,
         ?int $userId = null
     ): array {
-        return DB::transaction(function () use ($variantId, $fromStoreId, $toStoreId, $quantity, $notes, $userId) {
+        return DB::transaction(function () use ($productVariantId, $fromStoreId, $toStoreId, $quantity, $notes, $userId) {
             $fromStock = self::decreaseStock(
-                $variantId,
+                $productVariantId,
                 $fromStoreId,
                 $quantity,
                 'transfer',
@@ -156,7 +156,7 @@ class InventoryService
             );
 
             $toStock = self::increaseStock(
-                $variantId,
+                $productVariantId,
                 $toStoreId,
                 $quantity,
                 'transfer',

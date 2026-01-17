@@ -129,6 +129,36 @@ class StockTransfer extends Page implements HasForms
             'quantity' => 'required|numeric|min:0.001|max:'.$this->fromStock,
         ]);
 
+        // Confirmation check
+        if ($this->quantity > 100) {
+            $variant = ProductVariant::with('product')->find($this->productVariantId);
+            $variantName = "{$variant->product->name} - {$variant->pack_size}{$variant->unit}";
+            
+            Notification::make()
+                ->warning()
+                ->title('Large Transfer Confirmation Required')
+                ->body("You are about to transfer {$this->quantity} units of {$variantName}. Please confirm this is correct.")
+                ->persistent()
+                ->actions([
+                    \Filament\Notifications\Actions\Action::make('confirm')
+                        ->button()
+                        ->color('danger')
+                        ->action(function () {
+                            $this->confirmTransfer();
+                        }),
+                    \Filament\Notifications\Actions\Action::make('cancel')
+                        ->button()
+                        ->color('gray'),
+                ])
+                ->send();
+            return;
+        }
+
+        $this->confirmTransfer();
+    }
+
+    protected function confirmTransfer(): void
+    {
         try {
             InventoryService::transferStock(
                 $this->productVariantId,
