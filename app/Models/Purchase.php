@@ -130,7 +130,7 @@ class Purchase extends Model
         $this->subtotal = $subtotal;
         $this->tax_amount = $taxAmount;
         $this->discount_amount = $discountAmount;
-        $this->total = $subtotal + $taxAmount - $discountAmount + $this->shipping_cost;
+        $this->total = $subtotal + $this->shipping_cost;
         $this->save();
     }
 
@@ -157,8 +157,8 @@ class Purchase extends Model
                         "Purchase {$this->purchase_number}"
                     );
 
-                    // Update item received quantity
-                    $item->quantity_received = $item->quantity_ordered;
+                    // Update item received quantity incrementally
+                    $item->quantity_received += $qtyToReceive;
                     $item->save();
 
                     // Update variant cost price if needed
@@ -170,9 +170,18 @@ class Purchase extends Model
                 }
             }
 
-            $this->status = 'received';
-            $this->received_date = now();
-            $this->received_by = $userId ?? Auth::id();
+            // Update status based on received quantities
+            $allReceived = $this->items->every(fn($item) => $item->quantity_received >= $item->quantity_ordered);
+            $anyReceived = $this->items->some(fn($item) => $item->quantity_received > 0);
+
+            if ($allReceived) {
+                $this->status = 'received';
+                $this->received_date = now();
+                $this->received_by = $userId ?? Auth::id();
+            } elseif ($anyReceived && $this->status === 'draft') {
+                $this->status = 'partial';
+            }
+
             $this->save();
 
             // Create supplier ledger entry for payable

@@ -9,6 +9,7 @@ use App\Models\Store;
 use App\Models\Supplier;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -90,15 +91,16 @@ class PurchaseResource extends Resource
                                     ->reactive()
                                     ->afterStateUpdated(function ($state, callable $set, callable $get) {
                                         if ($state) {
-                                            $variant = ProductVariant::with('storePricing')->find($state);
+                                            $variant = ProductVariant::with(['storePricing', 'product'])->find($state);
                                             if ($variant) {
-                                                // Get store-specific pricing if available
                                                 $storeId = $get('../../store_id');
                                                 $storePricing = $variant->storePricing->firstWhere('store_id', $storeId);
                                                 $costPrice = $storePricing?->cost_price ?? $variant->cost_price ?? 0;
                                                 
                                                 $set('unit_cost', $costPrice);
                                                 $set('unit', $variant->unit);
+                                                $set('product_name', $variant->product->name . ' - ' . $variant->pack_size . $variant->unit);
+                                                $set('product_sku', $variant->sku);
                                             }
                                         }
                                     })
@@ -149,7 +151,7 @@ class PurchaseResource extends Resource
 
                                 Forms\Components\Placeholder::make('line_total')
                                     ->label('Line Total')
-                                    ->content(function (callable $get) {
+                                    ->content(function (callable $get, callable $set) {
                                         $qty = floatval($get('quantity_ordered') ?? 0);
                                         $cost = floatval($get('unit_cost') ?? 0);
                                         $tax = floatval($get('tax_rate') ?? 0);
@@ -158,6 +160,9 @@ class PurchaseResource extends Resource
                                         $subtotal = $qty * $cost;
                                         $taxAmount = $subtotal * ($tax / 100);
                                         $total = $subtotal + $taxAmount - $discount;
+                                        
+                                        $set('tax_amount', round($taxAmount, 2));
+                                        $set('line_total', round($total, 2));
                                         
                                         return '₹' . number_format($total, 2);
                                     })
@@ -171,6 +176,11 @@ class PurchaseResource extends Resource
                                     ->label('Notes')
                                     ->rows(1)
                                     ->columnSpan(4),
+
+                                Forms\Components\Hidden::make('tax_amount'),
+                                Forms\Components\Hidden::make('line_total'),
+                                Forms\Components\Hidden::make('product_name'),
+                                Forms\Components\Hidden::make('product_sku'),
                             ])
                             ->columns(12)
                             ->defaultItems(1)
@@ -185,19 +195,34 @@ class PurchaseResource extends Resource
                             ->label('Shipping Cost')
                             ->numeric()
                             ->default(0)
-                            ->prefix('₹'),
+                            ->prefix('₹')
+                            ->reactive(),
 
                         Forms\Components\Placeholder::make('calculated_subtotal')
                             ->label('Subtotal')
-                            ->content(fn ($record) => '₹'.number_format($record?->subtotal ?? 0, 2)),
+                            ->content(function (callable $get) {
+                                $items = $get('items') ?? [];
+                                $subtotal = collect($items)->sum(fn($item) => floatval($item['line_total'] ?? 0));
+                                return '₹'.number_format($subtotal, 2);
+                            }),
 
                         Forms\Components\Placeholder::make('calculated_tax')
                             ->label('Tax')
-                            ->content(fn ($record) => '₹'.number_format($record?->tax_amount ?? 0, 2)),
+                            ->content(function (callable $get) {
+                                $items = $get('items') ?? [];
+                                $tax = collect($items)->sum(fn($item) => floatval($item['tax_amount'] ?? 0));
+                                return '₹'.number_format($tax, 2);
+                            }),
 
                         Forms\Components\Placeholder::make('calculated_total')
                             ->label('Total')
-                            ->content(fn ($record) => '₹'.number_format($record?->total ?? 0, 2)),
+                            ->content(function (callable $get) {
+                                $items = $get('items') ?? [];
+                                $subtotal = collect($items)->sum(fn($item) => floatval($item['line_total'] ?? 0));
+                                $shipping = floatval($get('shipping_cost') ?? 0);
+                                $total = $subtotal + $shipping;
+                                return '₹'.number_format($total, 2);
+                            }),
 
                         Forms\Components\Textarea::make('notes')
                             ->label('Notes')
@@ -295,10 +320,38 @@ class PurchaseResource extends Resource
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->visible(fn ($record) => in_array($record->status, ['draft', 'ordered', 'partial']))
-                    ->requiresConfirmation()
+                    ->form([
+                        Forms\Components\Placeholder::make('summary')
+                            ->label('Items to Receive')
+                            ->content(function ($record) {
+                                $items = $record->items->map(function ($item) {
+                                    $remaining = $item->quantity_ordered - $item->quantity_received;
+                                    return "• {$item->product_name} ({$item->product_sku}): {$remaining} {$item->unit}";
+                                })->implode('<br>');
+                                return new \Illuminate\Support\HtmlString($items);
+                            }),
+                        Forms\Components\Placeholder::make('total')
+                            ->label('Purchase Total')
+                            ->content(fn ($record) => '₹'.number_format($record->total, 2)),
+                    ])
                     ->modalHeading('Receive Purchase')
-                    ->modalDescription('This will add all ordered items to stock. Are you sure?')
-                    ->action(fn ($record) => $record->receive()),
+                    ->modalDescription('This will add all outstanding items to stock.')
+                    ->action(function ($record) {
+                        try {
+                            $record->receive();
+                            Notification::make()
+                                ->success()
+                                ->title('Purchase Received')
+                                ->body("Purchase {$record->purchase_number} has been received and stock updated.")
+                                ->send();
+                        } catch (\Exception $e) {
+                            Notification::make()
+                                ->danger()
+                                ->title('Error Receiving Purchase')
+                                ->body($e->getMessage())
+                                ->send();
+                        }
+                    }),
 
                 Tables\Actions\Action::make('record_payment')
                     ->label('Payment')

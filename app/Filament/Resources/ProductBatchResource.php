@@ -71,7 +71,7 @@ class ProductBatchResource extends Resource
                             ->required()
                             ->numeric()
                             ->minValue(0)
-                            ->step(0.001)
+                            ->step(1)
                             ->default(0),
                         Forms\Components\TextInput::make('purchase_price')
                             ->label('Purchase Price per Unit')
@@ -83,13 +83,13 @@ class ProductBatchResource extends Resource
                             ->required()
                             ->numeric()
                             ->minValue(0)
-                            ->step(0.001)
+                            ->step(1)
                             ->default(fn ($get) => $get('quantity_received')),
                         Forms\Components\TextInput::make('quantity_sold')
                             ->label('Quantity Sold')
                             ->numeric()
                             ->minValue(0)
-                            ->step(0.001)
+                            ->step(1)
                             ->default(0)
                             ->disabled()
                             ->dehydrated(),
@@ -97,13 +97,13 @@ class ProductBatchResource extends Resource
                             ->label('Quantity Damaged')
                             ->numeric()
                             ->minValue(0)
-                            ->step(0.001)
+                            ->step(1)
                             ->default(0),
                         Forms\Components\TextInput::make('quantity_returned')
                             ->label('Quantity Returned')
                             ->numeric()
                             ->minValue(0)
-                            ->step(0.001)
+                            ->step(1)
                             ->default(0),
                     ])
                     ->columns(3),
@@ -135,7 +135,7 @@ class ProductBatchResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('quantity_remaining')
                     ->label('Stock')
-                    ->numeric(decimalPlaces: 2)
+                    ->numeric(decimalPlaces: 0)
                     ->sortable()
                     ->color(fn ($record) => $record->quantity_remaining <= 0 ? 'danger' : ($record->quantity_remaining < 10 ? 'warning' : 'success')),
                 Tables\Columns\TextColumn::make('expiry_date')

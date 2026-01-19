@@ -43,34 +43,34 @@
             </div>
         </div>
 
-        <!-- Profit Summary Cards -->
+        <!-- Profit Summary Cards (Compact) -->
         @php
             $summary = $this->getProfitSummary();
         @endphp
         
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow p-6 text-gray-900 dark:text-white">
-                <div class="text-sm opacity-90">Total Revenue</div>
-                <div class="text-3xl font-bold mt-2">₹{{ number_format($summary['total_revenue'], 2) }}</div>
-                <div class="text-xs opacity-75 mt-1">{{ $summary['transaction_count'] }} transactions</div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+            <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded shadow p-3 text-white">
+                <div class="text-xs opacity-90">Total Revenue</div>
+                <div class="text-xl font-bold mt-1">₹{{ number_format($summary['total_revenue'], 2) }}</div>
+                <div class="text-xs opacity-75">{{ $summary['transaction_count'] }} txns</div>
             </div>
             
-            <div class="bg-gradient-to-br from-red-500 to-red-600 rounded-lg shadow p-6 text-gray-900 dark:text-white">
-                <div class="text-sm opacity-90">Total Cost</div>
-                <div class="text-3xl font-bold mt-2">₹{{ number_format($summary['total_cost'], 2) }}</div>
-                <div class="text-xs opacity-75 mt-1">COGS (Cost of Goods Sold)</div>
+            <div class="bg-gradient-to-br from-red-500 to-red-600 rounded shadow p-3 text-white">
+                <div class="text-xs opacity-90">Total Cost</div>
+                <div class="text-xl font-bold mt-1">₹{{ number_format($summary['total_cost'], 2) }}</div>
+                <div class="text-xs opacity-75">COGS</div>
             </div>
             
-            <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow p-6 text-gray-900 dark:text-white">
-                <div class="text-sm opacity-90">Total Profit</div>
-                <div class="text-3xl font-bold mt-2">₹{{ number_format($summary['total_profit'], 2) }}</div>
-                <div class="text-xs opacity-75 mt-1">After tax & costs</div>
+            <div class="bg-gradient-to-br from-green-500 to-green-600 rounded shadow p-3 text-white">
+                <div class="text-xs opacity-90">Total Profit</div>
+                <div class="text-xl font-bold mt-1">₹{{ number_format($summary['total_profit'], 2) }}</div>
+                <div class="text-xs opacity-75">After tax & costs</div>
             </div>
             
-            <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow p-6 text-gray-900 dark:text-white">
-                <div class="text-sm opacity-90">Profit Margin</div>
-                <div class="text-3xl font-bold mt-2">{{ number_format($summary['profit_margin'], 2) }}%</div>
-                <div class="text-xs opacity-75 mt-1">Avg: ₹{{ number_format($summary['average_profit_per_sale'], 2) }}/sale</div>
+            <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded shadow p-3 text-white">
+                <div class="text-xs opacity-90">Profit Margin</div>
+                <div class="text-xl font-bold mt-1">{{ number_format($summary['profit_margin'], 2) }}%</div>
+                <div class="text-xs opacity-75">Avg: ₹{{ number_format($summary['average_profit_per_sale'], 2) }}/sale</div>
             </div>
         </div>
 

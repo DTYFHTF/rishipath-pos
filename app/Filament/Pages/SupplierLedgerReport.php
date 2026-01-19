@@ -101,4 +101,92 @@ class SupplierLedgerReport extends Page
 
         return Supplier::find($this->supplierId);
     }
+
+    public function exportCsv()
+    {
+        $suppliers = $this->getSupplierSummary();
+        $filename = 'supplier-summary-' . now()->format('Y-m-d') . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ];
+
+        $callback = function () use ($suppliers) {
+            $file = fopen('php://output', 'w');
+            
+            // Header row
+            fputcsv($file, [
+                'Supplier Code',
+                'Supplier Name',
+                'Purchase Count',
+                'Total Purchases',
+                'Total Paid',
+                'Current Balance',
+            ]);
+
+            // Data rows
+            foreach ($suppliers as $supplier) {
+                fputcsv($file, [
+                    $supplier['code'],
+                    $supplier['name'],
+                    $supplier['purchase_count'],
+                    number_format($supplier['total_purchases'], 2),
+                    number_format($supplier['total_paid'], 2),
+                    number_format($supplier['current_balance'], 2),
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    public function exportLedgerCsv()
+    {
+        $entries = $this->getLedgerEntries();
+        $filename = 'supplier-ledger-' . now()->format('Y-m-d') . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ];
+
+        $callback = function () use ($entries) {
+            $file = fopen('php://output', 'w');
+            
+            // Header row
+            fputcsv($file, [
+                'Date',
+                'Supplier',
+                'Type',
+                'Purchase Number',
+                'Description',
+                'Debit',
+                'Credit',
+                'Balance',
+                'User',
+            ]);
+
+            // Data rows
+            foreach ($entries as $entry) {
+                fputcsv($file, [
+                    $entry->created_at->format('Y-m-d H:i'),
+                    $entry->supplier->name,
+                    $entry->type,
+                    $entry->purchase?->purchase_number ?? '—',
+                    $entry->description,
+                    $entry->amount > 0 ? number_format($entry->amount, 2) : '',
+                    $entry->amount < 0 ? number_format(abs($entry->amount), 2) : '',
+                    number_format($entry->balance_after, 2),
+                    $entry->createdBy?->name ?? '—',
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
 }

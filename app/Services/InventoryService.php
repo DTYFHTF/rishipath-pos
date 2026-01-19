@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\InventoryMovement;
+use App\Models\ProductBatch;
 use App\Models\ProductVariant;
 use App\Models\StockLevel;
 use Illuminate\Support\Facades\Auth;
@@ -55,6 +56,9 @@ class InventoryService
             $stock->last_movement_at = now();
             $stock->save();
 
+            // Sync Product Batches: update sum of remaining quantities
+            self::syncBatchQuantities($productVariantId, $storeId);
+
             // Create movement record
             InventoryMovement::create([
                 'organization_id' => $variant->product->organization_id ?? Auth::user()?->organization_id ?? 1,
@@ -75,6 +79,79 @@ class InventoryService
 
             return $stock;
         });
+    }
+
+    /**
+     * Sync batch quantities to match StockLevel total.
+     * Distributes stock level quantity proportionally across non-expired batches.
+     */
+    public static function syncBatchQuantities(int $productVariantId, int $storeId): void
+    {
+        $stock = StockLevel::where('product_variant_id', $productVariantId)
+            ->where('store_id', $storeId)
+            ->first();
+
+        if (!$stock) {
+            return;
+        }
+
+        $batches = ProductBatch::where('product_variant_id', $productVariantId)
+            ->where('store_id', $storeId)
+            ->where('quantity_remaining', '>', 0)
+            ->where(function($q) {
+                $q->whereNull('expiry_date')
+                  ->orWhere('expiry_date', '>=', now());
+            })
+            ->orderBy('expiry_date', 'asc')
+            ->get();
+
+        if ($batches->isEmpty()) {
+            return;
+        }
+
+        // Calculate total batch quantity
+        $totalBatchQty = $batches->sum('quantity_remaining');
+        $stockQty = $stock->quantity;
+
+        // If stock and batch totals match, no sync needed
+        if ($totalBatchQty === $stockQty) {
+            return;
+        }
+
+        // Distribute stock as integers across batches while preserving totals.
+        if ($totalBatchQty > 0) {
+            $assigned = 0;
+            $newQuantities = [];
+
+            foreach ($batches as $batch) {
+                $ratio = $batch->quantity_remaining / $totalBatchQty;
+                $qty = (int) floor($stockQty * $ratio);
+                $newQuantities[] = $qty;
+                $assigned += $qty;
+            }
+
+            // Distribute any remainder (+1) to the earliest batches
+            $remainder = $stockQty - $assigned;
+            for ($i = 0; $i < $remainder; $i++) {
+                $newQuantities[$i % count($newQuantities)]++;
+            }
+
+            foreach ($batches as $idx => $batch) {
+                $batch->quantity_remaining = $newQuantities[$idx];
+                $batch->save();
+            }
+        } else {
+            // No existing batches with quantity, distribute evenly
+            $count = $batches->count();
+            $qtyPerBatch = intdiv($stockQty, $count);
+            $remainder = $stockQty % $count;
+
+            foreach ($batches as $idx => $batch) {
+                $batchQty = $qtyPerBatch + ($idx < $remainder ? 1 : 0);
+                $batch->quantity_remaining = $batchQty;
+                $batch->save();
+            }
+        }
     }
 
     /**

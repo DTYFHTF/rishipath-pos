@@ -34,28 +34,28 @@
             </div>
         </div>
 
-        <!-- Overall Metrics -->
+        <!-- Overall Metrics (Ultra Compact - Inline) -->
         @php $metrics = $this->getOverallMetrics(); @endphp
-        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-red-500">
-                <div class="text-sm text-gray-600 dark:text-gray-400">Total Payable</div>
-                <div class="text-2xl font-bold text-red-600">₹{{ number_format($metrics['total_payable'], 0) }}</div>
+        <div class="flex flex-wrap gap-2">
+            <div class="bg-white dark:bg-gray-800 rounded shadow-sm px-3 py-1.5 border-l-2 border-red-500 flex items-center gap-2">
+                <span class="text-xs text-gray-500">Payable:</span>
+                <span class="text-sm font-bold text-red-600">₹{{ number_format($metrics['total_payable'], 0) }}</span>
             </div>
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-orange-500">
-                <div class="text-sm text-gray-600 dark:text-gray-400">With Balance</div>
-                <div class="text-2xl font-bold text-orange-600">{{ $metrics['suppliers_with_balance'] }}</div>
+            <div class="bg-white dark:bg-gray-800 rounded shadow-sm px-3 py-1.5 border-l-2 border-orange-500 flex items-center gap-2">
+                <span class="text-xs text-gray-500">With Balance:</span>
+                <span class="text-base font-bold text-orange-600">{{ $metrics['suppliers_with_balance'] }}</span>
             </div>
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-blue-500">
-                <div class="text-sm text-gray-600 dark:text-gray-400">Total Suppliers</div>
-                <div class="text-2xl font-bold">{{ $metrics['total_suppliers'] }}</div>
+            <div class="bg-white dark:bg-gray-800 rounded shadow-sm px-3 py-1.5 border-l-2 border-blue-500 flex items-center gap-2">
+                <span class="text-xs text-gray-500">Suppliers:</span>
+                <span class="text-base font-bold">{{ $metrics['total_suppliers'] }}</span>
             </div>
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-purple-500">
-                <div class="text-sm text-gray-600 dark:text-gray-400">Period Purchases</div>
-                <div class="text-xl font-bold text-purple-600">₹{{ number_format($metrics['period_purchases'], 0) }}</div>
+            <div class="bg-white dark:bg-gray-800 rounded shadow-sm px-3 py-1.5 border-l-2 border-purple-500 flex items-center gap-2">
+                <span class="text-xs text-gray-500">Purchases:</span>
+                <span class="text-sm font-bold text-purple-600">₹{{ number_format($metrics['period_purchases'], 0) }}</span>
             </div>
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-green-500">
-                <div class="text-sm text-gray-600 dark:text-gray-400">Period Payments</div>
-                <div class="text-xl font-bold text-green-600">₹{{ number_format($metrics['period_payments'], 0) }}</div>
+            <div class="bg-white dark:bg-gray-800 rounded shadow-sm px-3 py-1.5 border-l-2 border-green-500 flex items-center gap-2">
+                <span class="text-xs text-gray-500">Payments:</span>
+                <span class="text-sm font-bold text-green-600">₹{{ number_format($metrics['period_payments'], 0) }}</span>
             </div>
         </div>
 

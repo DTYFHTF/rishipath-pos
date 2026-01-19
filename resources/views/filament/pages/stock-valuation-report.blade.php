@@ -47,36 +47,36 @@
             </div>
         </div>
 
-        <!-- Summary Cards -->
+        <!-- Summary Cards (Ultra Compact - Inline) -->
         @php $summary = $this->getValuationSummary(); @endphp
-        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-blue-500">
-                <div class="text-xs text-gray-600 dark:text-gray-400">Total SKUs</div>
-                <div class="text-xl font-bold">{{ number_format($summary['total_items']) }}</div>
+        <div class="flex flex-wrap gap-2">
+            <div class="bg-white dark:bg-gray-800 rounded shadow-sm px-3 py-1.5 border-l-2 border-blue-500 flex items-center gap-2">
+                <span class="text-xs text-gray-500">SKUs:</span>
+                <span class="text-base font-bold">{{ number_format($summary['total_items']) }}</span>
             </div>
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-green-500">
-                <div class="text-xs text-gray-600 dark:text-gray-400">In Stock</div>
-                <div class="text-xl font-bold text-green-600">{{ number_format($summary['items_in_stock']) }}</div>
+            <div class="bg-white dark:bg-gray-800 rounded shadow-sm px-3 py-1.5 border-l-2 border-green-500 flex items-center gap-2">
+                <span class="text-xs text-gray-500">In Stock:</span>
+                <span class="text-base font-bold text-green-600">{{ number_format($summary['items_in_stock']) }}</span>
             </div>
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-purple-500">
-                <div class="text-xs text-gray-600 dark:text-gray-400">Total Qty</div>
-                <div class="text-xl font-bold">{{ number_format($summary['total_quantity'], 0) }}</div>
+            <div class="bg-white dark:bg-gray-800 rounded shadow-sm px-3 py-1.5 border-l-2 border-purple-500 flex items-center gap-2">
+                <span class="text-xs text-gray-500">Qty:</span>
+                <span class="text-base font-bold">{{ number_format($summary['total_quantity'], 0) }}</span>
             </div>
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-red-500">
-                <div class="text-xs text-gray-600 dark:text-gray-400">Cost Value</div>
-                <div class="text-xl font-bold text-red-600">₹{{ number_format($summary['total_cost_value'], 0) }}</div>
+            <div class="bg-white dark:bg-gray-800 rounded shadow-sm px-3 py-1.5 border-l-2 border-red-500 flex items-center gap-2">
+                <span class="text-xs text-gray-500">Cost:</span>
+                <span class="text-sm font-bold text-red-600">₹{{ number_format($summary['total_cost_value'], 0) }}</span>
             </div>
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-indigo-500">
-                <div class="text-xs text-gray-600 dark:text-gray-400">Sale Value</div>
-                <div class="text-xl font-bold text-indigo-600">₹{{ number_format($summary['total_sale_value'], 0) }}</div>
+            <div class="bg-white dark:bg-gray-800 rounded shadow-sm px-3 py-1.5 border-l-2 border-indigo-500 flex items-center gap-2">
+                <span class="text-xs text-gray-500">Sale:</span>
+                <span class="text-sm font-bold text-indigo-600">₹{{ number_format($summary['total_sale_value'], 0) }}</span>
             </div>
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-teal-500">
-                <div class="text-xs text-gray-600 dark:text-gray-400">Potential Profit</div>
-                <div class="text-xl font-bold text-teal-600">₹{{ number_format($summary['potential_profit'], 0) }}</div>
+            <div class="bg-white dark:bg-gray-800 rounded shadow-sm px-3 py-1.5 border-l-2 border-teal-500 flex items-center gap-2">
+                <span class="text-xs text-gray-500">Profit:</span>
+                <span class="text-sm font-bold text-teal-600">₹{{ number_format($summary['potential_profit'], 0) }}</span>
             </div>
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-amber-500">
-                <div class="text-xs text-gray-600 dark:text-gray-400">Margin %</div>
-                <div class="text-xl font-bold text-amber-600">{{ number_format($summary['margin_percent'], 1) }}%</div>
+            <div class="bg-white dark:bg-gray-800 rounded shadow-sm px-3 py-1.5 border-l-2 border-amber-500 flex items-center gap-2">
+                <span class="text-xs text-gray-500">Margin:</span>
+                <span class="text-base font-bold text-amber-600">{{ number_format($summary['margin_percent'], 1) }}%</span>
             </div>
         </div>
 

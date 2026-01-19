@@ -19,36 +19,36 @@
             $data = $this->getSalesData();
         @endphp
 
-        <!-- Summary Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <x-filament::card>
-                <div class="text-sm text-gray-600 dark:text-gray-400">Total Sales</div>
-                <div class="text-3xl font-bold text-primary-600">₹{{ number_format($data['total_sales'], 2) }}</div>
+        <!-- Summary Cards (Compact) -->
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+            <x-filament::card class="p-2">
+                <div class="text-xs text-gray-500 dark:text-gray-400">Total Sales</div>
+                <div class="text-lg font-bold text-primary-600">₹{{ number_format($data['total_sales'], 2) }}</div>
             </x-filament::card>
 
-            <x-filament::card>
-                <div class="text-sm text-gray-600 dark:text-gray-400">Total Transactions</div>
-                <div class="text-3xl font-bold text-primary-600">{{ number_format($data['total_transactions']) }}</div>
+            <x-filament::card class="p-2">
+                <div class="text-xs text-gray-500 dark:text-gray-400">Transactions</div>
+                <div class="text-lg font-bold text-primary-600">{{ number_format($data['total_transactions']) }}</div>
             </x-filament::card>
 
-            <x-filament::card>
-                <div class="text-sm text-gray-600 dark:text-gray-400">Average Sale</div>
-                <div class="text-3xl font-bold text-primary-600">₹{{ number_format($data['average_sale'], 2) }}</div>
+            <x-filament::card class="p-2">
+                <div class="text-xs text-gray-500 dark:text-gray-400">Avg Sale</div>
+                <div class="text-lg font-bold text-primary-600">₹{{ number_format($data['average_sale'], 2) }}</div>
             </x-filament::card>
 
-            <x-filament::card>
-                <div class="text-sm text-gray-600 dark:text-gray-400">Items Sold</div>
-                <div class="text-3xl font-bold text-primary-600">{{ number_format($data['total_items_sold']) }}</div>
+            <x-filament::card class="p-2">
+                <div class="text-xs text-gray-500 dark:text-gray-400">Items Sold</div>
+                <div class="text-lg font-bold text-primary-600">{{ number_format($data['total_items_sold']) }}</div>
             </x-filament::card>
 
-            <x-filament::card>
-                <div class="text-sm text-gray-600 dark:text-gray-400">Total Tax Collected</div>
-                <div class="text-3xl font-bold text-primary-600">₹{{ number_format($data['total_tax'], 2) }}</div>
+            <x-filament::card class="p-2">
+                <div class="text-xs text-gray-500 dark:text-gray-400">Tax</div>
+                <div class="text-lg font-bold text-primary-600">₹{{ number_format($data['total_tax'], 2) }}</div>
             </x-filament::card>
 
-            <x-filament::card>
-                <div class="text-sm text-gray-600 dark:text-gray-400">Total Discounts</div>
-                <div class="text-3xl font-bold text-primary-600">₹{{ number_format($data['total_discount'], 2) }}</div>
+            <x-filament::card class="p-2">
+                <div class="text-xs text-gray-500 dark:text-gray-400">Discounts</div>
+                <div class="text-lg font-bold text-primary-600">₹{{ number_format($data['total_discount'], 2) }}</div>
             </x-filament::card>
         </div>
 

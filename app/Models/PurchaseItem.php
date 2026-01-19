@@ -28,8 +28,8 @@ class PurchaseItem extends Model
     ];
 
     protected $casts = [
-        'quantity_ordered' => 'decimal:3',
-        'quantity_received' => 'decimal:3',
+        'quantity_ordered' => 'integer',
+        'quantity_received' => 'integer',
         'unit_cost' => 'decimal:2',
         'tax_rate' => 'decimal:2',
         'tax_amount' => 'decimal:2',
@@ -92,8 +92,8 @@ class PurchaseItem extends Model
         return $this->belongsTo(ProductBatch::class);
     }
 
-    public function getPendingQuantityAttribute(): float
+    public function getPendingQuantityAttribute(): int
     {
-        return max(0, $this->quantity_ordered - $this->quantity_received);
+        return (int) max(0, $this->quantity_ordered - $this->quantity_received);
     }
 }

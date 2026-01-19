@@ -30,11 +30,11 @@ class ProductBatch extends Model
         'expiry_date' => 'date',
         'purchase_date' => 'date',
         'purchase_price' => 'decimal:2',
-        'quantity_received' => 'decimal:3',
-        'quantity_remaining' => 'decimal:3',
-        'quantity_sold' => 'decimal:3',
-        'quantity_damaged' => 'decimal:3',
-        'quantity_returned' => 'decimal:3',
+        'quantity_received' => 'integer',
+        'quantity_remaining' => 'integer',
+        'quantity_sold' => 'integer',
+        'quantity_damaged' => 'integer',
+        'quantity_returned' => 'integer',
     ];
 
     public function productVariant(): BelongsTo

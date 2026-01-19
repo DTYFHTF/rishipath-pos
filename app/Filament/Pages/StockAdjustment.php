@@ -104,7 +104,7 @@ class StockAdjustment extends Page implements HasForms
                     ->required()
                     ->numeric()
                     ->minValue(0)
-                    ->step(0.001)
+                    ->step(1)
                     ->live()
                     ->helperText(fn () => "Current stock: {$this->currentStock}"),
 
@@ -159,7 +159,7 @@ class StockAdjustment extends Page implements HasForms
             'productVariantId' => 'required',
             'storeId' => 'required',
             'adjustmentType' => 'required',
-            'quantity' => 'required|numeric|min:0',
+            'quantity' => 'required|integer|min:0',
             'reason' => 'required',
         ]);
 

@@ -65,6 +65,18 @@ class Customer extends Model
         });
     }
 
+    /**
+     * Recalculate customer purchase totals from sales.
+     */
+    public function recalculateTotals(): void
+    {
+        $this->loadMissing('sales');
+        
+        $this->total_purchases = $this->sales->where('status', 'completed')->count();
+        $this->total_spent = $this->sales->where('status', 'completed')->sum('total_amount');
+        $this->saveQuietly();
+    }
+
     public function organization(): BelongsTo
     {
         return $this->belongsTo(Organization::class);
