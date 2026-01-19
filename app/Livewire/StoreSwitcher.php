@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Services\StoreContext;
+use Filament\Notifications\Notification;
 use Livewire\Component;
 
 class StoreSwitcher extends Component
@@ -23,6 +24,19 @@ class StoreSwitcher extends Component
             StoreContext::setCurrentStoreId($storeId);
             $this->currentStoreId = $storeId;
             $this->showDropdown = false;
+            
+            // Refresh the component data
+            $this->availableStores = StoreContext::getAccessibleStores();
+            
+            // Get store name for toast
+            $storeName = $this->availableStores->firstWhere('id', $storeId)?->name ?? 'Store';
+            
+            // Show toast notification
+            Notification::make()
+                ->success()
+                ->title('Store Switched')
+                ->body("Now viewing data for {$storeName}")
+                ->send();
             
             // Broadcast event to all listening components
             $this->dispatch('store-switched', storeId: $storeId);

@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Models\ProductVariant;
 use App\Services\BarcodeService;
+use App\Services\OrganizationContext;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -30,6 +31,10 @@ class BarcodeLabelPrinting extends Page implements HasForms
     {
         return auth()->user()?->hasPermission('view_product_batches') ?? false;
     }
+
+    protected $listeners = [
+        'organization-switched' => '$refresh',
+    ];
 
     public ?array $data = [];
 

@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Services\ExportService;
+use App\Services\OrganizationContext;
 use App\Services\StoreContext;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
@@ -38,7 +39,7 @@ class ProfitReport extends Page implements HasForms
 
     public $categoryId = null;
 
-    protected $listeners = ['store-switched' => 'handleStoreSwitch'];
+    protected $listeners = ['store-switched' => 'handleStoreSwitch', 'organization-switched' => 'handleOrganizationSwitch'];
 
     public function mount(): void
     {
@@ -53,12 +54,18 @@ class ProfitReport extends Page implements HasForms
         $this->dispatch('$refresh');
     }
 
+    public function handleOrganizationSwitch($organizationId): void
+    {
+        $this->dispatch('$refresh');
+    }
+
     /**
      * Get overall profit summary
      */
     public function getProfitSummary(): array
     {
-        $query = Sale::whereBetween('created_at', [$this->startDate, $this->endDate])
+        $query = Sale::where('organization_id', OrganizationContext::getCurrentOrganizationId() ?? auth()->user()->organization_id)
+            ->whereBetween('created_at', [$this->startDate, $this->endDate])
             ->where('status', 'completed');
 
         if ($this->storeId) {

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Services\OrganizationContext;
 use App\Models\Customer;
 use App\Models\LoyaltyPoint;
 use App\Models\LoyaltyTier;
@@ -27,7 +28,7 @@ class LoyaltyProgram extends Page
 
     public function getStats(): array
     {
-        $orgId = auth()->user()->organization_id;
+        $orgId = OrganizationContext::getCurrentOrganizationId() ?? auth()->user()->organization_id;
 
         $totalMembers = Customer::where('organization_id', $orgId)
             ->whereNotNull('loyalty_enrolled_at')

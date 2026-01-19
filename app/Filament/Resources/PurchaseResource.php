@@ -7,6 +7,7 @@ use App\Models\ProductVariant;
 use App\Models\Purchase;
 use App\Models\Store;
 use App\Models\Supplier;
+use App\Services\OrganizationContext;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
@@ -128,7 +129,7 @@ class PurchaseResource extends Resource
                                     ->minValue(0.01)
                                     ->prefix('₹')
                                     ->reactive()
-                                    ->columnSpan(1),
+                                    ->columnSpan(2),
 
                                 Forms\Components\TextInput::make('tax_rate')
                                     ->label('Tax %')
@@ -138,7 +139,7 @@ class PurchaseResource extends Resource
                                     ->maxValue(100)
                                     ->suffix('%')
                                     ->reactive()
-                                    ->columnSpan(1),
+                                    ->columnSpan(2),
 
                                 Forms\Components\TextInput::make('discount_amount')
                                     ->label('Discount')
@@ -147,7 +148,7 @@ class PurchaseResource extends Resource
                                     ->minValue(0)
                                     ->prefix('₹')
                                     ->reactive()
-                                    ->columnSpan(1),
+                                    ->columnSpan(2),
 
                                 Forms\Components\Placeholder::make('line_total')
                                     ->label('Line Total')
@@ -166,7 +167,7 @@ class PurchaseResource extends Resource
                                         
                                         return '₹' . number_format($total, 2);
                                     })
-                                    ->columnSpan(1),
+                                    ->columnSpan(2),
 
                                 Forms\Components\DatePicker::make('expiry_date')
                                     ->label('Expiry')
@@ -241,6 +242,7 @@ class PurchaseResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn ($query) => $query->where('organization_id', OrganizationContext::getCurrentOrganizationId() ?? auth()->user()->organization_id))
             ->columns([
                 Tables\Columns\TextColumn::make('purchase_number')
                     ->label('Purchase #')

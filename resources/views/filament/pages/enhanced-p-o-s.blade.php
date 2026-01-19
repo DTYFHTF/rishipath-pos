@@ -122,6 +122,9 @@
                                             <div class="text-right">
                                                 <div class="font-bold text-green-600 dark:text-green-400">₹{{ number_format($result['price'], 2) }}</div>
                                                 <div class="text-xs text-gray-400">{{ $result['sku'] }}</div>
+                                                <div class="text-xs mt-0.5 {{ ($result['available_stock'] ?? 0) > 0 ? 'text-emerald-500' : 'text-red-500' }}">
+                                                    Stock: {{ $result['available_stock'] ?? 0 }}
+                                                </div>
                                             </div>
                                         </button>
                                     @empty

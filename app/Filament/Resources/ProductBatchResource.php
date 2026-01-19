@@ -29,10 +29,13 @@ class ProductBatchResource extends Resource
                     ->schema([
                         Forms\Components\Select::make('product_variant_id')
                             ->label('Product Variant')
-                            ->relationship('productVariant', 'sku', function ($query) {
-                                $query->with('product');
+                            ->options(function () {
+                                return \App\Models\ProductVariant::with('product')
+                                    ->get()
+                                    ->mapWithKeys(fn ($v) => [
+                                        $v->id => "{$v->product->name} - {$v->pack_size}{$v->unit} (SKU: {$v->sku})",
+                                    ]);
                             })
-                            ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->product->name} - {$record->pack_size}{$record->unit}")
                             ->searchable()
                             ->required()
                             ->preload(),

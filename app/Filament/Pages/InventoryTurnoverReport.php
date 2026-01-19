@@ -32,7 +32,10 @@ class InventoryTurnoverReport extends Page
 
     public $categoryId = '';
 
-    protected $listeners = ['store-switched' => 'handleStoreSwitch'];
+    protected $listeners = [
+        'store-switched' => 'handleStoreSwitch',
+        'organization-switched' => 'handleOrganizationSwitch',
+    ];
 
     public function mount(): void
     {
@@ -44,6 +47,12 @@ class InventoryTurnoverReport extends Page
     public function handleStoreSwitch($storeId): void
     {
         $this->storeId = $storeId;
+        $this->dispatch('$refresh');
+    }
+
+    public function handleOrganizationSwitch($organizationId): void
+    {
+        $this->storeId = '';
         $this->dispatch('$refresh');
     }
 

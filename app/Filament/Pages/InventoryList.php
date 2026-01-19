@@ -62,7 +62,10 @@ class InventoryList extends Page implements HasForms
 
     public $timelineVariantId;
 
-    protected $listeners = ['store-switched' => 'handleStoreSwitch'];
+    protected $listeners = [
+        'store-switched' => 'handleStoreSwitch',
+        'organization-switched' => 'handleOrganizationSwitch',
+    ];
 
     public function mount(): void
     {
@@ -72,6 +75,12 @@ class InventoryList extends Page implements HasForms
     public function handleStoreSwitch($storeId): void
     {
         $this->storeId = $storeId;
+        $this->reset(['search', 'categoryId', 'showLowStock', 'showOutOfStock']);
+    }
+
+    public function handleOrganizationSwitch($organizationId): void
+    {
+        $this->storeId = StoreContext::getCurrentStoreId() ?? Store::first()?->id;
         $this->reset(['search', 'categoryId', 'showLowStock', 'showOutOfStock']);
     }
 

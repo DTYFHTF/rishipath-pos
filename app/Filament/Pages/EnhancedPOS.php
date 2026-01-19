@@ -15,6 +15,7 @@ use App\Models\Store;
 use App\Models\Terminal;
 use App\Services\InventoryService;
 use App\Services\LoyaltyService;
+use App\Services\OrganizationContext;
 use App\Services\StoreContext;
 use App\Services\WhatsAppService;
 use Filament\Notifications\Notification;
@@ -80,6 +81,7 @@ class EnhancedPOS extends Page
         'createNewSession' => 'createSession',
         'parkCurrentSession' => 'parkSession',
         'store-switched' => 'handleStoreSwitch',
+        'organization-switched' => 'handleOrganizationSwitch',
     ];
 
     /**
@@ -129,6 +131,12 @@ class EnhancedPOS extends Page
                 $storePricing = $variant->storePricing->firstWhere('store_id', $storeId);
                 $price = $storePricing?->custom_price ?? $variant->selling_price_nepal ?? $variant->base_price ?? 0;
 
+                // Get available stock for this store
+                $stockLevel = \App\Models\StockLevel::where('product_variant_id', $variant->id)
+                    ->where('store_id', $storeId)
+                    ->first();
+                $availableStock = $stockLevel ? (int) $stockLevel->quantity : 0;
+
                 return [
                     'id' => $variant->id,
                     'product_name' => $variant->product->name,
@@ -137,6 +145,7 @@ class EnhancedPOS extends Page
                     'barcode' => $variant->barcode,
                     'price' => $price,
                     'image' => $variant->product->image_url,
+                    'available_stock' => $availableStock,
                     'other_names' => collect([
                         $variant->product->name_hindi,
                         $variant->product->name_nepali,
@@ -174,7 +183,8 @@ class EnhancedPOS extends Page
         }
 
         // Load stores for current user's organization
-        $this->stores = Store::where('organization_id', auth()->user()->organization_id)
+        $orgId = OrganizationContext::getCurrentOrganizationId() ?? auth()->user()->organization_id;
+        $this->stores = Store::where('organization_id', $orgId)
             ->orderBy('name')
             ->get();
 
@@ -236,15 +246,33 @@ class EnhancedPOS extends Page
         } else {
             $this->createSession();
         }
+    }
 
-        // Notify user
-        Notification::make()
-            ->success()
-            ->title('Store Switched')
-            ->body("POS switched to {$store->name}")
-            ->send();
+    /**
+     * Handle organization switch event from global organization selector
+     */
+    public function handleOrganizationSwitch($organizationId): void
+    {
+        // Reload stores for new organization
+        $this->stores = Store::where('organization_id', $organizationId)
+            ->where('active', true)
+            ->orderBy('name')
+            ->get();
 
-        // Force page refresh to reload all data
+        // Clear current sessions and reload
+        $this->sessions = [];
+        $this->activeSessionKey = null;
+        $this->loadActiveSessions();
+
+        // Create a new session if needed
+        if (empty($this->sessions)) {
+            $this->createSession();
+        } else {
+            $this->activeSessionKey = array_key_first($this->sessions);
+        }
+    }
+
+    /**
         $this->dispatch('$refresh');
     }
 
@@ -290,7 +318,7 @@ class EnhancedPOS extends Page
     public function getCustomersProperty()
     {
         $query = Customer::query()
-            ->where('organization_id', auth()->user()->organization_id)
+            ->where('organization_id', OrganizationContext::getCurrentOrganizationId() ?? auth()->user()->organization_id)
             ->where('active', true);
 
         if (! empty($this->customerSearch)) {
@@ -379,7 +407,7 @@ class EnhancedPOS extends Page
         }
 
         $session = PosSession::createNew([
-            'organization_id' => auth()->user()->organization_id,
+            'organization_id' => OrganizationContext::getCurrentOrganizationId() ?? auth()->user()->organization_id,
             'store_id' => $this->resolveStoreId(),
             'cashier_id' => auth()->id(),
             'session_name' => "Cart #{$sessionCount}",
@@ -828,7 +856,7 @@ class EnhancedPOS extends Page
             }
 
             $sale = Sale::create([
-                'organization_id' => auth()->user()->organization_id,
+                'organization_id' => OrganizationContext::getCurrentOrganizationId() ?? auth()->user()->organization_id,
                 'store_id' => $storeId,
                 'terminal_id' => $terminal?->id ?? \App\Models\Terminal::where('active', true)->first()?->id,
                 'receipt_number' => $receiptNumber,

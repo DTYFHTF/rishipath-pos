@@ -53,7 +53,10 @@ class StockAdjustment extends Page implements HasForms
     public $filterProductId = null;
     public $filterDays = 30;
 
-    protected $listeners = ['store-switched' => 'handleStoreSwitch'];
+    protected $listeners = [
+        'store-switched' => 'handleStoreSwitch',
+        'organization-switched' => 'handleOrganizationSwitch',
+    ];
 
     public function mount(): void
     {
@@ -63,6 +66,12 @@ class StockAdjustment extends Page implements HasForms
     public function handleStoreSwitch($storeId): void
     {
         $this->storeId = $storeId;
+        $this->reset(['productVariantId', 'quantity', 'reason', 'notes', 'currentStock']);
+    }
+
+    public function handleOrganizationSwitch($organizationId): void
+    {
+        $this->storeId = StoreContext::getCurrentStoreId();
         $this->reset(['productVariantId', 'quantity', 'reason', 'notes', 'currentStock']);
     }
 

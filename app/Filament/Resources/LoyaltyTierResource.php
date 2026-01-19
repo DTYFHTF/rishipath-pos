@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\LoyaltyTierResource\Pages;
 use App\Models\LoyaltyTier;
+use App\Services\OrganizationContext;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -58,6 +59,7 @@ class LoyaltyTierResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn ($query) => $query->where('organization_id', OrganizationContext::getCurrentOrganizationId() ?? auth()->user()->organization_id))
             ->columns([
                 Tables\Columns\TextColumn::make('organization.name')
                     ->numeric()

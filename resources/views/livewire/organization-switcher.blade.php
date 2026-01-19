@@ -1,5 +1,5 @@
 <div class="flex items-center">
-    @if($organizations->count() > 1)
+    @if($organizations->count() >= 1)
         <div x-data="{ open: false }" class="relative">
             <button
                 @click="open = !open"

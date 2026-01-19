@@ -4,7 +4,9 @@ namespace App\Filament\Pages;
 
 use App\Models\Customer;
 use App\Models\CustomerLedgerEntry;
+use App\Services\OrganizationContext;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
@@ -49,27 +51,35 @@ class CustomerLedgerReport extends Page implements HasForms
     {
         return $form
             ->schema([
-                Select::make('customer_id')
-                    ->label('Customer')
-                    ->options(Customer::where('active', true)->pluck('name', 'id'))
-                    ->searchable()
-                    ->required()
-                    ->live()
-                    ->afterStateUpdated(fn () => $this->generateReport()),
+                Section::make('Filters')
+                    ->schema([
+                        Select::make('customer_id')
+                            ->label('Customer')
+                            ->options(Customer::where('organization_id', OrganizationContext::getCurrentOrganizationId() ?? auth()->user()->organization_id)
+                                ->where('active', true)
+                                ->pluck('name', 'id'))
+                            ->searchable()
+                            ->required()
+                            ->live()
+                            ->afterStateUpdated(fn () => $this->generateReport()),
 
-                DatePicker::make('start_date')
-                    ->label('Start Date')
-                    ->required()
-                    ->live()
-                    ->afterStateUpdated(fn () => $this->generateReport()),
+                        DatePicker::make('start_date')
+                            ->label('Start Date')
+                            ->required()
+                            ->native(false)
+                            ->live()
+                            ->afterStateUpdated(fn () => $this->generateReport()),
 
-                DatePicker::make('end_date')
-                    ->label('End Date')
-                    ->required()
-                    ->live()
-                    ->afterStateUpdated(fn () => $this->generateReport()),
-            ])
-            ->columns(3);
+                        DatePicker::make('end_date')
+                            ->label('End Date')
+                            ->required()
+                            ->native(false)
+                            ->live()
+                            ->afterStateUpdated(fn () => $this->generateReport()),
+                    ])
+                    ->columns(3)
+                    ->compact(),
+            ]);
     }
 
     public function generateReport()
@@ -95,6 +105,7 @@ class CustomerLedgerReport extends Page implements HasForms
         ];
 
         $query = CustomerLedgerEntry::forCustomer($this->customer_id)
+            ->where('organization_id', OrganizationContext::getCurrentOrganizationId() ?? auth()->user()->organization_id)
             ->with(['store', 'createdBy'])
             ->orderBy('transaction_date', 'desc')
             ->orderBy('created_at', 'desc');

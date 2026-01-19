@@ -32,7 +32,10 @@ class StockValuationReport extends Page
     
     public $asOfDate = null;
 
-    protected $listeners = ['store-switched' => 'handleStoreSwitch'];
+    protected $listeners = [
+        'store-switched' => 'handleStoreSwitch',
+        'organization-switched' => 'handleOrganizationSwitch',
+    ];
 
     public function mount(): void
     {
@@ -43,6 +46,12 @@ class StockValuationReport extends Page
     public function handleStoreSwitch($storeId): void
     {
         $this->storeId = $storeId;
+        $this->dispatch('$refresh');
+    }
+
+    public function handleOrganizationSwitch($organizationId): void
+    {
+        $this->storeId = null;
         $this->dispatch('$refresh');
     }
 

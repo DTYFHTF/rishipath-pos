@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Models\InventoryMovement;
+use App\Services\OrganizationContext;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -36,13 +37,18 @@ class InventoryAuditLog extends Page implements HasForms, HasTable
         return auth()->user()?->hasPermission('view_inventory_audit') ?? false;
     }
 
+    protected $listeners = [
+        'store-switched' => '$refresh',
+        'organization-switched' => '$refresh',
+    ];
+
     public function table(Table $table): Table
     {
         return $table
             ->query(
                 InventoryMovement::query()
                     ->with(['productVariant.product', 'user', 'store'])
-                    ->where('organization_id', auth()->user()->organization_id)
+                    ->where('organization_id', OrganizationContext::getCurrentOrganizationId() ?? auth()->user()->organization_id)
                     ->orderByDesc('created_at')
             )
             ->columns([

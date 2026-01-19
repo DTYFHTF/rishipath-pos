@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Auth\Events\Login;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -19,6 +21,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Update user's last_login_at timestamp when they login
+        Event::listen(Login::class, function (Login $event) {
+            try {
+                $event->user?->update(['last_login_at' => now()]);
+            } catch (\Throwable $e) {
+                // swallow any unexpected errors during login timestamp update
+            }
+        });
     }
 }

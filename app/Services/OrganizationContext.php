@@ -45,7 +45,7 @@ class OrganizationContext
         $user = Auth::user();
 
         // Super admins see all organizations
-        if ($user && $user->hasRole('super_admin')) {
+        if ($user && method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) {
             return Organization::where('active', true)->orderBy('name')->get();
         }
 

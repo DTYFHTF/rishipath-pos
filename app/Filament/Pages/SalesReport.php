@@ -5,8 +5,10 @@ namespace App\Filament\Pages;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Services\ExportService;
+use App\Services\OrganizationContext;
 use App\Services\StoreContext;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
@@ -39,7 +41,7 @@ class SalesReport extends Page implements HasForms
 
     public $paymentMethod = null;
 
-    protected $listeners = ['store-switched' => 'handleStoreSwitch'];
+    protected $listeners = ['store-switched' => 'handleStoreSwitch', 'organization-switched' => 'handleOrganizationSwitch'];
 
     public function mount(): void
     {
@@ -54,30 +56,43 @@ class SalesReport extends Page implements HasForms
         $this->dispatch('$refresh');
     }
 
+    public function handleOrganizationSwitch($organizationId): void
+    {
+        $this->dispatch('$refresh');
+    }
+
     public function form(Form $form): Form
     {
         return $form
             ->schema([
-                DatePicker::make('startDate')
-                    ->label('Start Date')
-                    ->required(),
-                DatePicker::make('endDate')
-                    ->label('End Date')
-                    ->required(),
-                Select::make('storeId')
-                    ->label('Store')
-                    ->options(\App\Models\Store::pluck('name', 'id'))
-                    ->placeholder('All Stores'),
-                Select::make('paymentMethod')
-                    ->label('Payment Method')
-                    ->options([
-                        'cash' => 'Cash',
-                        'upi' => 'UPI',
-                        'card' => 'Card',
-                        'esewa' => 'eSewa',
-                        'khalti' => 'Khalti',
+                Section::make('Filters')
+                    ->schema([
+                        DatePicker::make('startDate')
+                            ->label('Start Date')
+                            ->required()
+                            ->native(false),
+                        DatePicker::make('endDate')
+                            ->label('End Date')
+                            ->required()
+                            ->native(false),
+                        Select::make('storeId')
+                            ->label('Store')
+                            ->options(\App\Models\Store::where('organization_id', OrganizationContext::getCurrentOrganizationId() ?? auth()->user()->organization_id)->pluck('name', 'id'))
+                            ->placeholder('All Stores')
+                            ->searchable(),
+                        Select::make('paymentMethod')
+                            ->label('Payment Method')
+                            ->options([
+                                'cash' => 'Cash',
+                                'upi' => 'UPI',
+                                'card' => 'Card',
+                                'esewa' => 'eSewa',
+                                'khalti' => 'Khalti',
+                            ])
+                            ->placeholder('All Methods'),
                     ])
-                    ->placeholder('All Methods'),
+                    ->columns(4)
+                    ->compact(),
             ])
             ->columns(4);
     }
@@ -85,6 +100,7 @@ class SalesReport extends Page implements HasForms
     public function getSalesData()
     {
         $query = Sale::query()
+            ->where('organization_id', OrganizationContext::getCurrentOrganizationId() ?? auth()->user()->organization_id)
             ->whereBetween('date', [$this->startDate, $this->endDate])
             ->where('status', 'completed');
 

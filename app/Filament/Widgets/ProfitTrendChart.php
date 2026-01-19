@@ -175,4 +175,10 @@ class ProfitTrendChart extends ChartWidget
             'maintainAspectRatio' => false,
         ];
     }
+
+    // Return parent render directly to preserve component context
+    public function render(): \Illuminate\Contracts\View\View
+    {
+        return parent::render();
+    }
 }

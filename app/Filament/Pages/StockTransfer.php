@@ -49,7 +49,10 @@ class StockTransfer extends Page implements HasForms
 
     public $toStock = 0;
 
-    protected $listeners = ['store-switched' => 'handleStoreSwitch'];
+    protected $listeners = [
+        'store-switched' => 'handleStoreSwitch',
+        'organization-switched' => 'handleOrganizationSwitch',
+    ];
 
     public function mount(): void
     {
@@ -69,6 +72,14 @@ class StockTransfer extends Page implements HasForms
         $this->fromStoreId = $storeId;
         $stores = Store::where('active', true)->where('id', '!=', $storeId)->get();
         $this->toStoreId = $stores->first()?->id;
+        $this->reset(['productVariantId', 'quantity', 'notes', 'fromStock', 'toStock']);
+    }
+
+    public function handleOrganizationSwitch($organizationId): void
+    {
+        $stores = Store::where('active', true)->get();
+        $this->fromStoreId = $stores->first()?->id;
+        $this->toStoreId = $stores->skip(1)->first()?->id;
         $this->reset(['productVariantId', 'quantity', 'notes', 'fromStock', 'toStock']);
     }
 
