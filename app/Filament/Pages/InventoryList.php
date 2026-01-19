@@ -12,6 +12,7 @@ use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 
 class InventoryList extends Page implements HasForms
 {
@@ -107,11 +108,15 @@ class InventoryList extends Page implements HasForms
         $outOfStock = (clone $baseQuery)->where('quantity', '<=', 0)->count();
         $positiveStock = (clone $baseQuery)->where('quantity', '>', 0)->count();
 
-        // Stock value calculations
+        // Stock value calculations — handle schema variations (selling_price vs selling_price_nepal)
+        $salePriceColumn = Schema::hasColumn('product_variants', 'selling_price')
+            ? 'product_variants.selling_price'
+            : 'product_variants.selling_price_nepal';
+
         $stockValue = StockLevel::where('store_id', $this->storeId)
             ->join('product_variants', 'stock_levels.product_variant_id', '=', 'product_variants.id')
             ->selectRaw('SUM(stock_levels.quantity * COALESCE(product_variants.cost_price, 0)) as cost_value')
-            ->selectRaw('SUM(stock_levels.quantity * COALESCE(product_variants.selling_price, 0)) as sale_value')
+            ->selectRaw("SUM(stock_levels.quantity * COALESCE({$salePriceColumn}, 0)) as sale_value")
             ->first();
 
         return [
@@ -148,7 +153,7 @@ class InventoryList extends Page implements HasForms
     {
         $this->validate([
             'stockModalVariantId' => 'required',
-            'stockModalQuantity' => 'required|numeric|min:0.001',
+            'stockModalQuantity' => 'required|integer|min:1',
             'stockModalReason' => 'required',
         ]);
 

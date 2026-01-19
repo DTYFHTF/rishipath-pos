@@ -50,47 +50,47 @@
             </div>
         </div>
 
-        <!-- Metrics Cards -->
+        <!-- Metrics Cards (Ultra Compact - Inline) -->
         @php $metrics = $this->getMetrics(); @endphp
-        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-blue-500">
-                <div class="text-sm text-gray-600 dark:text-gray-400">Total Items</div>
-                <div class="text-2xl font-bold">{{ number_format($metrics['total_items']) }}</div>
+        <div class="flex flex-wrap gap-2">
+            <div class="bg-white dark:bg-gray-800 rounded shadow-sm px-3 py-1.5 border-l-2 border-blue-500 flex items-center gap-2">
+                <span class="text-xs text-gray-500">Total:</span>
+                <span class="text-base font-bold">{{ number_format($metrics['total_items']) }}</span>
             </div>
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-green-500">
-                <div class="text-sm text-gray-600 dark:text-gray-400">In Stock</div>
-                <div class="text-2xl font-bold text-green-600">{{ number_format($metrics['positive_stock']) }}</div>
+            <div class="bg-white dark:bg-gray-800 rounded shadow-sm px-3 py-1.5 border-l-2 border-green-500 flex items-center gap-2">
+                <span class="text-xs text-gray-500">In Stock:</span>
+                <span class="text-base font-bold text-green-600">{{ number_format($metrics['positive_stock']) }}</span>
             </div>
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-yellow-500">
-                <div class="text-sm text-gray-600 dark:text-gray-400">Low Stock</div>
-                <div class="text-2xl font-bold text-yellow-600">{{ number_format($metrics['low_stock']) }}</div>
+            <div class="bg-white dark:bg-gray-800 rounded shadow-sm px-3 py-1.5 border-l-2 border-yellow-500 flex items-center gap-2">
+                <span class="text-xs text-gray-500">Low:</span>
+                <span class="text-base font-bold text-yellow-600">{{ number_format($metrics['low_stock']) }}</span>
             </div>
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-red-500">
-                <div class="text-sm text-gray-600 dark:text-gray-400">Out of Stock</div>
-                <div class="text-2xl font-bold text-red-600">{{ number_format($metrics['out_of_stock']) }}</div>
+            <div class="bg-white dark:bg-gray-800 rounded shadow-sm px-3 py-1.5 border-l-2 border-red-500 flex items-center gap-2">
+                <span class="text-xs text-gray-500">Out:</span>
+                <span class="text-base font-bold text-red-600">{{ number_format($metrics['out_of_stock']) }}</span>
             </div>
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-purple-500">
-                <div class="text-sm text-gray-600 dark:text-gray-400">Cost Value</div>
-                <div class="text-xl font-bold">₹{{ number_format($metrics['cost_value'], 0) }}</div>
+            <div class="bg-white dark:bg-gray-800 rounded shadow-sm px-3 py-1.5 border-l-2 border-purple-500 flex items-center gap-2">
+                <span class="text-xs text-gray-500">Cost:</span>
+                <span class="text-sm font-bold">₹{{ number_format($metrics['cost_value'], 0) }}</span>
             </div>
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-indigo-500">
-                <div class="text-sm text-gray-600 dark:text-gray-400">Sale Value</div>
-                <div class="text-xl font-bold">₹{{ number_format($metrics['sale_value'], 0) }}</div>
+            <div class="bg-white dark:bg-gray-800 rounded shadow-sm px-3 py-1.5 border-l-2 border-indigo-500 flex items-center gap-2">
+                <span class="text-xs text-gray-500">Sale:</span>
+                <span class="text-sm font-bold">₹{{ number_format($metrics['sale_value'], 0) }}</span>
             </div>
         </div>
 
-        <!-- Inventory Table -->
+        <!-- Inventory Table (Compact) -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
             <table class="w-full text-sm">
                 <thead class="bg-gray-50 dark:bg-gray-700">
                     <tr>
-                        <th class="px-4 py-3 text-left font-semibold">Item</th>
-                        <th class="px-4 py-3 text-center font-semibold">SKU</th>
-                        <th class="px-4 py-3 text-right font-semibold">Qty</th>
-                        <th class="px-4 py-3 text-right font-semibold">Cost</th>
-                        <th class="px-4 py-3 text-right font-semibold">Sale Price</th>
-                        <th class="px-4 py-3 text-center font-semibold">Last Updated</th>
-                        <th class="px-4 py-3 text-center font-semibold">Actions</th>
+                        <th class="px-3 py-2 text-left font-semibold text-xs">Item</th>
+                        <th class="px-3 py-2 text-center font-semibold text-xs">SKU</th>
+                        <th class="px-3 py-2 text-right font-semibold text-xs">Qty</th>
+                        <th class="px-3 py-2 text-right font-semibold text-xs">Cost</th>
+                        <th class="px-3 py-2 text-right font-semibold text-xs">Sale Price</th>
+                        <th class="px-3 py-2 text-center font-semibold text-xs">Last Updated</th>
+                        <th class="px-3 py-2 text-center font-semibold text-xs">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -102,20 +102,20 @@
                             $isOut = $stock->quantity <= 0;
                         @endphp
                         <tr class="hover:bg-gray-200/30 dark:hover:bg-gray-700/50 transition-colors {{ $isOut ? 'bg-red-50 dark:bg-red-900/20' : ($isLow ? 'bg-yellow-50 dark:bg-yellow-900/20' : '') }}">
-                            <td class="px-4 py-3">
-                                <div class="font-medium">{{ $product->name ?? 'Unknown' }}</div>
+                            <td class="px-3 py-1.5">
+                                <div class="font-medium text-sm">{{ $product->name ?? 'Unknown' }}</div>
                                 <div class="text-xs text-gray-500">{{ $variant->pack_size ?? '' }}{{ $variant->unit ?? '' }}</div>
                             </td>
-                            <td class="px-4 py-3 text-center font-mono text-xs">{{ $variant->sku ?? '-' }}</td>
-                            <td class="px-4 py-3 text-right font-bold {{ $isOut ? 'text-red-600' : ($isLow ? 'text-yellow-600' : 'text-green-600') }}">
-                                {{ number_format($stock->quantity, 2) }}
+                            <td class="px-3 py-1.5 text-center font-mono text-xs">{{ $variant->sku ?? '-' }}</td>
+                            <td class="px-3 py-1.5 text-right font-bold {{ $isOut ? 'text-red-600' : ($isLow ? 'text-yellow-600' : 'text-green-600') }}">
+                                {{ number_format($stock->quantity, 0) }}
                             </td>
-                            <td class="px-4 py-3 text-right">₹{{ number_format($variant->cost_price ?? 0, 2) }}</td>
-                            <td class="px-4 py-3 text-right">₹{{ number_format($variant->selling_price ?? 0, 2) }}</td>
-                            <td class="px-4 py-3 text-center text-xs text-gray-500">
+                            <td class="px-3 py-1.5 text-right text-sm">₹{{ number_format($variant->cost_price ?? 0, 2) }}</td>
+                            <td class="px-3 py-1.5 text-right text-sm">₹{{ number_format($variant->selling_price ?? 0, 2) }}</td>
+                            <td class="px-3 py-1.5 text-center text-xs text-gray-500">
                                 {{ $stock->last_movement_at ? \Carbon\Carbon::parse($stock->last_movement_at)->diffForHumans() : '-' }}
                             </td>
-                            <td class="px-4 py-3">
+                            <td class="px-3 py-1.5">
                                 <div class="flex items-center justify-center gap-1">
                                     <button 
                                         wire:click="openStockIn({{ $variant->id }})"
@@ -159,8 +159,8 @@
 
     <!-- Stock In/Out Modal -->
     @if($showStockModal)
-        <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" wire:click.self="closeModals">
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md">
+        <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]" role="dialog" aria-modal="true" wire:click.self="closeModals">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md" role="document">
                 <h3 class="text-lg font-semibold mb-4">
                     {{ $stockModalType === 'in' ? '📥 Stock In' : '📤 Stock Out' }}
                 </h3>
@@ -171,8 +171,8 @@
                         <input 
                             type="number"
                             wire:model="stockModalQuantity"
-                            step="0.001"
-                            min="0.001"
+                            step="1"
+                            min="1"
                             class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900"
                             placeholder="Enter quantity..."
                         />
@@ -205,12 +205,14 @@
                 
                 <div class="flex justify-end gap-2 mt-6">
                     <button 
+                        type="button"
                         wire:click="closeModals"
                         class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition"
                     >
                         Cancel
                     </button>
                     <button 
+                        type="button"
                         wire:click="submitStockChange"
                         class="px-4 py-2 {{ $stockModalType === 'in' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700' }} text-white rounded-lg transition"
                     >

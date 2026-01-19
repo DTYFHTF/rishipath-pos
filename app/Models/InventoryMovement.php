@@ -27,9 +27,9 @@ class InventoryMovement extends Model
     ];
 
     protected $casts = [
-        'quantity' => 'decimal:3',
-        'from_quantity' => 'decimal:3',
-        'to_quantity' => 'decimal:3',
+        'quantity' => 'integer',
+        'from_quantity' => 'integer',
+        'to_quantity' => 'integer',
         'cost_price' => 'decimal:2',
         'created_at' => 'datetime',
     ];

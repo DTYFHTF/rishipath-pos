@@ -97,9 +97,9 @@ class StockTransfer extends Page implements HasForms
                     ->label('Quantity to Transfer')
                     ->required()
                     ->numeric()
-                    ->minValue(0.001)
+                    ->minValue(1)
                     ->maxValue(fn () => $this->fromStock)
-                    ->step(0.001),
+                    ->step(1),
 
                 Textarea::make('notes')
                     ->label('Notes')
@@ -126,7 +126,7 @@ class StockTransfer extends Page implements HasForms
             'productVariantId' => 'required',
             'fromStoreId' => 'required',
             'toStoreId' => 'required|different:fromStoreId',
-            'quantity' => 'required|numeric|min:0.001|max:'.$this->fromStock,
+            'quantity' => 'required|integer|min:1|max:'.$this->fromStock,
         ]);
 
         // Confirmation check

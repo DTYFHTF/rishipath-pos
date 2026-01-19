@@ -28,14 +28,14 @@ class DemoInventorySeeder extends Seeder
 
         // Create 5 sample purchases
         for ($i = 1; $i <= 5; $i++) {
-            $purchase = Purchase::create([
+                $purchase = Purchase::create([
                 'organization_id' => $org->id,
                 'store_id' => $store->id,
                 'supplier_id' => $supplier->id,
                 'purchase_date' => now()->subDays(rand(5, 30)),
                 'supplier_invoice_number' => 'DEMO-INV-' . str_pad($i, 4, '0', STR_PAD_LEFT),
                 'status' => $i <= 3 ? 'received' : 'ordered',
-                'total_amount' => 0,
+                    'total' => 0,
                 'tax_amount' => 0,
                 'discount_amount' => 0,
                 'shipping_cost' => rand(0, 500),
@@ -60,8 +60,8 @@ class DemoInventorySeeder extends Seeder
                     'tax_rate' => $taxRate,
                     'discount_amount' => 0,
                     'unit' => $variant->unit,
-                    'expiry_date' => now()->addYears(rand(1, 3)),
-                    'batch_number' => 'BATCH-' . strtoupper(substr(md5(rand()), 0, 8)),
+                'expiry_date' => now()->addYears(rand(1, 3)),
+                'batch_id' => null,
                 ]);
             }
 

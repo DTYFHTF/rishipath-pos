@@ -20,8 +20,8 @@ class StockLevel extends Model
     ];
 
     protected $casts = [
-        'quantity' => 'decimal:3',
-        'reserved_quantity' => 'decimal:3',
+        'quantity' => 'integer',
+        'reserved_quantity' => 'integer',
         'last_counted_at' => 'datetime',
         'last_movement_at' => 'datetime',
         'updated_at' => 'datetime',
@@ -29,9 +29,9 @@ class StockLevel extends Model
 
     protected $appends = ['available_quantity'];
 
-    public function getAvailableQuantityAttribute(): float
+    public function getAvailableQuantityAttribute(): int
     {
-        return $this->quantity - $this->reserved_quantity;
+        return (int) ($this->quantity - $this->reserved_quantity);
     }
 
     public function productVariant(): BelongsTo

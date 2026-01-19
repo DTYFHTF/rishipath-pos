@@ -25,7 +25,7 @@ class SaleItem extends Model
     ];
 
     protected $casts = [
-        'quantity' => 'decimal:3',
+        'quantity' => 'integer',
         'price_per_unit' => 'decimal:2',
         'cost_price' => 'decimal:2',
         'subtotal' => 'decimal:2',
@@ -34,6 +34,36 @@ class SaleItem extends Model
         'tax_amount' => 'decimal:2',
         'total' => 'decimal:2',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function ($item) {
+            $item->calculateTotals();
+        });
+
+        static::updating(function ($item) {
+            $item->calculateTotals();
+        });
+
+        static::saved(function ($item) {
+            if ($item->sale) {
+                $item->sale->recalculateTotals();
+            }
+        });
+
+        static::deleted(function ($item) {
+            if ($item->sale) {
+                $item->sale->recalculateTotals();
+            }
+        });
+    }
+
+    protected function calculateTotals(): void
+    {
+        $this->subtotal = $this->quantity * $this->price_per_unit;
+        $this->tax_amount = $this->subtotal * ($this->tax_rate / 100);
+        $this->total = $this->subtotal + $this->tax_amount - ($this->discount_amount ?? 0);
+    }
 
     public function sale(): BelongsTo
     {
