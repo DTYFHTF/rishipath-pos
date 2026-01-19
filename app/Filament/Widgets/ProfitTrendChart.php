@@ -4,9 +4,11 @@ namespace App\Filament\Widgets;
 
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Services\OrganizationContext;
 use Carbon\Carbon;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\On;
 
 class ProfitTrendChart extends ChartWidget
 {
@@ -21,8 +23,16 @@ class ProfitTrendChart extends ChartWidget
         return auth()->user()?->hasPermission('view_dashboard') ?? false;
     }
 
+    #[On('organization-switched')]
+    #[On('store-switched')]
+    public function refresh(): void
+    {
+        // Force widget refresh
+    }
+
     protected function getData(): array
     {
+        $organizationId = OrganizationContext::getCurrentOrganizationId();
         $endDate = Carbon::now();
         $startDate = Carbon::now()->subDays(29);
 
@@ -32,7 +42,9 @@ class ProfitTrendChart extends ChartWidget
         for ($date = $startDate->copy(); $date <= $endDate; $date->addDay()) {
             $dateStr = $date->format('Y-m-d');
 
-            $sales = Sale::whereDate('created_at', $dateStr)->get();
+            $sales = Sale::where('organization_id', $organizationId)
+                ->whereDate('created_at', $dateStr)
+                ->get();
             $revenue = $sales->sum('final_total');
 
             // Calculate cost from sale items

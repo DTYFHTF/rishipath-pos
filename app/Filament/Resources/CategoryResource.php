@@ -24,7 +24,7 @@ class CategoryResource extends Resource
                 Forms\Components\TextInput::make('name')
                     ->required()
                     ->maxLength(255)
-                    ->unique(ignoreRecord: true),
+                    ->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule) => $rule->where('organization_id', OrganizationContext::getCurrentOrganizationId())),
                 Forms\Components\Textarea::make('description')
                     ->maxLength(65535)
                     ->columnSpanFull(),

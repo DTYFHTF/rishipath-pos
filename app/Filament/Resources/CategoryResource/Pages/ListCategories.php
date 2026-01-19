@@ -10,6 +10,10 @@ class ListCategories extends ListRecords
 {
     protected static string $resource = CategoryResource::class;
 
+    protected $listeners = [
+        'organization-switched' => '$refresh',
+    ];
+
     protected function getHeaderActions(): array
     {
         return [

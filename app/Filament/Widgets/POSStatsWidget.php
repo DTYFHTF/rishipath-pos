@@ -5,29 +5,51 @@ namespace App\Filament\Widgets;
 use App\Models\Customer;
 use App\Models\Product;
 use App\Models\Sale;
+use App\Services\OrganizationContext;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\On;
 
 class POSStatsWidget extends BaseWidget
 {
+    protected static ?int $sort = 2;
+
+    #[On('organization-switched')]
+    #[On('store-switched')]
+    public function refresh(): void
+    {
+        // Force widget refresh
+    }
+
     protected function getStats(): array
     {
-        $todaySales = Sale::whereDate('date', today())
+        $organizationId = OrganizationContext::getCurrentOrganizationId();
+
+        $todaySales = Sale::where('organization_id', $organizationId)
+            ->whereDate('date', today())
             ->where('status', 'completed')
             ->sum('total_amount');
 
-        $monthSales = Sale::whereMonth('date', now()->month)
+        $monthSales = Sale::where('organization_id', $organizationId)
+            ->whereMonth('date', now()->month)
             ->whereYear('date', now()->year)
             ->where('status', 'completed')
             ->sum('total_amount');
 
-        $totalProducts = Product::where('active', true)->count();
+        $totalProducts = Product::where('organization_id', $organizationId)
+            ->where('active', true)
+            ->count();
 
-        $totalCustomers = Customer::where('active', true)->count();
+        $totalCustomers = Customer::where('organization_id', $organizationId)
+            ->where('active', true)
+            ->count();
 
         $lowStockCount = DB::table('stock_levels')
-            ->whereColumn('quantity', '<=', 'reorder_level')
+            ->join('product_variants', 'stock_levels.product_variant_id', '=', 'product_variants.id')
+            ->join('products', 'product_variants.product_id', '=', 'products.id')
+            ->where('products.organization_id', $organizationId)
+            ->whereColumn('stock_levels.quantity', '<=', 'stock_levels.reorder_level')
             ->count();
 
         return [

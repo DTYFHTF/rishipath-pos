@@ -10,6 +10,10 @@ class ListProducts extends ListRecords
 {
     protected static string $resource = ProductResource::class;
 
+    protected $listeners = [
+        'organization-switched' => '$refresh',
+    ];
+
     protected function getHeaderActions(): array
     {
         return [

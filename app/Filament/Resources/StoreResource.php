@@ -23,6 +23,9 @@ class StoreResource extends Resource
     {
         return $form
             ->schema([
+                Forms\Components\Hidden::make('organization_id')
+                    ->default(fn () => OrganizationContext::getCurrentOrganizationId())
+                    ->required(),
                 Forms\Components\TextInput::make('code')
                     ->required()
                     ->maxLength(50),

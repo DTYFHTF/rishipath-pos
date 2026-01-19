@@ -50,7 +50,7 @@ class ProductResource extends Resource
                         Forms\Components\TextInput::make('sku')
                             ->label('SKU')
                             ->required()
-                            ->unique(ignoreRecord: true)
+                            ->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule) => $rule->where('organization_id', OrganizationContext::getCurrentOrganizationId()))
                             ->maxLength(100),
                         Forms\Components\Select::make('category_id')
                             ->relationship('category', 'name')

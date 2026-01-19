@@ -5,6 +5,8 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\UserResource\Pages;
 use App\Models\Role;
 use App\Models\User;
+use App\Models\Organization;
+use App\Services\OrganizationContext;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -62,7 +64,7 @@ class UserResource extends Resource
                             ->email()
                             ->required()
                             ->maxLength(255)
-                            ->unique(ignoreRecord: true)
+                            ->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule) => $rule->where('organization_id', OrganizationContext::getCurrentOrganizationId()))
                             ->placeholder('email@example.com'),
 
                         Forms\Components\TextInput::make('phone')
@@ -112,9 +114,17 @@ class UserResource extends Resource
                                 }
                             }),
 
+                        Forms\Components\Select::make('organization_id')
+                            ->label('Organization')
+                            ->options(fn () => Organization::orderBy('name')->pluck('name', 'id'))
+                            ->default(OrganizationContext::getCurrentOrganizationId())
+                            ->required()
+                            ->reactive()
+                            ->helperText('Organization this user belongs to'),
+
                         Forms\Components\Select::make('stores')
                             ->label('Assigned Stores')
-                            ->options(\App\Models\Store::where('active', true)->pluck('name', 'id'))
+                            ->options(fn (callable $get) => \App\Models\Store::where('organization_id', $get('organization_id') ?? OrganizationContext::getCurrentOrganizationId())->where('active', true)->pluck('name', 'id'))
                             ->multiple()
                             ->searchable()
                             ->preload()

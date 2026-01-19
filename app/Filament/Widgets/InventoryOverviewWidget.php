@@ -4,35 +4,68 @@ namespace App\Filament\Widgets;
 
 use App\Models\ProductBatch;
 use App\Models\StockLevel;
+use App\Services\OrganizationContext;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\On;
 
 class InventoryOverviewWidget extends BaseWidget
 {
+    protected static ?int $sort = 1;
+
+    #[On('organization-switched')]
+    #[On('store-switched')]
+    public function refresh(): void
+    {
+        // Force widget refresh
+    }
+
     protected function getStats(): array
     {
+        $organizationId = OrganizationContext::getCurrentOrganizationId();
+
         // Total inventory value
         $inventoryValue = DB::table('product_batches')
             ->join('product_variants', 'product_batches.product_variant_id', '=', 'product_variants.id')
+            ->join('products', 'product_variants.product_id', '=', 'products.id')
+            ->where('products.organization_id', $organizationId)
             ->select(DB::raw('SUM(product_batches.quantity_remaining * product_batches.purchase_price) as total_value'))
             ->value('total_value') ?? 0;
 
         // Low stock items
-        $lowStockCount = StockLevel::whereColumn('quantity', '<=', 'reorder_level')->count();
+        $lowStockCount = StockLevel::query()
+            ->join('product_variants', 'stock_levels.product_variant_id', '=', 'product_variants.id')
+            ->join('products', 'product_variants.product_id', '=', 'products.id')
+            ->where('products.organization_id', $organizationId)
+            ->whereColumn('stock_levels.quantity', '<=', 'stock_levels.reorder_level')
+            ->count();
 
         // Expired batches
-        $expiredCount = ProductBatch::where('expiry_date', '<', now())
-            ->where('quantity_remaining', '>', 0)
+        $expiredCount = ProductBatch::query()
+            ->join('product_variants', 'product_batches.product_variant_id', '=', 'product_variants.id')
+            ->join('products', 'product_variants.product_id', '=', 'products.id')
+            ->where('products.organization_id', $organizationId)
+            ->where('product_batches.expiry_date', '<', now())
+            ->where('product_batches.quantity_remaining', '>', 0)
             ->count();
 
         // Expiring soon (within 30 days)
-        $expiringSoonCount = ProductBatch::whereBetween('expiry_date', [now(), now()->addDays(30)])
-            ->where('quantity_remaining', '>', 0)
+        $expiringSoonCount = ProductBatch::query()
+            ->join('product_variants', 'product_batches.product_variant_id', '=', 'product_variants.id')
+            ->join('products', 'product_variants.product_id', '=', 'products.id')
+            ->where('products.organization_id', $organizationId)
+            ->whereBetween('product_batches.expiry_date', [now(), now()->addDays(30)])
+            ->where('product_batches.quantity_remaining', '>', 0)
             ->count();
 
         // Out of stock items
-        $outOfStockCount = StockLevel::where('quantity', '<=', 0)->count();
+        $outOfStockCount = StockLevel::query()
+            ->join('product_variants', 'stock_levels.product_variant_id', '=', 'product_variants.id')
+            ->join('products', 'product_variants.product_id', '=', 'products.id')
+            ->where('products.organization_id', $organizationId)
+            ->where('stock_levels.quantity', '<=', 0)
+            ->count();
 
         return [
             Stat::make('Inventory Value', '₹'.number_format($inventoryValue, 2))

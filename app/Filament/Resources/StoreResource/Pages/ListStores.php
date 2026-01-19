@@ -10,6 +10,10 @@ class ListStores extends ListRecords
 {
     protected static string $resource = StoreResource::class;
 
+    protected $listeners = [
+        'organization-switched' => '$refresh',
+    ];
+
     protected function getHeaderActions(): array
     {
         return [

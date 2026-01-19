@@ -10,6 +10,10 @@ class ListSuppliers extends ListRecords
 {
     protected static string $resource = SupplierResource::class;
 
+    protected $listeners = [
+        'organization-switched' => '$refresh',
+    ];
+
     protected function getHeaderActions(): array
     {
         return [

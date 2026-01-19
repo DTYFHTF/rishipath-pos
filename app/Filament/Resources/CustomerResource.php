@@ -25,18 +25,18 @@ class CustomerResource extends Resource
             ->schema([
                 Forms\Components\TextInput::make('customer_code')
                     ->required()
-                    ->unique(ignoreRecord: true)
+                    ->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule) => $rule->where('organization_id', OrganizationContext::getCurrentOrganizationId()))
                     ->maxLength(50),
                 Forms\Components\TextInput::make('name')
                     ->required()
                     ->maxLength(255),
                 Forms\Components\TextInput::make('phone')
                     ->tel()
-                    ->unique(ignoreRecord: true)
+                    ->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule) => $rule->where('organization_id', OrganizationContext::getCurrentOrganizationId()))
                     ->maxLength(20),
                 Forms\Components\TextInput::make('email')
                     ->email()
-                    ->unique(ignoreRecord: true)
+                    ->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule) => $rule->where('organization_id', OrganizationContext::getCurrentOrganizationId()))
                     ->maxLength(255),
                 Forms\Components\Textarea::make('address')
                     ->rows(2),

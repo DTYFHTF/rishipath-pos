@@ -3,9 +3,11 @@
 namespace App\Filament\Widgets;
 
 use App\Models\StockLevel;
+use App\Services\OrganizationContext;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
+use Livewire\Attributes\On;
 
 class LowStockAlertsWidget extends BaseWidget
 {
@@ -13,14 +15,27 @@ class LowStockAlertsWidget extends BaseWidget
 
     protected static ?int $sort = 3;
 
+    #[On('organization-switched')]
+    #[On('store-switched')]
+    public function refresh(): void
+    {
+        // Force widget refresh
+    }
+
     public function table(Table $table): Table
     {
+        $organizationId = OrganizationContext::getCurrentOrganizationId();
+
         return $table
             ->query(
                 StockLevel::query()
                     ->with(['productVariant.product', 'store'])
-                    ->whereColumn('quantity', '<=', 'reorder_level')
-                    ->orderBy('quantity', 'asc')
+                    ->join('product_variants', 'stock_levels.product_variant_id', '=', 'product_variants.id')
+                    ->join('products', 'product_variants.product_id', '=', 'products.id')
+                    ->where('products.organization_id', $organizationId)
+                    ->whereColumn('stock_levels.quantity', '<=', 'stock_levels.reorder_level')
+                    ->select('stock_levels.*')
+                    ->orderBy('stock_levels.quantity', 'asc')
             )
             ->columns([
                 Tables\Columns\TextColumn::make('productVariant.product.name')

@@ -4,8 +4,10 @@ namespace App\Filament\Widgets;
 
 use App\Models\Customer;
 use App\Models\LoyaltyPoint;
+use App\Services\OrganizationContext;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use Livewire\Attributes\On;
 
 class LoyaltyStatsWidget extends BaseWidget
 {
@@ -18,9 +20,16 @@ class LoyaltyStatsWidget extends BaseWidget
         return auth()->user()?->hasPermission('view_dashboard') ?? false;
     }
 
+    #[On('organization-switched')]
+    #[On('store-switched')]
+    public function refresh(): void
+    {
+        // Force widget refresh
+    }
+
     protected function getStats(): array
     {
-        $orgId = auth()->user()->organization_id;
+        $orgId = OrganizationContext::getCurrentOrganizationId();
 
         $totalMembers = Customer::where('organization_id', $orgId)
             ->whereNotNull('loyalty_enrolled_at')

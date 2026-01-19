@@ -10,6 +10,10 @@ class ListPurchases extends ListRecords
 {
     protected static string $resource = PurchaseResource::class;
 
+    protected $listeners = [
+        'organization-switched' => '$refresh',
+    ];
+
     protected function getHeaderActions(): array
     {
         return [

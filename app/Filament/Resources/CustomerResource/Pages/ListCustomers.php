@@ -10,6 +10,10 @@ class ListCustomers extends ListRecords
 {
     protected static string $resource = CustomerResource::class;
 
+    protected $listeners = [
+        'organization-switched' => '$refresh',
+    ];
+
     protected function getHeaderActions(): array
     {
         return [

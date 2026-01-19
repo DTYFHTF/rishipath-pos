@@ -25,7 +25,8 @@ class SupplierResource extends Resource
                     ->relationship('organization', 'name')
                     ->required(),
                 Forms\Components\TextInput::make('supplier_code')
-                    ->required(),
+                    ->required()
+                    ->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule) => $rule->where('organization_id', OrganizationContext::getCurrentOrganizationId())),
                 Forms\Components\TextInput::make('name')
                     ->required(),
                 Forms\Components\TextInput::make('contact_person'),

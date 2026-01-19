@@ -12,10 +12,31 @@ class StoreSwitcher extends Component
     public $availableStores;
     public $showDropdown = false;
 
+    protected $listeners = [
+        'organization-switched' => 'handleOrganizationSwitch',
+    ];
+
     public function mount()
     {
         $this->currentStoreId = StoreContext::getCurrentStoreId();
         $this->availableStores = StoreContext::getAccessibleStores();
+    }
+
+    public function handleOrganizationSwitch()
+    {
+        // Refresh available stores for the new organization
+        $this->availableStores = StoreContext::getAccessibleStores();
+        
+        // If no stores available for this organization, clear the current store
+        if ($this->availableStores->isEmpty()) {
+            $this->currentStoreId = null;
+        } else {
+            // Update to the current store ID (which was set by OrganizationSwitcher)
+            $this->currentStoreId = StoreContext::getCurrentStoreId();
+        }
+        
+        // Force component refresh
+        $this->dispatch('$refresh');
     }
 
     public function switchStore($storeId)
@@ -48,11 +69,15 @@ class StoreSwitcher extends Component
 
     public function render()
     {
-        $currentStore = StoreContext::getCurrentStore();
+        // Only get current store if we have a valid ID and stores available
+        $currentStore = null;
+        if ($this->currentStoreId && $this->availableStores && $this->availableStores->isNotEmpty()) {
+            $currentStore = StoreContext::getCurrentStore();
+        }
         
         return view('livewire.store-switcher', [
             'currentStore' => $currentStore,
-            'stores' => $this->availableStores
+            'stores' => $this->availableStores ?? collect()
         ]);
     }
 }
