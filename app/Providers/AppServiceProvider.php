@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\ProductBatch;
+use App\Observers\ProductBatchObserver;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Auth\Events\Login;
@@ -21,6 +23,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Register ProductBatch observer to auto-sync stock levels
+        ProductBatch::observe(ProductBatchObserver::class);
+
         // Update user's last_login_at timestamp when they login
         Event::listen(Login::class, function (Login $event) {
             try {

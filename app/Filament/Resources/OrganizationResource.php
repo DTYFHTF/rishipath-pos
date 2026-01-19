@@ -95,22 +95,27 @@ class OrganizationResource extends Resource
                             ->required()
                             ->label('Country Code')
                             ->options(fn () => [
-                                'IN' => 'IN',
-                                'US' => 'US',
-                                'GB' => 'GB',
+                                'IN' => '🇮🇳 India (IN)',
+                                'US' => '🇺🇸 United States (US)',
+                                'GB' => '🇬🇧 United Kingdom (GB)',
+                                'NP' => '🇳🇵 Nepal (NP)',
+                                'CN' => '🇨🇳 China (CN)',
                             ])
                             ->searchable()
-                            ->default('IN'),
+                            ->default('IN')
+                            ->helperText('Select the primary country for your organization'),
                         Forms\Components\Select::make('currency')
                             ->required()
                             ->label('Currency Code')
                             ->options(fn () => [
-                                'INR' => 'INR',
-                                'USD' => 'USD',
-                                'GBP' => 'GBP',
+                                'INR' => '₹ Indian Rupee (INR)',
+                                'USD' => '$ US Dollar (USD)',
+                                'GBP' => '£ British Pound (GBP)',
+                                'NPR' => 'Nepalese Rupee (NPR)',
                             ])
                             ->searchable()
-                            ->default('INR'),
+                            ->default('INR')
+                            ->helperText('Currency used for all financial transactions'),
                         Forms\Components\Select::make('timezone')
                             ->required()
                             ->label('Timezone')

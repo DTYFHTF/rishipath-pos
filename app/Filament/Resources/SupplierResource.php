@@ -26,7 +26,7 @@ class SupplierResource extends Resource
                     ->required(),
                 Forms\Components\TextInput::make('supplier_code')
                     ->required()
-                    ->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule) => $rule->where('organization_id', OrganizationContext::getCurrentOrganizationId())),
+                    ->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule, $get) => $rule->where('organization_id', $get('organization_id') ?? OrganizationContext::getCurrentOrganizationId())),
                 Forms\Components\TextInput::make('name')
                     ->required(),
                 Forms\Components\TextInput::make('contact_person'),
@@ -36,11 +36,38 @@ class SupplierResource extends Resource
                     ->email(),
                 Forms\Components\Textarea::make('address')
                     ->columnSpanFull(),
-                Forms\Components\TextInput::make('city'),
-                Forms\Components\TextInput::make('state'),
-                Forms\Components\TextInput::make('country_code'),
-                Forms\Components\TextInput::make('tax_number'),
-                Forms\Components\Textarea::make('notes')
+                Forms\Components\TextInput::make('city')
+                    ->datalist([
+                        'Mumbai', 'Delhi', 'Bangalore', 'Kolkata', 'Chennai'
+                    ]),
+                Forms\Components\Select::make('state')
+                    ->options([
+                        'Maharashtra' => 'Maharashtra',
+                        'Delhi' => 'Delhi',
+                        'Karnataka' => 'Karnataka',
+                        'Tamil Nadu' => 'Tamil Nadu',
+                        'West Bengal' => 'West Bengal',
+                        'Gujarat' => 'Gujarat',
+                        'Rajasthan' => 'Rajasthan',
+                        'Uttar Pradesh' => 'Uttar Pradesh',
+                    ])
+                    ->searchable()
+                    ->helperText('State for GST compliance'),
+                Forms\Components\Select::make('country_code')
+                    ->options([
+                        'IN' => '🇮🇳 India',
+                        'US' => '🇺🇸 United States',
+                        'GB' => '🇬🇧 United Kingdom',
+                        'CN' => '🇨🇳 China',
+                        'NP' => '🇳🇵 Nepal',
+                    ])
+                    ->default('IN')
+                    ->searchable(),
+                Forms\Components\TextInput::make('tax_number')
+                    ->helperText('GST Number for Indian suppliers'),
+                Forms\Components\RichEditor::make('notes')
+                    ->toolbarButtons(['bold', 'italic', 'bulletList', 'link'])
+                    ->helperText('Payment terms, delivery notes, etc.')
                     ->columnSpanFull(),
                 Forms\Components\Toggle::make('active')
                     ->required(),

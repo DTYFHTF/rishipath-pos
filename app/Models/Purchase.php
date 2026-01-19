@@ -136,6 +136,7 @@ class Purchase extends Model
 
     /**
      * Mark purchase as received and update stock.
+     * This is the PRIMARY entry point for inventory - creates ProductBatches with full traceability.
      */
     public function receive(?int $quantity = null, ?int $userId = null): void
     {
@@ -145,17 +146,29 @@ class Purchase extends Model
                 $qtyToReceive = $quantity ? min($quantity, $remaining) : $remaining;
 
                 if ($qtyToReceive > 0) {
-                    // Update stock with audit trail
-                    InventoryService::increaseStock(
-                        $item->product_variant_id,
-                        $this->store_id,
-                        $qtyToReceive,
-                        'purchase',
-                        'Purchase',
-                        $this->id,
-                        $item->unit_cost,
-                        "Purchase {$this->purchase_number}"
-                    );
+                    // Create ProductBatch (source of truth) instead of directly updating stock
+                    // This ensures full traceability: which batch came from which purchase
+                    $batch = ProductBatch::create([
+                        'product_variant_id' => $item->product_variant_id,
+                        'store_id' => $this->store_id,
+                        'batch_number' => $this->generateBatchNumber($item),
+                        'supplier_id' => $this->supplier_id,
+                        'purchase_date' => $this->purchase_date,
+                        'expiry_date' => $item->expiry_date,
+                        'purchase_price' => $item->unit_cost,
+                        'quantity_received' => $qtyToReceive,
+                        'quantity_remaining' => $qtyToReceive,
+                        'quantity_sold' => 0,
+                        'quantity_damaged' => 0,
+                        'quantity_returned' => 0,
+                        'notes' => "Purchase: {$this->purchase_number}",
+                    ]);
+
+                    // Link batch to purchase item for reference
+                    $item->batch_id = $batch->id;
+                    
+                    // Observer automatically syncs StockLevel from batch
+                    // No need to call InventoryService::increaseStock() - that's for adjustments only
 
                     // Update item received quantity incrementally
                     $item->quantity_received += $qtyToReceive;
@@ -167,6 +180,24 @@ class Purchase extends Model
                         $variant->cost_price = $item->unit_cost;
                         $variant->save();
                     }
+
+                    // Create inventory movement audit trail
+                    InventoryMovement::create([
+                        'organization_id' => $this->organization_id,
+                        'store_id' => $this->store_id,
+                        'product_variant_id' => $item->product_variant_id,
+                        'batch_id' => $batch->id,
+                        'type' => 'purchase',
+                        'quantity' => $qtyToReceive,
+                        'unit' => $item->unit,
+                        'from_quantity' => 0,
+                        'to_quantity' => $qtyToReceive,
+                        'reference_type' => 'Purchase',
+                        'reference_id' => $this->id,
+                        'cost_price' => $item->unit_cost,
+                        'user_id' => $userId ?? Auth::id(),
+                        'notes' => "Purchase received: {$this->purchase_number}",
+                    ]);
                 }
             }
 
@@ -189,6 +220,30 @@ class Purchase extends Model
                 SupplierLedgerEntry::createPurchaseEntry($this);
             }
         });
+    }
+
+    /**
+     * Generate unique batch number for purchase item.
+     */
+    protected function generateBatchNumber($item): string
+    {
+        $variant = $item->productVariant;
+        $date = now()->format('Ymd');
+        
+        // Format: PUR-YYYYMMDD-SKU-XXX
+        $prefix = "PUR-{$date}-{$variant->sku}";
+        
+        $lastBatch = ProductBatch::where('batch_number', 'like', "{$prefix}%")
+            ->orderByDesc('id')
+            ->first();
+        
+        $sequence = 1;
+        if ($lastBatch) {
+            preg_match('/-(\d+)$/', $lastBatch->batch_number, $matches);
+            $sequence = isset($matches[1]) ? (int)$matches[1] + 1 : 1;
+        }
+        
+        return $prefix . '-' . str_pad($sequence, 3, '0', STR_PAD_LEFT);
     }
 
     /**

@@ -46,7 +46,12 @@ class ProductBatchResource extends Resource
                         Forms\Components\TextInput::make('batch_number')
                             ->required()
                             ->maxLength(100)
-                            ->unique(ignoreRecord: true),
+                            ->unique(
+                                ignoreRecord: true,
+                                modifyRuleUsing: fn ($rule, $get) => $rule
+                                    ->where('store_id', $get('store_id'))
+                                    ->where('product_variant_id', $get('product_variant_id'))
+                            ),
                         Forms\Components\Select::make('supplier_id')
                             ->relationship('supplier', 'name')
                             ->searchable()
@@ -57,13 +62,25 @@ class ProductBatchResource extends Resource
                 Forms\Components\Section::make('Dates')
                     ->schema([
                         Forms\Components\DatePicker::make('manufactured_date')
-                            ->label('Manufacturing Date'),
+                            ->label('Manufacturing Date')
+                            ->native(false)
+                            ->displayFormat('d/m/Y')
+                            ->maxDate(now())
+                            ->helperText('Date product was manufactured'),
                         Forms\Components\DatePicker::make('expiry_date')
                             ->label('Expiry Date')
-                            ->required(),
+                            ->required()
+                            ->native(false)
+                            ->displayFormat('d/m/Y')
+                            ->minDate(now())
+                            ->helperText('Product expiration date'),
                         Forms\Components\DatePicker::make('purchase_date')
                             ->label('Purchase Date')
-                            ->default(now()),
+                            ->default(now())
+                            ->native(false)
+                            ->displayFormat('d/m/Y')
+                            ->maxDate(now())
+                            ->helperText('Date purchased from supplier'),
                     ])
                     ->columns(3),
 

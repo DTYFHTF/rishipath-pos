@@ -50,7 +50,7 @@ class ProductResource extends Resource
                         Forms\Components\TextInput::make('sku')
                             ->label('SKU')
                             ->required()
-                            ->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule) => $rule->where('organization_id', OrganizationContext::getCurrentOrganizationId()))
+                            ->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule, $get) => $rule->where('organization_id', $get('organization_id') ?? OrganizationContext::getCurrentOrganizationId()))
                             ->maxLength(100),
                         Forms\Components\Select::make('category_id')
                             ->relationship('category', 'name')
@@ -69,23 +69,28 @@ class ProductResource extends Resource
                         Forms\Components\Select::make('product_type')
                             ->required()
                             ->options([
-                                'choorna' => 'Choorna (Powder)',
-                                'tailam' => 'Tailam (Oil)',
-                                'ghritam' => 'Ghritam (Ghee)',
-                                'rasayana' => 'Rasayana',
-                                'capsules' => 'Capsules/Tablets',
-                                'tea' => 'Tea',
-                                'honey' => 'Honey',
-                            ]),
+                                'choorna' => '🌾 Choorna (Powder)',
+                                'tailam' => '🪧 Tailam (Oil)',
+                                'ghritam' => '🧈 Ghritam (Ghee)',
+                                'rasayana' => '💊 Rasayana',
+                                'capsules' => '💊 Capsules/Tablets',
+                                'tea' => '🍵 Tea',
+                                'honey' => '🍯 Honey',
+                            ])
+                            ->searchable()
+                            ->helperText('Traditional Ayurvedic product classification'),
                         Forms\Components\Select::make('unit_type')
                             ->required()
                             ->options([
-                                'weight' => 'Weight (GMS/KG)',
-                                'volume' => 'Volume (ML/L)',
-                                'piece' => 'Piece',
-                            ]),
-                        Forms\Components\Textarea::make('description')
-                            ->rows(3)
+                                'weight' => '⚖️ Weight (GMS/KG)',
+                                'volume' => '🧪 Volume (ML/L)',
+                                'piece' => '📦 Piece',
+                            ])
+                            ->reactive()
+                            ->helperText('Base measurement unit for this product'),
+                        Forms\Components\RichEditor::make('description')
+                            ->toolbarButtons(['bold', 'italic', 'bulletList', 'orderedList', 'link'])
+                            ->helperText('Product description for online catalog and labels')
                             ->columnSpanFull(),
                     ])
                     ->columns(2),
@@ -115,9 +120,12 @@ class ProductResource extends Resource
                         Forms\Components\Toggle::make('is_prescription_required')
                             ->label('Prescription Required'),
                         Forms\Components\TagsInput::make('ingredients')
+                            ->placeholder('Add ingredient (press Enter)')
+                            ->helperText('List all ingredients')
                             ->columnSpanFull(),
-                        Forms\Components\Textarea::make('usage_instructions')
-                            ->rows(3)
+                        Forms\Components\RichEditor::make('usage_instructions')
+                            ->toolbarButtons(['bold', 'italic', 'bulletList', 'orderedList'])
+                            ->helperText('Dosage, timing, and usage guidelines')
                             ->columnSpanFull(),
                     ])
                     ->columns(2),

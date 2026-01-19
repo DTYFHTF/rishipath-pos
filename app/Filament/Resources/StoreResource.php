@@ -35,11 +35,25 @@ class StoreResource extends Resource
                 Forms\Components\Textarea::make('address')
                     ->rows(2),
                 Forms\Components\TextInput::make('city')
-                    ->maxLength(100),
-                Forms\Components\TextInput::make('state')
-                    ->maxLength(100),
+                    ->maxLength(100)
+                    ->datalist([
+                        'Mumbai', 'Delhi', 'Bangalore', 'Kolkata', 'Chennai', 'Pune'
+                    ]),
+                Forms\Components\Select::make('state')
+                    ->options([
+                        'Maharashtra' => 'Maharashtra',
+                        'Delhi' => 'Delhi',
+                        'Karnataka' => 'Karnataka',
+                        'Tamil Nadu' => 'Tamil Nadu',
+                        'West Bengal' => 'West Bengal',
+                        'Gujarat' => 'Gujarat',
+                    ])
+                    ->searchable(),
                 Forms\Components\TextInput::make('postal_code')
-                    ->maxLength(20),
+                    ->maxLength(20)
+                    ->mask('999999')
+                    ->placeholder('e.g., 400001')
+                    ->helperText('6-digit Indian PIN code'),
                 Forms\Components\TextInput::make('phone')
                     ->tel()
                     ->maxLength(20),

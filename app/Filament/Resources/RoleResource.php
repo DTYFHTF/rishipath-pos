@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\RoleResource\Pages;
 use App\Models\Role;
+use App\Services\OrganizationContext;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -42,6 +43,12 @@ class RoleResource extends Resource
         }
 
         return auth()->user()?->hasPermission('delete_roles') ?? false;
+    }
+
+    public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
+    {
+        return parent::getEloquentQuery()
+            ->where('organization_id', OrganizationContext::getCurrentOrganizationId());
     }
 
     /**
@@ -151,6 +158,12 @@ class RoleResource extends Resource
             ->schema([
                 Forms\Components\Section::make('Role Information')
                     ->schema([
+                        Forms\Components\Select::make('organization_id')
+                            ->relationship('organization', 'name')
+                            ->default(fn () => OrganizationContext::getCurrentOrganizationId())
+                            ->required()
+                            ->disabled(fn (?Role $record) => $record !== null),
+
                         Forms\Components\TextInput::make('name')
                             ->label('Role Name')
                             ->required()
@@ -163,7 +176,7 @@ class RoleResource extends Resource
                             ->required()
                             ->maxLength(100)
                             ->placeholder('e.g., store-manager')
-                            ->unique(ignoreRecord: true)
+                            ->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule, $get) => $rule->where('organization_id', $get('organization_id') ?? OrganizationContext::getCurrentOrganizationId()))
                             ->helperText('Unique identifier (lowercase, no spaces)')
                             ->rules(['alpha_dash']),
 

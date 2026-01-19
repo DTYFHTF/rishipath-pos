@@ -52,14 +52,23 @@ class PurchaseResource extends Resource
                         Forms\Components\DatePicker::make('purchase_date')
                             ->label('Purchase Date')
                             ->required()
-                            ->default(now()),
+                            ->default(now())
+                            ->native(false)
+                            ->displayFormat('d/m/Y')
+                            ->maxDate(now())
+                            ->helperText('Date of purchase order'),
 
                         Forms\Components\TextInput::make('supplier_invoice_number')
                             ->label('Supplier Invoice #')
-                            ->maxLength(100),
+                            ->maxLength(100)
+                            ->helperText('Supplier\'s invoice reference'),
 
                         Forms\Components\DatePicker::make('expected_delivery_date')
-                            ->label('Expected Delivery'),
+                            ->label('Expected Delivery')
+                            ->native(false)
+                            ->displayFormat('d/m/Y')
+                            ->minDate(now())
+                            ->helperText('When do you expect delivery?'),
 
                         Forms\Components\Select::make('status')
                             ->options([

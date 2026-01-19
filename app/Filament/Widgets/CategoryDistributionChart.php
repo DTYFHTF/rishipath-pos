@@ -3,9 +3,12 @@
 namespace App\Filament\Widgets;
 
 use App\Models\SaleItem;
+use App\Services\OrganizationContext;
+use App\Services\StoreContext;
 use Carbon\Carbon;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\On;
 
 class CategoryDistributionChart extends ChartWidget
 {
@@ -15,6 +18,13 @@ class CategoryDistributionChart extends ChartWidget
 
     protected int|string|array $columnSpan = 1;
 
+    #[On('organization-switched')]
+    #[On('store-switched')]
+    public function refresh(): void
+    {
+        // Force widget refresh
+    }
+
     public static function canView(): bool
     {
         return auth()->user()?->hasPermission('view_dashboard') ?? false;
@@ -22,6 +32,8 @@ class CategoryDistributionChart extends ChartWidget
 
     protected function getData(): array
     {
+        $organizationId = OrganizationContext::getCurrentOrganizationId();
+        $storeId = StoreContext::getCurrentStoreId();
         $endDate = Carbon::now();
         $startDate = Carbon::now()->subDays(29);
 
@@ -29,6 +41,9 @@ class CategoryDistributionChart extends ChartWidget
             ->join('product_variants', 'sale_items.product_variant_id', '=', 'product_variants.id')
             ->join('products', 'product_variants.product_id', '=', 'products.id')
             ->join('categories', 'products.category_id', '=', 'categories.id')
+            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+            ->where('products.organization_id', $organizationId)
+            ->when($storeId, fn($q) => $q->where('sales.store_id', $storeId))
             ->whereBetween('sale_items.created_at', [$startDate, $endDate])
             ->select(
                 'categories.name as category_name',

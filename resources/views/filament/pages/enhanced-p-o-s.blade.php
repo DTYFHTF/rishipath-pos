@@ -374,57 +374,62 @@
                         </div>
                     </x-filament::card>
 
-                    {{-- Payment Method --}}
+                    {{-- Payment Section - Optimized Layout --}}
                     <x-filament::card>
-                        <label class="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Payment Method</label>
-                        <div class="grid grid-cols-2 gap-2">
-                            @foreach(['cash' => 'Cash', 'card' => 'Card', 'upi' => 'UPI', 'credit' => 'Credit'] as $method => $label)
+                        <div class="flex items-start gap-4">
+                            {{-- Left: Payment Method (Compact) --}}
+                            <div class="flex-1">
+                                <label class="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Payment</label>
+                                <div class="grid grid-cols-2 gap-2">
+                                    @foreach(['cash' => 'Cash', 'card' => 'Card', 'upi' => 'UPI', 'credit' => 'Credit'] as $method => $label)
+                                        <button
+                                            wire:click="$set('sessions.{{ $activeSessionKey }}.payment_method', '{{ $method }}')"
+                                            class="px-3 py-2 text-sm rounded-lg border-2 transition font-medium
+                                                {{ $session['payment_method'] === $method 
+                                                    ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400' 
+                                                    : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 text-gray-700 dark:text-gray-300' 
+                                                }}"
+                                        >
+                                            {{ $label }}
+                                        </button>
+                                    @endforeach
+                                </div>
+                                
                                 <button
-                                    wire:click="$set('sessions.{{ $activeSessionKey }}.payment_method', '{{ $method }}')"
-                                    class="px-4 py-3 rounded-lg border-2 transition font-medium
-                                        {{ $session['payment_method'] === $method 
-                                            ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400' 
-                                            : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500' 
-                                        }}"
+                                    wire:click="openSplitPayment"
+                                    class="mt-2 w-full px-3 py-1.5 text-xs border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-primary-500 hover:text-primary-600 dark:hover:text-primary-400 transition font-medium text-gray-600 dark:text-gray-400"
                                 >
-                                    {{ $label }}
+                                    <x-heroicon-o-squares-plus class="w-3 h-3 inline mr-1" />
+                                    Split Payment
                                 </button>
-                            @endforeach
-                        </div>
+                            </div>
 
-                        <button
-                            wire:click="openSplitPayment"
-                            class="mt-3 w-full px-4 py-2 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-primary-500 hover:text-primary-600 dark:hover:text-primary-400 transition text-sm font-medium"
-                        >
-                            <x-heroicon-o-squares-plus class="w-4 h-4 inline mr-1" />
-                            Split Payment
-                        </button>
-                    </x-filament::card>
-
-                    {{-- Amount Received (for cash) --}}
-                    @if($session['payment_method'] === 'cash')
-                        <x-filament::card>
-                            <label class="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Amount Received</label>
-                            <input
-                                type="number"
-                                wire:model.live="sessions.{{ $activeSessionKey }}.amount_received"
-                                step="0.01"
-                                placeholder="0.00"
-                                class="w-full px-4 py-3 text-lg rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-primary-500 dark:focus:border-primary-500"
-                            />
-                            
-                            @if($session['amount_received'] > 0)
-                                <div class="mt-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                                    <div class="flex justify-between text-green-700 dark:text-green-400">
-                                        <span class="font-medium">Return Change:</span>
-                                        <span class="text-xl font-bold">
-                                            ₹{{ number_format(max(0, $session['amount_received'] - $session['total']), 2) }}
-                                        </span>
-                                    </div>
+                            {{-- Right: Amount Received (for cash) --}}
+                            @if($session['payment_method'] === 'cash')
+                                <div class="flex-1">
+                                    <label class="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Amount Received</label>
+                                    <input
+                                        type="number"
+                                        wire:model.live="sessions.{{ $activeSessionKey }}.amount_received"
+                                        step="0.01"
+                                        placeholder="0.00"
+                                        class="w-full px-3 py-2 text-lg rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-primary-500 dark:focus:border-primary-500"
+                                    />
+                                    
+                                    @if($session['amount_received'] > 0)
+                                        <div class="mt-2 p-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                                            <div class="flex justify-between text-green-700 dark:text-green-400">
+                                                <span class="text-xs font-medium">Change:</span>
+                                                <span class="text-lg font-bold">
+                                                    ₹{{ number_format(max(0, $session['amount_received'] - $session['total']), 2) }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    @endif
                                 </div>
                             @endif
-                        </x-filament::card>
-                    @endif
+                        </div>
+                    </x-filament::card>
 
                     {{-- WhatsApp Receipt Toggle --}}
                     @if(!empty($session['customer_id']) && data_get($session, 'customer.phone'))
@@ -451,7 +456,9 @@
                         <button
                             wire:click="completeSale"
                             {{ empty($session['cart']) ? 'disabled' : '' }}
-                            class="w-full px-6 py-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                            style="background-color:#16a34a !important; color:#ffffff !important; border-color: transparent !important;"
+                            class="w-full px-6 py-4 hover:bg-green-700 text-white dark:text-white rounded-lg transition font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                            aria-label="Complete Sale (F8)"
                         >
                             <x-heroicon-o-check-circle class="w-6 h-6 inline mr-2" />
                             Complete Sale (F8)

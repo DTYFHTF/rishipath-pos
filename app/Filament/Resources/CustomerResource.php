@@ -25,26 +25,35 @@ class CustomerResource extends Resource
             ->schema([
                 Forms\Components\TextInput::make('customer_code')
                     ->required()
-                    ->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule) => $rule->where('organization_id', OrganizationContext::getCurrentOrganizationId()))
+                    ->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule, $get) => $rule->where('organization_id', $get('organization_id') ?? OrganizationContext::getCurrentOrganizationId()))
                     ->maxLength(50),
                 Forms\Components\TextInput::make('name')
                     ->required()
                     ->maxLength(255),
                 Forms\Components\TextInput::make('phone')
                     ->tel()
-                    ->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule) => $rule->where('organization_id', OrganizationContext::getCurrentOrganizationId()))
+                    ->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule, $get) => $rule->where('organization_id', $get('organization_id') ?? OrganizationContext::getCurrentOrganizationId()))
                     ->maxLength(20),
                 Forms\Components\TextInput::make('email')
                     ->email()
-                    ->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule) => $rule->where('organization_id', OrganizationContext::getCurrentOrganizationId()))
+                    ->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule, $get) => $rule->where('organization_id', $get('organization_id') ?? OrganizationContext::getCurrentOrganizationId()))
                     ->maxLength(255),
                 Forms\Components\Textarea::make('address')
                     ->rows(2),
                 Forms\Components\TextInput::make('city')
-                    ->maxLength(100),
-                Forms\Components\DatePicker::make('date_of_birth'),
-                Forms\Components\Textarea::make('notes')
-                    ->rows(2),
+                    ->maxLength(100)
+                    ->datalist([
+                        'Mumbai', 'Delhi', 'Bangalore', 'Kolkata', 'Chennai', 'Pune', 'Hyderabad', 'Ahmedabad', 'Jaipur', 'Lucknow'
+                    ])
+                    ->helperText('Start typing for suggestions'),
+                Forms\Components\DatePicker::make('date_of_birth')
+                    ->native(false)
+                    ->displayFormat('d/m/Y')
+                    ->maxDate(now())
+                    ->helperText('For birthday rewards and age verification'),
+                Forms\Components\RichEditor::make('notes')
+                    ->toolbarButtons(['bold', 'italic', 'bulletList'])
+                    ->helperText('Internal notes about customer preferences'),
                 Forms\Components\Toggle::make('active')
                     ->default(true),
             ]);

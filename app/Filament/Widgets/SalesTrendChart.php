@@ -3,9 +3,12 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Sale;
+use App\Services\OrganizationContext;
+use App\Services\StoreContext;
 use Carbon\Carbon;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\On;
 
 class SalesTrendChart extends ChartWidget
 {
@@ -15,6 +18,13 @@ class SalesTrendChart extends ChartWidget
 
     protected int|string|array $columnSpan = 'full';
 
+    #[On('organization-switched')]
+    #[On('store-switched')]
+    public function refresh(): void
+    {
+        // Force widget refresh
+    }
+
     public static function canView(): bool
     {
         return auth()->user()?->hasPermission('view_dashboard') ?? false;
@@ -22,6 +32,8 @@ class SalesTrendChart extends ChartWidget
 
     protected function getData(): array
     {
+        $organizationId = OrganizationContext::getCurrentOrganizationId();
+        $storeId = StoreContext::getCurrentStoreId();
         $endDate = Carbon::now();
         $startDate = Carbon::now()->subDays(29);
 
@@ -31,6 +43,8 @@ class SalesTrendChart extends ChartWidget
                 DB::raw('SUM(total_amount) as total_revenue'),
                 DB::raw('COUNT(*) as transaction_count')
             )
+            ->where('organization_id', $organizationId)
+            ->when($storeId, fn($q) => $q->where('store_id', $storeId))
             ->whereBetween('created_at', [$startDate, $endDate])
             ->groupBy('date')
             ->orderBy('date')

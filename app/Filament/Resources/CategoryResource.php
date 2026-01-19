@@ -24,9 +24,11 @@ class CategoryResource extends Resource
                 Forms\Components\TextInput::make('name')
                     ->required()
                     ->maxLength(255)
-                    ->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule) => $rule->where('organization_id', OrganizationContext::getCurrentOrganizationId())),
-                Forms\Components\Textarea::make('description')
+                    ->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule, $get) => $rule->where('organization_id', $get('organization_id') ?? OrganizationContext::getCurrentOrganizationId())),
+                Forms\Components\RichEditor::make('description')
+                    ->toolbarButtons(['bold', 'italic', 'bulletList'])
                     ->maxLength(65535)
+                    ->helperText('Category description for internal reference')
                     ->columnSpanFull(),
                 Forms\Components\Toggle::make('active')
                     ->default(true),

@@ -36,22 +36,30 @@ class ProductVariantResource extends Resource
                         Forms\Components\TextInput::make('sku')
                             ->label('SKU')
                             ->required()
-                            ->unique(ignoreRecord: true)
+                            ->unique(
+                                ignoreRecord: true,
+                                modifyRuleUsing: fn ($rule, $get) => $rule->whereHas(
+                                    'product',
+                                    fn ($query) => $query->where('organization_id', \App\Models\Product::find($get('product_id'))?->organization_id)
+                                )
+                            )
                             ->maxLength(100),
                         Forms\Components\TextInput::make('pack_size')
                             ->label('Pack Size')
                             ->required()
                             ->numeric()
-                            ->minValue(0.001),
+                            ->minValue(0.001)
+                            ->helperText('Enter the quantity/size of the variant (e.g., 100 for 100g, 500 for 500ml)'),
                         Forms\Components\Select::make('unit')
                             ->required()
                             ->options([
-                                'GMS' => 'Grams (GMS)',
-                                'KG' => 'Kilograms (KG)',
-                                'ML' => 'Milliliters (ML)',
-                                'L' => 'Liters (L)',
-                                'PCS' => 'Pieces (PCS)',
-                            ]),
+                                'GMS' => '⚖️ Grams (GMS)',
+                                'KG' => '⚖️ Kilograms (KG)',
+                                'ML' => '🧪 Milliliters (ML)',
+                                'L' => '🧪 Liters (L)',
+                                'PCS' => '📦 Pieces (PCS)',
+                            ])
+                            ->helperText('Select the unit of measurement for this variant'),
                     ])
                     ->columns(2),
 
@@ -84,7 +92,13 @@ class ProductVariantResource extends Resource
                     ->schema([
                         Forms\Components\TextInput::make('barcode')
                             ->label('Barcode')
-                            ->unique(ignoreRecord: true)
+                            ->unique(
+                                ignoreRecord: true,
+                                modifyRuleUsing: fn ($rule, $get) => $rule->whereHas(
+                                    'product',
+                                    fn ($query) => $query->where('organization_id', \App\Models\Product::find($get('product_id'))?->organization_id)
+                                )
+                            )
                             ->maxLength(100)
                             ->helperText('Leave empty to auto-generate'),
                         Forms\Components\TextInput::make('hsn_code')

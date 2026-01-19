@@ -27,26 +27,52 @@ class LoyaltyTierResource extends Resource
                 Forms\Components\TextInput::make('name')
                     ->required(),
                 Forms\Components\TextInput::make('slug')
-                    ->required(),
+                    ->required()
+                    ->helperText('Unique identifier (e.g., bronze, silver)'),
                 Forms\Components\TextInput::make('min_points')
                     ->required()
                     ->numeric()
-                    ->default(0),
+                    ->default(0)
+                    ->helperText('Minimum points to qualify'),
                 Forms\Components\TextInput::make('max_points')
-                    ->numeric(),
+                    ->numeric()
+                    ->helperText('Maximum points (leave empty for top tier)'),
                 Forms\Components\TextInput::make('points_multiplier')
                     ->required()
                     ->numeric()
-                    ->default(1),
+                    ->step(0.01)
+                    ->default(1)
+                    ->suffix('x')
+                    ->helperText('Point earning multiplier (e.g., 1.5 = earn 1.5x points)'),
                 Forms\Components\TextInput::make('discount_percentage')
                     ->required()
                     ->numeric()
-                    ->default(0),
-                Forms\Components\Textarea::make('benefits')
+                    ->step(0.1)
+                    ->suffix('%')
+                    ->default(0)
+                    ->helperText('Automatic discount for tier members'),
+                Forms\Components\TagsInput::make('benefits')
+                    ->placeholder('Add benefit (press Enter)')
+                    ->helperText('List all tier benefits')
                     ->columnSpanFull(),
-                Forms\Components\TextInput::make('badge_color')
-                    ->required(),
-                Forms\Components\TextInput::make('badge_icon'),
+                Forms\Components\ColorPicker::make('badge_color')
+                    ->required()
+                    ->helperText('Badge display color in UI'),
+                Forms\Components\Select::make('badge_icon')
+                    ->options([
+                        'heroicon-o-star' => '⭐ Star',
+                        'heroicon-o-sparkles' => '✨ Sparkles',
+                        'heroicon-o-fire' => '🔥 Fire',
+                        'heroicon-o-trophy' => '🏆 Trophy',
+                        'heroicon-o-heart' => '❤️ Heart',
+                        'heroicon-o-bolt' => '⚡ Bolt',
+                        'heroicon-o-gift' => '🎁 Gift',
+                        'heroicon-o-academic-cap' => '🎓 Academic Cap',
+                        'heroicon-o-shield-check' => '🛡️ Shield',
+                        'heroicon-o-rocket-launch' => '🚀 Rocket',
+                    ])
+                    ->searchable()
+                    ->helperText('Icon displayed with tier badge'),
                 Forms\Components\TextInput::make('order')
                     ->required()
                     ->numeric()

@@ -64,7 +64,7 @@ class UserResource extends Resource
                             ->email()
                             ->required()
                             ->maxLength(255)
-                            ->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule) => $rule->where('organization_id', OrganizationContext::getCurrentOrganizationId()))
+                            ->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule, $get) => $rule->where('organization_id', $get('organization_id') ?? OrganizationContext::getCurrentOrganizationId()))
                             ->placeholder('email@example.com'),
 
                         Forms\Components\TextInput::make('phone')
@@ -237,6 +237,12 @@ class UserResource extends Resource
                 Tables\Filters\SelectFilter::make('role')
                     ->relationship('role', 'name')
                     ->label('Role')
+                    ->multiple()
+                    ->preload(),
+
+                Tables\Filters\SelectFilter::make('organization')
+                    ->relationship('organization', 'name')
+                    ->label('Organization')
                     ->multiple()
                     ->preload(),
 

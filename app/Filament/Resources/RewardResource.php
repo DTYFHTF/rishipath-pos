@@ -26,10 +26,20 @@ class RewardResource extends Resource
                     ->required(),
                 Forms\Components\TextInput::make('name')
                     ->required(),
-                Forms\Components\Textarea::make('description')
+                Forms\Components\RichEditor::make('description')
+                    ->toolbarButtons(['bold', 'italic', 'bulletList', 'orderedList'])
+                    ->helperText('Detailed description of the reward')
                     ->columnSpanFull(),
-                Forms\Components\TextInput::make('type')
-                    ->required(),
+                Forms\Components\Select::make('type')
+                    ->required()
+                    ->options([
+                        'discount' => 'Discount (% or fixed amount)',
+                        'free_product' => 'Free Product',
+                        'voucher' => 'Voucher/Gift Card',
+                        'service' => 'Service/Experience',
+                    ])
+                    ->reactive()
+                    ->helperText('Type of reward offered'),
                 Forms\Components\TextInput::make('points_required')
                     ->required()
                     ->numeric(),
@@ -52,7 +62,11 @@ class RewardResource extends Resource
                 Forms\Components\Textarea::make('tier_restrictions')
                     ->columnSpanFull(),
                 Forms\Components\FileUpload::make('image_url')
-                    ->image(),
+                    ->image()
+                    ->imageEditor()
+                    ->directory('rewards')
+                    ->maxSize(2048)
+                    ->helperText('Upload reward image (max 2MB)'),
                 Forms\Components\Toggle::make('active')
                     ->required(),
             ]);

@@ -5,6 +5,7 @@ namespace App\Filament\Widgets;
 use App\Models\Customer;
 use App\Models\LoyaltyPoint;
 use App\Services\OrganizationContext;
+use App\Services\StoreContext;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Livewire\Attributes\On;
@@ -30,6 +31,7 @@ class LoyaltyStatsWidget extends BaseWidget
     protected function getStats(): array
     {
         $orgId = OrganizationContext::getCurrentOrganizationId();
+        $storeId = StoreContext::getCurrentStoreId();
 
         $totalMembers = Customer::where('organization_id', $orgId)
             ->whereNotNull('loyalty_enrolled_at')
@@ -37,17 +39,20 @@ class LoyaltyStatsWidget extends BaseWidget
 
         $activeMembers = Customer::where('organization_id', $orgId)
             ->whereNotNull('loyalty_enrolled_at')
-            ->whereHas('sales', function ($q) {
-                $q->where('created_at', '>=', now()->subDays(90));
+            ->whereHas('sales', function ($q) use ($storeId) {
+                $q->where('created_at', '>=', now()->subDays(90))
+                    ->when($storeId, fn($query) => $query->where('store_id', $storeId));
             })
             ->count();
 
         $pointsThisMonth = LoyaltyPoint::where('organization_id', $orgId)
+            ->when($storeId, fn($q) => $q->where('store_id', $storeId))
             ->where('type', 'earned')
             ->whereMonth('created_at', now()->month)
             ->sum('points');
 
         $redemptionsThisMonth = abs(LoyaltyPoint::where('organization_id', $orgId)
+            ->when($storeId, fn($q) => $q->where('store_id', $storeId))
             ->where('type', 'redeemed')
             ->whereMonth('created_at', now()->month)
             ->sum('points'));

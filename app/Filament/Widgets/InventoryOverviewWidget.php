@@ -5,6 +5,7 @@ namespace App\Filament\Widgets;
 use App\Models\ProductBatch;
 use App\Models\StockLevel;
 use App\Services\OrganizationContext;
+use App\Services\StoreContext;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Facades\DB;
@@ -24,13 +25,15 @@ class InventoryOverviewWidget extends BaseWidget
     protected function getStats(): array
     {
         $organizationId = OrganizationContext::getCurrentOrganizationId();
+        $storeId = StoreContext::getCurrentStoreId();
 
-        // Total inventory value
-        $inventoryValue = DB::table('product_batches')
-            ->join('product_variants', 'product_batches.product_variant_id', '=', 'product_variants.id')
+        // Total inventory value - calculate from stock levels (simpler approach)
+        $inventoryValue = StockLevel::query()
+            ->join('product_variants', 'stock_levels.product_variant_id', '=', 'product_variants.id')
             ->join('products', 'product_variants.product_id', '=', 'products.id')
             ->where('products.organization_id', $organizationId)
-            ->select(DB::raw('SUM(product_batches.quantity_remaining * product_batches.purchase_price) as total_value'))
+            ->when($storeId, fn($q) => $q->where('stock_levels.store_id', $storeId))
+            ->select(DB::raw('SUM(stock_levels.quantity * COALESCE(product_variants.cost_price, product_variants.base_price * 0.6)) as total_value'))
             ->value('total_value') ?? 0;
 
         // Low stock items
@@ -38,6 +41,7 @@ class InventoryOverviewWidget extends BaseWidget
             ->join('product_variants', 'stock_levels.product_variant_id', '=', 'product_variants.id')
             ->join('products', 'product_variants.product_id', '=', 'products.id')
             ->where('products.organization_id', $organizationId)
+            ->when($storeId, fn($q) => $q->where('stock_levels.store_id', $storeId))
             ->whereColumn('stock_levels.quantity', '<=', 'stock_levels.reorder_level')
             ->count();
 
@@ -46,6 +50,7 @@ class InventoryOverviewWidget extends BaseWidget
             ->join('product_variants', 'product_batches.product_variant_id', '=', 'product_variants.id')
             ->join('products', 'product_variants.product_id', '=', 'products.id')
             ->where('products.organization_id', $organizationId)
+            ->when($storeId, fn($q) => $q->where('product_batches.store_id', $storeId))
             ->where('product_batches.expiry_date', '<', now())
             ->where('product_batches.quantity_remaining', '>', 0)
             ->count();
@@ -55,6 +60,7 @@ class InventoryOverviewWidget extends BaseWidget
             ->join('product_variants', 'product_batches.product_variant_id', '=', 'product_variants.id')
             ->join('products', 'product_variants.product_id', '=', 'products.id')
             ->where('products.organization_id', $organizationId)
+            ->when($storeId, fn($q) => $q->where('product_batches.store_id', $storeId))
             ->whereBetween('product_batches.expiry_date', [now(), now()->addDays(30)])
             ->where('product_batches.quantity_remaining', '>', 0)
             ->count();
@@ -64,10 +70,19 @@ class InventoryOverviewWidget extends BaseWidget
             ->join('product_variants', 'stock_levels.product_variant_id', '=', 'product_variants.id')
             ->join('products', 'product_variants.product_id', '=', 'products.id')
             ->where('products.organization_id', $organizationId)
+            ->when($storeId, fn($q) => $q->where('stock_levels.store_id', $storeId))
             ->where('stock_levels.quantity', '<=', 0)
             ->count();
 
-        return [
+        // Check if batch tracking is being used
+        $usingBatches = ProductBatch::query()
+            ->join('product_variants', 'product_batches.product_variant_id', '=', 'product_variants.id')
+            ->join('products', 'product_variants.product_id', '=', 'products.id')
+            ->where('products.organization_id', $organizationId)
+            ->when($storeId, fn($q) => $q->where('product_batches.store_id', $storeId))
+            ->exists();
+
+        $stats = [
             Stat::make('Inventory Value', '₹'.number_format($inventoryValue, 2))
                 ->description('Total stock value')
                 ->descriptionIcon('heroicon-m-currency-rupee')
@@ -82,16 +97,21 @@ class InventoryOverviewWidget extends BaseWidget
                 ->description('Items unavailable')
                 ->descriptionIcon('heroicon-m-x-circle')
                 ->color($outOfStockCount > 0 ? 'danger' : 'success'),
+        ];
 
-            Stat::make('Expired Batches', $expiredCount)
+        // Only show batch-related metrics if using batch tracking
+        if ($usingBatches) {
+            $stats[] = Stat::make('Expired Batches', $expiredCount)
                 ->description('Needs attention')
                 ->descriptionIcon('heroicon-m-calendar-days')
-                ->color($expiredCount > 0 ? 'danger' : 'success'),
+                ->color($expiredCount > 0 ? 'danger' : 'success');
 
-            Stat::make('Expiring Soon', $expiringSoonCount)
+            $stats[] = Stat::make('Expiring Soon', $expiringSoonCount)
                 ->description('Within 30 days')
                 ->descriptionIcon('heroicon-m-clock')
-                ->color($expiringSoonCount > 0 ? 'warning' : 'success'),
-        ];
+                ->color($expiringSoonCount > 0 ? 'warning' : 'success');
+        }
+
+        return $stats;
     }
 }

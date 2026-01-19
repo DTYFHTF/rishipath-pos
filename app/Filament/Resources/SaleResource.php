@@ -30,7 +30,7 @@ class SaleResource extends Resource
                     ->schema([
                         Forms\Components\TextInput::make('receipt_number')
                             ->required()
-                            ->unique(ignoreRecord: true)
+                            ->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule, $get) => $rule->where('organization_id', $get('organization_id') ?? OrganizationContext::getCurrentOrganizationId()))
                             ->maxLength(100),
                         Forms\Components\Select::make('store_id')
                             ->relationship('store', 'name')
@@ -40,10 +40,17 @@ class SaleResource extends Resource
                             ->required(),
                         Forms\Components\DatePicker::make('date')
                             ->required()
-                            ->default(now()),
+                            ->default(now())
+                            ->native(false)
+                            ->displayFormat('d/m/Y')
+                            ->maxDate(now())
+                            ->helperText('Sale transaction date'),
                         Forms\Components\TimePicker::make('time')
                             ->required()
-                            ->default(now()),
+                            ->default(now())
+                            ->native(false)
+                            ->seconds(false)
+                            ->helperText('Sale transaction time'),
                         Forms\Components\Select::make('cashier_id')
                             ->relationship('cashier', 'name')
                             ->required(),

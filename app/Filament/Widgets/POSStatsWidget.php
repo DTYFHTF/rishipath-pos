@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Services\OrganizationContext;
+use App\Services\StoreContext;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Facades\DB;
@@ -25,13 +26,16 @@ class POSStatsWidget extends BaseWidget
     protected function getStats(): array
     {
         $organizationId = OrganizationContext::getCurrentOrganizationId();
+        $storeId = StoreContext::getCurrentStoreId();
 
         $todaySales = Sale::where('organization_id', $organizationId)
+            ->when($storeId, fn($q) => $q->where('store_id', $storeId))
             ->whereDate('date', today())
             ->where('status', 'completed')
             ->sum('total_amount');
 
         $monthSales = Sale::where('organization_id', $organizationId)
+            ->when($storeId, fn($q) => $q->where('store_id', $storeId))
             ->whereMonth('date', now()->month)
             ->whereYear('date', now()->year)
             ->where('status', 'completed')
@@ -49,6 +53,7 @@ class POSStatsWidget extends BaseWidget
             ->join('product_variants', 'stock_levels.product_variant_id', '=', 'product_variants.id')
             ->join('products', 'product_variants.product_id', '=', 'products.id')
             ->where('products.organization_id', $organizationId)
+            ->when($storeId, fn($q) => $q->where('stock_levels.store_id', $storeId))
             ->whereColumn('stock_levels.quantity', '<=', 'stock_levels.reorder_level')
             ->count();
 

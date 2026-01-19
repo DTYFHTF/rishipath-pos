@@ -35,7 +35,8 @@ class EnhancedPOS extends Page
 
     public function getTitle(): string
     {
-        $storeName = $this->currentTerminal?->store?->name ?? 'POS';
+        $store = StoreContext::getCurrentStore() ?? $this->currentTerminal?->store;
+        $storeName = $store?->name ?? 'POS';
 
         return "Point of Sale - {$storeName}";
     }
@@ -227,6 +228,9 @@ class EnhancedPOS extends Page
      */
     public function handleStoreSwitch($storeId): void
     {
+        // Ensure global store context is set for other components
+        StoreContext::setCurrentStoreId($storeId);
+
         // Update current terminal if needed
         $store = Store::find($storeId);
         if ($store) {

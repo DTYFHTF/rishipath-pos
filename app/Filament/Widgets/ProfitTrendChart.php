@@ -5,6 +5,7 @@ namespace App\Filament\Widgets;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Services\OrganizationContext;
+use App\Services\StoreContext;
 use Carbon\Carbon;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Facades\DB;
@@ -33,6 +34,7 @@ class ProfitTrendChart extends ChartWidget
     protected function getData(): array
     {
         $organizationId = OrganizationContext::getCurrentOrganizationId();
+        $storeId = StoreContext::getCurrentStoreId();
         $endDate = Carbon::now();
         $startDate = Carbon::now()->subDays(29);
 
@@ -43,6 +45,7 @@ class ProfitTrendChart extends ChartWidget
             $dateStr = $date->format('Y-m-d');
 
             $sales = Sale::where('organization_id', $organizationId)
+                ->when($storeId, fn($q) => $q->where('store_id', $storeId))
                 ->whereDate('created_at', $dateStr)
                 ->get();
             $revenue = $sales->sum('final_total');

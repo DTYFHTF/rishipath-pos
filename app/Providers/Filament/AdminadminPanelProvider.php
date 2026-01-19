@@ -45,6 +45,10 @@ class AdminadminPanelProvider extends PanelProvider
                 PanelsRenderHook::TOPBAR_START,
                 fn (): string => Blade::render('@livewire(\'organization-switcher\') <div class="mx-2 h-6 w-px bg-gray-300 dark:bg-gray-600"></div> @livewire(\'store-switcher\')'),
             )
+            ->renderHook(
+                PanelsRenderHook::USER_MENU_BEFORE,
+                fn (): string => view('components.topbar-navigation')->render(),
+            )
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
