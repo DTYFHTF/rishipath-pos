@@ -15,6 +15,7 @@ use App\Models\Store;
 use App\Models\Terminal;
 use App\Services\InventoryService;
 use App\Services\LoyaltyService;
+use App\Services\StoreContext;
 use App\Services\WhatsAppService;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -78,6 +79,7 @@ class EnhancedPOS extends Page
         'switchSession' => 'switchToSession',
         'createNewSession' => 'createSession',
         'parkCurrentSession' => 'parkSession',
+        'store-switched' => 'handleStoreSwitch',
     ];
 
     /**
@@ -188,10 +190,16 @@ class EnhancedPOS extends Page
     }
 
     /**
-     * Resolve the store id to use for POS actions: prefer terminal->store_id, fall back to user's first store or first store in system.
+     * Resolve the store id to use for POS actions: prefer global store context, then terminal->store_id, fall back to user's first store or first store in system.
      */
     protected function resolveStoreId(): ?int
     {
+        // First check global store context
+        $contextStoreId = StoreContext::getCurrentStoreId();
+        if ($contextStoreId) {
+            return $contextStoreId;
+        }
+
         if ($this->currentTerminal?->store_id) {
             return $this->currentTerminal->store_id;
         }
@@ -202,6 +210,42 @@ class EnhancedPOS extends Page
         }
 
         return Store::first()?->id;
+    }
+
+    /**
+     * Handle store switch event from global store selector
+     */
+    public function handleStoreSwitch($storeId): void
+    {
+        // Update current terminal if needed
+        $store = Store::find($storeId);
+        if ($store) {
+            // Find an active terminal for this store, or keep current one
+            $terminal = Terminal::where('store_id', $storeId)->where('active', true)->first();
+            if ($terminal) {
+                $this->currentTerminal = $terminal;
+            }
+        }
+
+        // Reload sessions for new store context
+        $this->loadActiveSessions();
+
+        // If we have sessions, switch to first one, otherwise create new session
+        if (! empty($this->sessions)) {
+            $this->activeSessionKey = array_key_first($this->sessions);
+        } else {
+            $this->createSession();
+        }
+
+        // Notify user
+        Notification::make()
+            ->success()
+            ->title('Store Switched')
+            ->body("POS switched to {$store->name}")
+            ->send();
+
+        // Force page refresh to reload all data
+        $this->dispatch('$refresh');
     }
 
     /**

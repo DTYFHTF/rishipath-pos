@@ -7,6 +7,7 @@ use App\Models\ProductVariant;
 use App\Models\StockLevel;
 use App\Models\Store;
 use App\Services\InventoryService;
+use App\Services\StoreContext;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
@@ -61,10 +62,17 @@ class InventoryList extends Page implements HasForms
 
     public $timelineVariantId;
 
+    protected $listeners = ['store-switched' => 'handleStoreSwitch'];
+
     public function mount(): void
     {
-        $stores = Auth::user()->stores ?? [];
-        $this->storeId = ! empty($stores) ? $stores[0] : Store::first()?->id;
+        $this->storeId = StoreContext::getCurrentStoreId() ?? Store::first()?->id;
+    }
+
+    public function handleStoreSwitch($storeId): void
+    {
+        $this->storeId = $storeId;
+        $this->reset(['search', 'categoryId', 'showLowStock', 'showOutOfStock']);
     }
 
     public function getInventory()

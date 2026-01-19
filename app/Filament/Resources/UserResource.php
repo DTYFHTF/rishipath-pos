@@ -114,12 +114,13 @@ class UserResource extends Resource
 
                         Forms\Components\Select::make('stores')
                             ->label('Assigned Stores')
-                            ->relationship('organization.stores', 'name')
+                            ->options(\App\Models\Store::where('active', true)->pluck('name', 'id'))
                             ->multiple()
                             ->searchable()
                             ->preload()
-                            ->helperText('Leave empty for access to all stores')
-                            ->placeholder('Select stores'),
+                            ->helperText('Leave empty for access to all stores. Super admins always have access to all stores.')
+                            ->placeholder('Select stores')
+                            ->native(false),
 
                         Forms\Components\Placeholder::make('role_permissions')
                             ->label('Role Permissions')
@@ -134,7 +135,8 @@ class UserResource extends Resource
                                     return 'Role not found';
                                 }
 
-                                $count = count($role->permissions ?? []);
+                                $permissions = $role->permissions ?? [];
+                                $count = is_countable($permissions) ? count($permissions) : 0;
 
                                 return "{$role->name} has {$count} permissions";
                             }),
@@ -183,6 +185,24 @@ class UserResource extends Resource
                     ->searchable()
                     ->sortable(),
 
+                Tables\Columns\TextColumn::make('stores')
+                    ->label('Assigned Stores')
+                    ->badge()
+                    ->formatStateUsing(function ($state) {
+                        if (empty($state)) {
+                            return 'All Stores';
+                        }
+                        $ids = is_array($state) ? $state : (is_numeric($state) ? [(int) $state] : []);
+                        if (empty($ids)) {
+                            return 'All Stores';
+                        }
+                        $stores = \App\Models\Store::whereIn('id', $ids)->pluck('name');
+                        return $stores->join(', ');
+                    })
+                    ->color(fn ($state) => empty($state) ? 'success' : 'info')
+                    ->wrap()
+                    ->toggleable(),
+
                 Tables\Columns\IconColumn::make('active')
                     ->boolean()
                     ->trueIcon('heroicon-o-check-circle')
@@ -209,6 +229,15 @@ class UserResource extends Resource
                     ->label('Role')
                     ->multiple()
                     ->preload(),
+
+                Tables\Filters\SelectFilter::make('store')
+                    ->label('Assigned Store')
+                    ->options(\App\Models\Store::where('active', true)->pluck('name', 'id'))
+                    ->query(function ($query, $state) {
+                        if (filled($state['value'])) {
+                            return $query->whereJsonContains('stores', (int) $state['value']);
+                        }
+                    }),
 
                 Tables\Filters\TernaryFilter::make('active')
                     ->label('Status')

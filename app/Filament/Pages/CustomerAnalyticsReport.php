@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Models\Customer;
 use App\Models\Sale;
 use App\Services\ExportService;
+use App\Services\StoreContext;
 use Carbon\Carbon;
 use Filament\Pages\Page;
 
@@ -26,10 +27,19 @@ class CustomerAnalyticsReport extends Page
 
     public $storeId = '';
 
+    protected $listeners = ['store-switched' => 'handleStoreSwitch'];
+
     public function mount(): void
     {
         $this->startDate = Carbon::now()->subMonths(6)->format('Y-m-d');
         $this->endDate = Carbon::now()->format('Y-m-d');
+        $this->storeId = StoreContext::getCurrentStoreId() ?? '';
+    }
+
+    public function handleStoreSwitch($storeId): void
+    {
+        $this->storeId = $storeId;
+        $this->dispatch('$refresh');
     }
 
     /**

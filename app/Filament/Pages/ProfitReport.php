@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Services\ExportService;
+use App\Services\StoreContext;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Pages\Page;
@@ -37,10 +38,19 @@ class ProfitReport extends Page implements HasForms
 
     public $categoryId = null;
 
+    protected $listeners = ['store-switched' => 'handleStoreSwitch'];
+
     public function mount(): void
     {
         $this->startDate = now()->startOfMonth()->format('Y-m-d');
         $this->endDate = now()->format('Y-m-d');
+        $this->storeId = StoreContext::getCurrentStoreId();
+    }
+
+    public function handleStoreSwitch($storeId): void
+    {
+        $this->storeId = $storeId;
+        $this->dispatch('$refresh');
     }
 
     /**
