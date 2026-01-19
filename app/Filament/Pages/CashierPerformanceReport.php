@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Models\Sale;
 use App\Models\User;
 use App\Services\ExportService;
+use App\Services\StoreContext;
 use Carbon\Carbon;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\DB;
@@ -29,10 +30,19 @@ class CashierPerformanceReport extends Page
 
     public $cashierId = '';
 
+    protected $listeners = ['store-switched' => 'handleStoreSwitch'];
+
     public function mount(): void
     {
         $this->startDate = Carbon::now()->startOfMonth()->format('Y-m-d');
         $this->endDate = Carbon::now()->format('Y-m-d');
+        $this->storeId = StoreContext::getCurrentStoreId() ?? '';
+    }
+
+    public function handleStoreSwitch($storeId): void
+    {
+        $this->storeId = $storeId;
+        $this->dispatch('$refresh');
     }
 
     /**

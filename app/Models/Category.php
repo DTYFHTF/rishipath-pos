@@ -15,6 +15,7 @@ class Category extends Model
         'name_nepali',
         'name_hindi',
         'slug',
+        'description',
         'product_type',
         'config',
         'sort_order',

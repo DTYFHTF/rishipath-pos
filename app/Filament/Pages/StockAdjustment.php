@@ -6,6 +6,7 @@ use App\Models\InventoryMovement;
 use App\Models\ProductVariant;
 use App\Models\StockLevel;
 use App\Services\InventoryService;
+use App\Services\StoreContext;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -52,10 +53,17 @@ class StockAdjustment extends Page implements HasForms
     public $filterProductId = null;
     public $filterDays = 30;
 
+    protected $listeners = ['store-switched' => 'handleStoreSwitch'];
+
     public function mount(): void
     {
-        $stores = Auth::user()->stores ?? [];
-        $this->storeId = ! empty($stores) ? $stores[0] : 1;
+        $this->storeId = StoreContext::getCurrentStoreId();
+    }
+
+    public function handleStoreSwitch($storeId): void
+    {
+        $this->storeId = $storeId;
+        $this->reset(['productVariantId', 'quantity', 'reason', 'notes', 'currentStock']);
     }
 
     public function form(Form $form): Form

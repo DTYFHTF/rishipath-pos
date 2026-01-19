@@ -7,6 +7,7 @@ use App\Models\ProductBatch;
 use App\Models\ProductVariant;
 use App\Models\SaleItem;
 use App\Services\ExportService;
+use App\Services\StoreContext;
 use Carbon\Carbon;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\DB;
@@ -31,10 +32,19 @@ class InventoryTurnoverReport extends Page
 
     public $categoryId = '';
 
+    protected $listeners = ['store-switched' => 'handleStoreSwitch'];
+
     public function mount(): void
     {
         $this->startDate = Carbon::now()->subDays(30)->format('Y-m-d');
         $this->endDate = Carbon::now()->format('Y-m-d');
+        $this->storeId = StoreContext::getCurrentStoreId() ?? '';
+    }
+
+    public function handleStoreSwitch($storeId): void
+    {
+        $this->storeId = $storeId;
+        $this->dispatch('$refresh');
     }
 
     /**

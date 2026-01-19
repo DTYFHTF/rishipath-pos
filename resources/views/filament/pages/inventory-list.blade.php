@@ -2,18 +2,7 @@
     <div class="space-y-6">
         <!-- Filters -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-            <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
-                <div>
-                    <label class="block text-sm font-medium mb-1">Store</label>
-                    <select 
-                        wire:model.live="storeId"
-                        class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 text-sm"
-                    >
-                        @foreach(\App\Models\Store::where('active', true)->get() as $store)
-                            <option value="{{ $store->id }}">{{ $store->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
                 <div>
                     <label class="block text-sm font-medium mb-1">Category</label>
                     <select 
@@ -214,9 +203,11 @@
                     <button 
                         type="button"
                         wire:click="submitStockChange"
-                        class="px-4 py-2 {{ $stockModalType === 'in' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700' }} text-white rounded-lg transition"
+                        aria-label="{{ $stockModalType === 'in' ? 'Add Stock' : 'Remove Stock' }}"
+                        class="px-4 py-2 inline-flex items-center gap-2 rounded-lg transition shadow-sm 
+                            {{ $stockModalType === 'in' ? 'bg-green-600 hover:bg-green-700 border border-green-600 text-white' : 'bg-red-600 hover:bg-red-700 border border-red-600 text-white' }}"
                     >
-                        {{ $stockModalType === 'in' ? 'Add Stock' : 'Remove Stock' }}
+                        <span class="font-medium">{{ $stockModalType === 'in' ? 'Add Stock' : 'Remove Stock' }}</span>
                     </button>
                 </div>
             </div>

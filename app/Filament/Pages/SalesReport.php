@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Services\ExportService;
+use App\Services\StoreContext;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -38,10 +39,19 @@ class SalesReport extends Page implements HasForms
 
     public $paymentMethod = null;
 
+    protected $listeners = ['store-switched' => 'handleStoreSwitch'];
+
     public function mount(): void
     {
         $this->startDate = now()->startOfMonth()->format('Y-m-d');
         $this->endDate = now()->format('Y-m-d');
+        $this->storeId = StoreContext::getCurrentStoreId();
+    }
+
+    public function handleStoreSwitch($storeId): void
+    {
+        $this->storeId = $storeId;
+        $this->dispatch('$refresh');
     }
 
     public function form(Form $form): Form

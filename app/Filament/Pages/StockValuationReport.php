@@ -6,6 +6,7 @@ use App\Models\InventoryMovement;
 use App\Models\ProductVariant;
 use App\Models\StockLevel;
 use App\Models\Store;
+use App\Services\StoreContext;
 use Filament\Pages\Page;
 
 class StockValuationReport extends Page
@@ -31,10 +32,18 @@ class StockValuationReport extends Page
     
     public $asOfDate = null;
 
+    protected $listeners = ['store-switched' => 'handleStoreSwitch'];
+
     public function mount(): void
     {
-        $this->storeId = Store::first()?->id;
+        $this->storeId = StoreContext::getCurrentStoreId() ?? Store::first()?->id;
         $this->asOfDate = now()->toDateString();
+    }
+
+    public function handleStoreSwitch($storeId): void
+    {
+        $this->storeId = $storeId;
+        $this->dispatch('$refresh');
     }
 
     public function getValuationSummary(): array

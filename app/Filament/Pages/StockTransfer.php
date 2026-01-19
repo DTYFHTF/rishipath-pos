@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Models\ProductVariant;
 use App\Models\Store;
 use App\Services\InventoryService;
+use App\Services\StoreContext;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -48,15 +49,27 @@ class StockTransfer extends Page implements HasForms
 
     public $toStock = 0;
 
+    protected $listeners = ['store-switched' => 'handleStoreSwitch'];
+
     public function mount(): void
     {
+        $currentStore = StoreContext::getCurrentStoreId();
         $stores = Store::where('active', true)->get();
+        
         if ($stores->count() >= 2) {
-            $this->fromStoreId = $stores->first()->id;
-            $this->toStoreId = $stores->skip(1)->first()->id;
+            $this->fromStoreId = $currentStore ?? $stores->first()->id;
+            $this->toStoreId = $stores->where('id', '!=', $this->fromStoreId)->first()?->id;
         } elseif ($stores->count() >= 1) {
-            $this->fromStoreId = $stores->first()->id;
+            $this->fromStoreId = $currentStore ?? $stores->first()->id;
         }
+    }
+
+    public function handleStoreSwitch($storeId): void
+    {
+        $this->fromStoreId = $storeId;
+        $stores = Store::where('active', true)->where('id', '!=', $storeId)->get();
+        $this->toStoreId = $stores->first()?->id;
+        $this->reset(['productVariantId', 'quantity', 'notes', 'fromStock', 'toStock']);
     }
 
     public function form(Form $form): Form
