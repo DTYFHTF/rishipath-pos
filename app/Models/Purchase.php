@@ -58,6 +58,15 @@ class Purchase extends Model
                 $purchase->created_by = Auth::id();
             }
         });
+
+        static::updated(function ($purchase) {
+            // Auto-receive when status changes to 'received' and no batches exist yet
+            if ($purchase->status === 'received' && 
+                $purchase->wasChanged('status') && 
+                $purchase->batches()->count() === 0) {
+                $purchase->receive();
+            }
+        });
     }
 
     public static function generatePurchaseNumber(?int $storeId = null): string
@@ -101,6 +110,11 @@ class Purchase extends Model
     public function items(): HasMany
     {
         return $this->hasMany(PurchaseItem::class);
+    }
+
+    public function batches(): HasMany
+    {
+        return $this->hasMany(ProductBatch::class, 'purchase_id');
     }
 
     public function ledgerEntries(): HasMany
@@ -149,6 +163,7 @@ class Purchase extends Model
                     // Create ProductBatch (source of truth) instead of directly updating stock
                     // This ensures full traceability: which batch came from which purchase
                     $batch = ProductBatch::create([
+                        'purchase_id' => $this->id,
                         'product_variant_id' => $item->product_variant_id,
                         'store_id' => $this->store_id,
                         'batch_number' => $this->generateBatchNumber($item),

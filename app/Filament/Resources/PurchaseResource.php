@@ -414,7 +414,9 @@ class PurchaseResource extends Resource
 
     public static function getRelations(): array
     {
-        return [];
+        return [
+            PurchaseResource\RelationManagers\BatchesRelationManager::class,
+        ];
     }
 
     public static function getPages(): array

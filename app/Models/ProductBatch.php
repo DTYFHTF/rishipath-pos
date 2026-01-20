@@ -10,6 +10,7 @@ class ProductBatch extends Model
 {
     protected $fillable = [
         'product_variant_id',
+        'purchase_id',
         'store_id',
         'batch_number',
         'manufactured_date',
@@ -40,6 +41,11 @@ class ProductBatch extends Model
     public function productVariant(): BelongsTo
     {
         return $this->belongsTo(ProductVariant::class);
+    }
+
+    public function purchase(): BelongsTo
+    {
+        return $this->belongsTo(Purchase::class);
     }
 
     public function store(): BelongsTo
