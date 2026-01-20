@@ -222,6 +222,14 @@ class ProductResource extends Resource
                 Tables\Filters\TernaryFilter::make('active'),
             ])
             ->actions([
+                Tables\Actions\Action::make('details')
+                    ->label('Details')
+                    ->icon('heroicon-o-information-circle')
+                    ->color('info')
+                    ->modalHeading(fn ($record) => $record->name . ' - Inventory Details')
+                    ->modalWidth('7xl')
+                    ->modalContent(fn ($record) => view('filament.pages.product-detail-modal', ['product' => $record]))
+                    ->slideOver(),
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
             ])

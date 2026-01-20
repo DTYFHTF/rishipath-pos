@@ -62,6 +62,11 @@ class InventoryList extends Page implements HasForms
 
     public $timelineVariantId;
 
+    // Details modal
+    public $showDetailsModal = false;
+
+    public $detailsProductId;
+
     protected $listeners = [
         'store-switched' => 'handleStoreSwitch',
         'organization-switched' => 'handleOrganizationSwitch',
@@ -227,6 +232,15 @@ class InventoryList extends Page implements HasForms
         $this->showTimelineModal = true;
     }
 
+    public function openDetails($variantId): void
+    {
+        $variant = ProductVariant::find($variantId);
+        if ($variant && $variant->product_id) {
+            $this->detailsProductId = $variant->product_id;
+            $this->showDetailsModal = true;
+        }
+    }
+
     public function getTimelineMovements()
     {
         if (! $this->timelineVariantId) {
@@ -250,9 +264,19 @@ class InventoryList extends Page implements HasForms
         return ProductVariant::with('product')->find($this->timelineVariantId);
     }
 
+    public function getDetailsProduct()
+    {
+        if (! $this->detailsProductId) {
+            return null;
+        }
+
+        return \App\Models\Product::with(['variants.stockLevels', 'variants.batches'])->find($this->detailsProductId);
+    }
+
     public function closeModals(): void
     {
         $this->showStockModal = false;
         $this->showTimelineModal = false;
+        $this->showDetailsModal = false;
     }
 }

@@ -107,6 +107,16 @@
                             <td class="px-3 py-1.5">
                                 <div class="flex items-center justify-center gap-1">
                                     <button 
+                                        wire:click="openDetails({{ $variant->id }})"
+                                        class="px-2 py-1 text-sm bg-purple-50 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200 rounded hover:bg-purple-100 dark:hover:bg-purple-800 transition flex items-center gap-2"
+                                        title="View Details"
+                                    >
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 110 20 10 10 0 010-20z" />
+                                        </svg>
+                                        <span class="hidden sm:inline">Details</span>
+                                    </button>
+                                    <button 
                                         wire:click="openStockIn({{ $variant->id }})"
                                         class="px-2 py-1 text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 rounded hover:bg-green-200 dark:hover:bg-green-800 transition"
                                         title="Stock In"
@@ -273,6 +283,32 @@
                             </div>
                         @endforelse
                     </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    <!-- Product Details Modal -->
+    @if($showDetailsModal)
+        <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4" role="dialog" aria-modal="true" wire:click.self="closeModals">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-7xl max-h-[90vh] overflow-hidden flex flex-col" role="document">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                    <h2 class="text-xl font-semibold">
+                        {{ $this->getDetailsProduct()?->name ?? 'Product Details' }}
+                    </h2>
+                    <button 
+                        wire:click="closeModals"
+                        class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                    >
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="overflow-y-auto flex-1">
+                    @if($this->getDetailsProduct())
+                        @include('filament.pages.product-detail-modal', ['product' => $this->getDetailsProduct()])
+                    @endif
                 </div>
             </div>
         </div>

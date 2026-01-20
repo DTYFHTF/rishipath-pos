@@ -476,8 +476,8 @@
 
             {{-- Split Payment Modal --}}
             @if($showSplitPayment)
-                <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" wire:click.self="$set('showSplitPayment', false)">
-                    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]" wire:click.self="$set('showSplitPayment', false)">
+                    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto" role="dialog" aria-modal="true">
                         <h3 class="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">Split Payment</h3>
                         
                         <div class="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
@@ -554,7 +554,8 @@
                             </button>
                             <button
                                 wire:click="completeSale"
-                                class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium"
+                                class="flex-1 px-4 py-2 bg-green-600 text-white dark:bg-green-600 dark:text-white rounded-lg hover:bg-green-700 shadow-md transition font-medium"
+                                style="background-color:#16a34a;color:#ffffff;"
                             >
                                 Complete Payment
                             </button>
