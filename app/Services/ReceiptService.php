@@ -22,6 +22,76 @@ class ReceiptService
         return $receipt;
     }
 
+    /**
+     * Generate a WhatsApp-friendly receipt text.
+     * Uses simple WhatsApp markup (*bold*) and includes SKU.
+     */
+    public function generateWhatsAppReceipt(Sale $sale): string
+    {
+        $sale->load(['store', 'items.productVariant.product', 'customer', 'cashier']);
+        $org = \App\Models\Organization::find($sale->organization_id);
+
+        $lines = [];
+
+        // Header
+        $lines[] = "*" . ($org->name ?? 'Store') . "*";
+        $addr = trim(($sale->store->address ?? ''));
+        if ($addr) {
+            $lines[] = $addr;
+        }
+        if ($sale->store->phone) {
+            $lines[] = "Phone: {$sale->store->phone}";
+        }
+        if ($sale->store->tax_number) {
+            $lines[] = "GSTIN: {$sale->store->tax_number}";
+        }
+        $lines[] = "";
+
+        // Sale info
+        $lines[] = "*Receipt:* {$sale->receipt_number}    *Invoice:* {$sale->invoice_number}";
+        $lines[] = "*Date:* {$sale->date->format('d-M-Y')}    *Time:* " . date('h:i A', strtotime($sale->time));
+        $lines[] = "*Cashier:* {$sale->cashier->name}";
+        if ($sale->customer_name) {
+            $lines[] = "*Customer:* {$sale->customer_name}";
+        }
+        if ($sale->customer_phone) {
+            $lines[] = "*Phone:* {$sale->customer_phone}";
+        }
+        $lines[] = "";
+
+        // Items header
+        $lines[] = "Item | SKU | Qty | Amount";
+        $lines[] = "--- | --- | ---: | ---:";
+        foreach ($sale->items as $item) {
+            $sku = $item->product_sku ?? ($item->productVariant->sku ?? '-');
+            $name = $this->truncate($item->product_name, 30);
+            $qty = ((int) $item->quantity == $item->quantity) ? (int) $item->quantity : number_format($item->quantity, 2);
+            $amount = '₹' . number_format($item->total, 2);
+            $lines[] = "{$name} | {$sku} | {$qty} | {$amount}";
+        }
+
+        $lines[] = "";
+        // Totals
+        $lines[] = "*Subtotal:* ₹" . number_format($sale->subtotal, 2);
+        if ($sale->discount_amount > 0) {
+            $lines[] = "*Discount:* -₹" . number_format($sale->discount_amount, 2);
+        }
+        $lines[] = "*Tax (GST):* ₹" . number_format($sale->tax_amount, 2);
+        $lines[] = "*TOTAL:* *₹" . number_format($sale->total_amount, 2) . "*";
+
+        $lines[] = "";
+        $lines[] = "Payment: " . strtoupper($sale->payment_method);
+        if ($sale->payment_method === 'cash') {
+            $lines[] = "Amount Paid: ₹" . number_format($sale->amount_paid, 2);
+            $lines[] = "Change: ₹" . number_format($sale->amount_change, 2);
+        }
+
+        $lines[] = "";
+        $lines[] = "Thank you for your purchase!";
+
+        return implode("\n", $lines);
+    }
+
     private function getHeader(Organization $org, $store): string
     {
         $text = "========================================\n";

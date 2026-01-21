@@ -30,11 +30,15 @@ class WhatsAppService
                 return false;
             }
 
-            // Generate the receipt text
-            $receiptText = $this->receiptService->generateReceipt($sale);
+            // Generate the WhatsApp-friendly receipt text
+            if (method_exists($this->receiptService, 'generateWhatsAppReceipt')) {
+                $receiptText = $this->receiptService->generateWhatsAppReceipt($sale);
+            } else {
+                $receiptText = $this->receiptService->generateReceipt($sale);
+            }
 
-            // Build WhatsApp message
-            $message = "Thank you for your purchase!\n\n".$receiptText;
+            // Build WhatsApp message body
+            $message = $receiptText;
 
             // Check if Twilio credentials are configured
             if (! config('services.twilio.account_sid') || ! config('services.twilio.auth_token')) {

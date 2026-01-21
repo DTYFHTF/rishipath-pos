@@ -156,6 +156,7 @@ class InventoryService
 
     /**
      * Decrease stock (convenience wrapper for sales).
+     * Uses FIFO batch allocation - deducts from oldest expiring batches first.
      */
     public static function decreaseStock(
         int $productVariantId,
@@ -168,17 +169,92 @@ class InventoryService
         ?string $notes = null,
         ?int $userId = null
     ): StockLevel {
-        return self::adjustStock(
-            $productVariantId,
-            $storeId,
-            -abs($quantity),
-            $type,
-            $referenceType,
-            $referenceId,
-            $costPrice,
-            $notes,
-            $userId
-        );
+        return DB::transaction(function () use ($productVariantId, $storeId, $quantity, $type, $referenceType, $referenceId, $costPrice, $notes, $userId) {
+            // For sales, allocate from batches using FIFO (oldest expiring first)
+            if ($type === 'sale') {
+                self::allocateFromBatches($productVariantId, $storeId, $quantity, $referenceType, $referenceId, $notes, $userId);
+            }
+            
+            // Update stock_levels
+            return self::adjustStock(
+                $productVariantId,
+                $storeId,
+                -abs($quantity),
+                $type,
+                $referenceType,
+                $referenceId,
+                $costPrice,
+                $notes,
+                $userId
+            );
+        });
+    }
+
+    /**
+     * Allocate quantity from product batches using FIFO (First Expiry, First Out).
+     * Updates quantity_remaining and quantity_sold on batches.
+     */
+    protected static function allocateFromBatches(
+        int $productVariantId,
+        int $storeId,
+        float $quantity,
+        ?string $referenceType = null,
+        ?int $referenceId = null,
+        ?string $notes = null,
+        ?int $userId = null
+    ): void {
+        $remaining = $quantity;
+        
+        // Get batches ordered by expiry (FIFO), then by ID (oldest first)
+        $batches = ProductBatch::where('product_variant_id', $productVariantId)
+            ->where('store_id', $storeId)
+            ->where('quantity_remaining', '>', 0)
+            ->where(function ($q) {
+                $q->whereNull('expiry_date')
+                  ->orWhere('expiry_date', '>=', now());
+            })
+            ->orderBy('expiry_date', 'asc')
+            ->orderBy('id', 'asc')
+            ->lockForUpdate()
+            ->get();
+
+        foreach ($batches as $batch) {
+            if ($remaining <= 0) {
+                break;
+            }
+
+            $allocate = min($remaining, $batch->quantity_remaining);
+            
+            // Update batch quantities
+            $batch->quantity_remaining -= $allocate;
+            $batch->quantity_sold += $allocate;
+            $batch->save();
+
+            // Create movement record linked to this batch
+            $variant = ProductVariant::find($productVariantId);
+            InventoryMovement::create([
+                'organization_id' => $variant->product->organization_id ?? Auth::user()?->organization_id ?? 1,
+                'store_id' => $storeId,
+                'product_variant_id' => $productVariantId,
+                'batch_id' => $batch->id,
+                'type' => 'sale',
+                'quantity' => $allocate,
+                'unit' => $variant->unit ?? 'pcs',
+                'from_quantity' => $batch->quantity_remaining + $allocate,
+                'to_quantity' => $batch->quantity_remaining,
+                'reference_type' => $referenceType,
+                'reference_id' => $referenceId,
+                'cost_price' => $batch->purchase_price ?? $variant->cost_price,
+                'user_id' => $userId ?? Auth::id(),
+                'notes' => $notes ? "{$notes} (Batch: {$batch->batch_number})" : "Batch: {$batch->batch_number}",
+            ]);
+
+            $remaining -= $allocate;
+        }
+
+        if ($remaining > 0) {
+            throw new \Exception("Insufficient batch stock. Needed {$quantity}, allocated " . ($quantity - $remaining));
+        }
     }
 
     /**
