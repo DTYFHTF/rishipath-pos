@@ -93,7 +93,7 @@ class WhatsAppService
      * Format phone number to E.164 format
      * Assumes Indian numbers by default (+91)
      */
-    private function formatPhoneNumber(string $phone): ?string
+    public function formatPhoneNumber(string $phone): ?string
     {
         // Remove all non-numeric characters
         $phone = preg_replace('/[^0-9]/', '', $phone);
@@ -123,6 +123,205 @@ class WhatsAppService
         }
 
         return null;
+    }
+
+    /**
+     * Send a pre-approved WhatsApp template message
+     * Used for business-initiated conversations
+     * 
+     * @param string $phoneNumber Recipient phone
+     * @param string $contentSid Template content SID (HX...)
+     * @param array $variables Template variables ['1' => 'value', '2' => 'value']
+     * @param string|null $fallbackBody Fallback text body
+     * @return array ['success' => bool, 'sid' => string|null, 'error' => string|null]
+     */
+    public function sendTemplate(
+        string $phoneNumber, 
+        string $contentSid, 
+        array $variables = [],
+        ?string $fallbackBody = null
+    ): array {
+        try {
+            $formattedPhone = $this->formatPhoneNumber($phoneNumber);
+            
+            if (! $formattedPhone) {
+                return [
+                    'success' => false,
+                    'sid' => null,
+                    'error' => 'Invalid phone number format',
+                ];
+            }
+
+            if (! $this->isConfigured()) {
+                Log::info('WhatsApp template (Twilio not configured)', [
+                    'phone' => $formattedPhone,
+                    'contentSid' => $contentSid,
+                    'variables' => $variables,
+                ]);
+                
+                return [
+                    'success' => true,
+                    'sid' => 'dev-mode-'.uniqid(),
+                    'error' => null,
+                ];
+            }
+
+            $payload = [
+                'From' => 'whatsapp:'.config('services.twilio.whatsapp_from'),
+                'To' => 'whatsapp:'.$formattedPhone,
+                'ContentSid' => $contentSid,
+            ];
+
+            if (! empty($variables)) {
+                $payload['ContentVariables'] = json_encode($variables);
+            }
+
+            if ($fallbackBody) {
+                $payload['Body'] = $fallbackBody;
+            }
+
+            $response = Http::withBasicAuth(
+                config('services.twilio.account_sid'),
+                config('services.twilio.auth_token')
+            )->asForm()->post(
+                'https://api.twilio.com/2010-04-01/Accounts/'.config('services.twilio.account_sid').'/Messages.json',
+                $payload
+            );
+
+            if ($response->successful()) {
+                $data = $response->json();
+                Log::info('WhatsApp template sent successfully', [
+                    'phone' => $formattedPhone,
+                    'contentSid' => $contentSid,
+                    'message_sid' => $data['sid'] ?? null,
+                ]);
+
+                return [
+                    'success' => true,
+                    'sid' => $data['sid'] ?? null,
+                    'error' => null,
+                ];
+            } else {
+                $error = $response->json();
+                Log::error('Failed to send WhatsApp template', [
+                    'phone' => $formattedPhone,
+                    'contentSid' => $contentSid,
+                    'error' => $error,
+                ]);
+
+                return [
+                    'success' => false,
+                    'sid' => null,
+                    'error' => $error['message'] ?? $response->body(),
+                ];
+            }
+        } catch (\Exception $e) {
+            Log::error('WhatsApp template service error', [
+                'phone' => $phoneNumber,
+                'contentSid' => $contentSid,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'sid' => null,
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Send invoice PDF via WhatsApp
+     * Sends both text message and PDF attachment
+     */
+    public function sendInvoicePdf(Sale $sale, string $phoneNumber, string $pdfUrl, ?string $message = null): array
+    {
+        try {
+            $formattedPhone = $this->formatPhoneNumber($phoneNumber);
+            
+            if (! $formattedPhone) {
+                return [
+                    'success' => false,
+                    'sid' => null,
+                    'error' => 'Invalid phone number format',
+                ];
+            }
+
+            if (! $this->isConfigured()) {
+                Log::info('WhatsApp invoice PDF (Twilio not configured)', [
+                    'sale_id' => $sale->id,
+                    'phone' => $formattedPhone,
+                    'pdf_url' => $pdfUrl,
+                ]);
+                
+                return [
+                    'success' => true,
+                    'sid' => 'dev-mode-'.uniqid(),
+                    'error' => null,
+                ];
+            }
+
+            $defaultMessage = "📄 *Invoice - {$sale->invoice_number}*\n\n" .
+                            "Thank you for your purchase!\n" .
+                            "Total: ₹" . number_format($sale->total_amount, 2) . "\n\n" .
+                            "Please find your detailed invoice attached.";
+
+            $payload = [
+                'From' => 'whatsapp:'.config('services.twilio.whatsapp_from'),
+                'To' => 'whatsapp:'.$formattedPhone,
+                'Body' => $message ?? $defaultMessage,
+                'MediaUrl' => $pdfUrl,
+            ];
+
+            $response = Http::withBasicAuth(
+                config('services.twilio.account_sid'),
+                config('services.twilio.auth_token')
+            )->asForm()->post(
+                'https://api.twilio.com/2010-04-01/Accounts/'.config('services.twilio.account_sid').'/Messages.json',
+                $payload
+            );
+
+            if ($response->successful()) {
+                $data = $response->json();
+                Log::info('WhatsApp invoice PDF sent successfully', [
+                    'sale_id' => $sale->id,
+                    'phone' => $formattedPhone,
+                    'message_sid' => $data['sid'] ?? null,
+                    'pdf_url' => $pdfUrl,
+                ]);
+
+                return [
+                    'success' => true,
+                    'sid' => $data['sid'] ?? null,
+                    'error' => null,
+                ];
+            } else {
+                $error = $response->json();
+                Log::error('Failed to send WhatsApp invoice PDF', [
+                    'sale_id' => $sale->id,
+                    'phone' => $formattedPhone,
+                    'error' => $error,
+                ]);
+
+                return [
+                    'success' => false,
+                    'sid' => null,
+                    'error' => $error['message'] ?? $response->body(),
+                ];
+            }
+        } catch (\Exception $e) {
+            Log::error('WhatsApp invoice PDF service error', [
+                'sale_id' => $sale->id,
+                'phone' => $phoneNumber,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'sid' => null,
+                'error' => $e->getMessage(),
+            ];
+        }
     }
 
     /**

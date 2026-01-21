@@ -253,7 +253,15 @@
                                     <span class="text-xl">👤</span>
                                     <div>
                                         <div class="font-medium text-gray-900 dark:text-gray-100">{{ $session['customer_name'] ?? 'Customer' }}</div>
-                                        <div class="text-xs text-gray-500 dark:text-gray-400">ID: {{ $session['customer_id'] }}</div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400">
+                                            ID: {{ $session['customer_id'] }}
+                                            @if(!empty($session['customer_phone']))
+                                                • {{ $session['customer_phone'] }}
+                                            @endif
+                                            @if(!empty($session['customer_email']))
+                                                • {{ $session['customer_email'] }}
+                                            @endif
+                                        </div>
                                     </div>
                                 </div>
                                 <button 
@@ -432,7 +440,7 @@
                     </x-filament::card>
 
                     {{-- WhatsApp Receipt Toggle --}}
-                    @if(!empty($session['customer_id']) && data_get($session, 'customer.phone'))
+                    @if(!empty($session['customer_id']) && !empty($session['customer_phone']))
                         <x-filament::card>
                             <label class="flex items-center cursor-pointer">
                                 <input
@@ -443,7 +451,7 @@
                                 <div class="ml-3 flex-1">
                                     <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Send receipt via WhatsApp</span>
                                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                        To: {{ data_get($session, 'customer.phone') }}
+                                        To: {{ $session['customer_phone'] ?? '' }}
                                     </p>
                                 </div>
                                 <x-heroicon-o-chat-bubble-left-right class="w-5 h-5 text-green-600 dark:text-green-400" />

@@ -61,6 +61,13 @@ class Sale extends Model
             }
         });
 
+        static::created(function ($sale) {
+            if ($sale->customer_id) {
+                // Ensure customer stats update on creation
+                $sale->customer?->recalculateTotals();
+            }
+        });
+
         static::saved(function ($sale) {
             if ($sale->customer_id && $sale->wasChanged(['status', 'total_amount'])) {
                 $sale->customer?->recalculateTotals();
@@ -97,13 +104,13 @@ class Sale extends Model
     public function recalculateTotals(): void
     {
         $this->loadMissing('items');
-        
-        $itemsSubtotal = $this->items->sum(fn($item) => $item->quantity * $item->selling_price);
-        $itemsTax = $this->items->sum('tax_amount');
-        
+        // Sum using the actual SaleItem columns created by POS: 'subtotal' and 'tax_amount'.
+        $itemsSubtotal = (float) $this->items->sum(fn($item) => $item->subtotal ?? ($item->quantity * ($item->price_per_unit ?? 0)));
+        $itemsTax = (float) $this->items->sum(fn($item) => $item->tax_amount ?? 0);
+
         $this->subtotal = $itemsSubtotal;
         $this->tax_amount = $itemsTax;
-        $this->total_amount = $itemsSubtotal + $itemsTax - ($this->discount_amount ?? 0);
+        $this->total_amount = $itemsSubtotal + $itemsTax - (float) ($this->discount_amount ?? 0);
         $this->saveQuietly(); // Avoid triggering observers again
     }
 

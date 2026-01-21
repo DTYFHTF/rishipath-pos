@@ -36,6 +36,7 @@ class ListSales extends ListRecords
             $query->where('store_id', $storeId);
         }
 
-        return $query;
+        // Enforce newest-first ordering to ensure most recent sales appear at top
+        return $query->orderBy('created_at', 'desc');
     }
 }

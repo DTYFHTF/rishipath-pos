@@ -14,6 +14,7 @@ use App\Models\StockLevel;
 use App\Models\Store;
 use App\Models\Terminal;
 use App\Services\InventoryService;
+use App\Services\InvoiceService;
 use App\Services\LoyaltyService;
 use App\Services\OrganizationContext;
 use App\Services\StoreContext;
@@ -174,6 +175,8 @@ class EnhancedPOS extends Page
             if ($customer && $this->activeSessionKey) {
                 $this->sessions[$this->activeSessionKey]['customer_id'] = $customerId;
                 $this->sessions[$this->activeSessionKey]['customer_name'] = $customer->name;
+                $this->sessions[$this->activeSessionKey]['customer_phone'] = $customer->phone;
+                $this->sessions[$this->activeSessionKey]['customer_email'] = $customer->email;
 
                 Notification::make()
                     ->success()
@@ -300,6 +303,8 @@ class EnhancedPOS extends Page
                 'store_name' => $session->store?->name,
                 'customer_id' => $session->customer_id,
                 'customer_name' => $session->customer?->name,
+                'customer_phone' => $session->customer?->phone,
+                'customer_email' => $session->customer?->email,
                 'cart' => $session->cart_items ?? [],
                 'subtotal' => $session->subtotal,
                 'discount' => $session->discount_amount,
@@ -361,9 +366,13 @@ class EnhancedPOS extends Page
             $customer = Customer::find($customerId);
             $this->sessions[$this->activeSessionKey]['customer_id'] = $customerId;
             $this->sessions[$this->activeSessionKey]['customer_name'] = $customer?->name;
+            $this->sessions[$this->activeSessionKey]['customer_phone'] = $customer?->phone;
+            $this->sessions[$this->activeSessionKey]['customer_email'] = $customer?->email;
         } else {
             $this->sessions[$this->activeSessionKey]['customer_id'] = null;
             $this->sessions[$this->activeSessionKey]['customer_name'] = null;
+            $this->sessions[$this->activeSessionKey]['customer_phone'] = null;
+            $this->sessions[$this->activeSessionKey]['customer_email'] = null;
         }
 
         $this->customerSearch = '';
@@ -423,8 +432,10 @@ class EnhancedPOS extends Page
             'name' => $session->session_name,
             'store_id' => $session->store_id,
             'store_name' => $session->store?->name,
-            'customer_id' => null,
-            'customer_name' => null,
+                'customer_id' => null,
+                'customer_name' => null,
+                'customer_phone' => null,
+                'customer_email' => null,
             'cart' => [],
             'subtotal' => 0,
             'discount' => 0,
@@ -683,7 +694,9 @@ class EnhancedPOS extends Page
                 'product_name' => $variant->product->name,
                 'variant_name' => $variant->pack_size.$variant->unit,
                 'sku' => $variant->sku,
+                'unit' => $variant->unit ?? 'pcs',
                 'price' => $variant->mrp_india ?? $variant->base_price ?? 0,
+                'cost_price' => $variant->cost_price ?? 0,
                 'quantity' => $quantity,
                 'discount' => 0,
                 'tax_rate' => 12, // Default 12% GST
@@ -866,6 +879,9 @@ class EnhancedPOS extends Page
                 'receipt_number' => $receiptNumber,
                 'cashier_id' => auth()->id(),
                 'customer_id' => $session['customer_id'],
+                'customer_name' => $session['customer_name'] ?? 'Walk-in Customer',
+                'customer_phone' => $session['customer_phone'] ?? null,
+                'customer_email' => $session['customer_email'] ?? null,
                 'invoice_number' => 'INV-'.time(),
                 'date' => now()->toDateString(),
                 'time' => now()->toTimeString(),
@@ -922,14 +938,31 @@ class EnhancedPOS extends Page
 
             // Save split payments
             if ($this->showSplitPayment && ! empty($this->splitPayments)) {
+                $splitTotal = 0.0;
                 foreach ($this->splitPayments as $split) {
+                    $method = is_array($split) ? ($split['method'] ?? null) : null;
+                    $amount = is_array($split) ? (float) ($split['amount'] ?? 0) : (float) $split;
+                    $reference = is_array($split) ? ($split['reference'] ?? null) : null;
+
                     PaymentSplit::create([
                         'sale_id' => $sale->id,
-                        'payment_method' => $split['method'],
-                        'amount' => $split['amount'],
-                        'reference_number' => $split['reference'] ?? null,
+                        'payment_method' => $method,
+                        'amount' => $amount,
+                        'reference_number' => $reference,
                     ]);
+
+                    $splitTotal += $amount;
                 }
+
+                // Ensure split payments cover the total amount
+                if ($splitTotal < (float) $sale->total_amount) {
+                    throw new \Exception('Split payments total (₹' . number_format($splitTotal, 2) . ") is less than sale total (₹" . number_format($sale->total_amount, 2) . ').');
+                }
+
+                // Update sale paid/change to reflect splits
+                $sale->amount_paid = $splitTotal;
+                $sale->amount_change = max(0, $splitTotal - (float) $sale->total_amount);
+                $sale->saveQuietly();
             }
 
             // Create ledger entry if customer and credit sale
@@ -949,17 +982,19 @@ class EnhancedPOS extends Page
             $dbSession = PosSession::where('session_key', $this->activeSessionKey)->first();
             $dbSession?->complete();
             // Send WhatsApp receipt if requested and customer has phone
+            $whatsappSent = false;
             if ($this->sendWhatsApp && $sale->customer_phone) {
-                $this->sendWhatsAppReceipt($sale);
+                $whatsappSent = $this->sendWhatsAppReceipt($sale);
             }
 
             Notification::make()
                 ->success()
                 ->title('Sale Completed')
-                ->body("Invoice: {$sale->invoice_number}".($this->sendWhatsApp && $sale->customer_phone ? ' (WhatsApp sent)' : ''))
+                ->body("Invoice: {$sale->invoice_number}".($whatsappSent ? ' (WhatsApp sent)' : ''))
                 ->send();
 
-            // Reset WhatsApp toggle
+            // Clear cart and reset form fields
+            $this->clearCurrentSessionCart();
             $this->sendWhatsApp = false;
 
             // Create new session or switch
@@ -986,10 +1021,12 @@ class EnhancedPOS extends Page
     /**
      * Send receipt via WhatsApp
      */
-    protected function sendWhatsAppReceipt(Sale $sale): void
+    protected function sendWhatsAppReceipt(Sale $sale): bool
     {
+        $sent = false;
         try {
             $whatsappService = app(WhatsAppService::class);
+            $invoiceService = app(InvoiceService::class);
 
             if (! $whatsappService->isConfigured()) {
                 Notification::make()
@@ -1001,24 +1038,48 @@ class EnhancedPOS extends Page
                 // Still call the service to log the receipt
                 $whatsappService->sendReceipt($sale, $sale->customer_phone);
 
-                return;
+                // Not actually sent to Twilio in this environment
+                return false;
             }
 
-            $success = $whatsappService->sendReceipt($sale, $sale->customer_phone);
+            // Generate and save PDF invoice
+            $invoicePath = $invoiceService->generateAndSaveInvoice($sale);
+            $publicUrl = asset('storage/' . $invoicePath);
 
-            if (! $success) {
+            // Send PDF via WhatsApp
+            $result = $whatsappService->sendInvoicePdf($sale, $sale->customer_phone, $publicUrl);
+            $sent = (bool) ($result['success'] ?? false);
+
+            // If PDF send failed (likely due to local URL), fallback to text receipt
+            if (! $sent && isset($result['error']) && str_contains($result['error'], 'Invalid media URL')) {
+                $textSent = $whatsappService->sendReceipt($sale, $sale->customer_phone);
+                if ($textSent) {
+                    Notification::make()
+                        ->info()
+                        ->title('Receipt Sent (Text Only)')
+                        ->body('Invoice PDF requires public URL. Text receipt sent instead.')
+                        ->send();
+                    return true;
+                }
+            }
+
+            if (! $sent) {
                 Notification::make()
                     ->warning()
                     ->title('WhatsApp Send Failed')
-                    ->body('Could not send receipt. Check logs.')
+                    ->body($result['error'] ?? 'Could not send receipt. Check logs.')
                     ->send();
             }
+
+            return $sent;
         } catch (\Exception $e) {
             Notification::make()
                 ->danger()
                 ->title('WhatsApp Error')
                 ->body($e->getMessage())
                 ->send();
+
+            return false;
         }
     }
 
@@ -1054,5 +1115,39 @@ class EnhancedPOS extends Page
     {
         unset($this->splitPayments[$index]);
         $this->splitPayments = array_values($this->splitPayments);
+    }
+
+    /**
+     * Clear current session cart and reset form fields
+     */
+    private function clearCurrentSessionCart(): void
+    {
+        if (! $this->activeSessionKey || ! isset($this->sessions[$this->activeSessionKey])) {
+            return;
+        }
+
+        // Reset cart and totals
+        $this->sessions[$this->activeSessionKey]['cart'] = [];
+        $this->sessions[$this->activeSessionKey]['subtotal'] = 0;
+        $this->sessions[$this->activeSessionKey]['discount'] = 0;
+        $this->sessions[$this->activeSessionKey]['tax'] = 0;
+        $this->sessions[$this->activeSessionKey]['total'] = 0;
+        
+        // Reset customer info
+        $this->sessions[$this->activeSessionKey]['customer_id'] = null;
+        $this->sessions[$this->activeSessionKey]['customer_name'] = null;
+        $this->sessions[$this->activeSessionKey]['customer_phone'] = null;
+        $this->sessions[$this->activeSessionKey]['customer_email'] = null;
+        
+        // Reset payment fields
+        $this->sessions[$this->activeSessionKey]['payment_method'] = 'cash';
+        $this->sessions[$this->activeSessionKey]['amount_received'] = 0;
+        $this->sessions[$this->activeSessionKey]['notes'] = '';
+        
+        // Update database session
+        $dbSession = PosSession::where('session_key', $this->activeSessionKey)->first();
+        if ($dbSession) {
+            $dbSession->updateCart([]);
+        }
     }
 }
