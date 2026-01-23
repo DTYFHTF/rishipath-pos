@@ -100,7 +100,14 @@
                                 {{ number_format($stock->quantity, 0) }}
                             </td>
                             <td class="px-3 py-1.5 text-right text-sm">₹{{ number_format($variant->cost_price ?? 0, 2) }}</td>
-                            <td class="px-3 py-1.5 text-right text-sm">₹{{ number_format($variant->selling_price ?? 0, 2) }}</td>
+                            <td class="px-3 py-1.5 text-right text-sm text-green-600 dark:text-green-400 font-semibold">
+                                @php
+                                    $organization = auth()->user()?->organization;
+                                    $price = \App\Services\PricingService::getSellingPrice($variant, $organization);
+                                    $currency = \App\Services\PricingService::getCurrencySymbol($organization);
+                                @endphp
+                                {{ $currency }}{{ number_format($price, 2) }}
+                            </td>
                             <td class="px-3 py-1.5 text-center text-xs text-gray-500">
                                 {{ $stock->last_movement_at ? \Carbon\Carbon::parse($stock->last_movement_at)->diffForHumans() : '-' }}
                             </td>
@@ -117,19 +124,7 @@
                                         <span class="hidden sm:inline">Details</span>
                                     </button>
                                     <button 
-                                        wire:click="openStockIn({{ $variant->id }})"
-                                        class="px-2 py-1 text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 rounded hover:bg-green-200 dark:hover:bg-green-800 transition"
-                                        title="Stock In"
-                                    >
-                                        + In
-                                    </button>
-                                    <button 
-                                        wire:click="openStockOut({{ $variant->id }})"
-                                        class="px-2 py-1 text-xs bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 rounded hover:bg-red-200 dark:hover:bg-red-800 transition"
-                                        title="Stock Out"
-                                    >
-                                        - Out
-                                    </button>
+                                    <!-- Stock In/Out actions removed for safety -->
                                     <button 
                                         wire:click="openTimeline({{ $variant->id }})"
                                         class="px-2 py-1 text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-800 transition"
@@ -156,73 +151,7 @@
         </div>
     </div>
 
-    <!-- Stock In/Out Modal -->
-    @if($showStockModal)
-        <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]" role="dialog" aria-modal="true" wire:click.self="closeModals">
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md" role="document">
-                <h3 class="text-lg font-semibold mb-4">
-                    {{ $stockModalType === 'in' ? '📥 Stock In' : '📤 Stock Out' }}
-                </h3>
-                
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Quantity</label>
-                        <input 
-                            type="number"
-                            wire:model="stockModalQuantity"
-                            step="1"
-                            min="1"
-                            class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900"
-                            placeholder="Enter quantity..."
-                        />
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Reason</label>
-                        <select 
-                            wire:model="stockModalReason"
-                            class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900"
-                        >
-                            <option value="adjustment">Stock Adjustment</option>
-                            <option value="recount">Physical Count</option>
-                            <option value="damage">Damaged Goods</option>
-                            <option value="return">{{ $stockModalType === 'in' ? 'Supplier Return' : 'Customer Return' }}</option>
-                            <option value="other">Other</option>
-                        </select>
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Notes</label>
-                        <textarea 
-                            wire:model="stockModalNotes"
-                            rows="2"
-                            class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900"
-                            placeholder="Additional details..."
-                        ></textarea>
-                    </div>
-                </div>
-                
-                <div class="flex justify-end gap-2 mt-6">
-                    <button 
-                        type="button"
-                        wire:click="closeModals"
-                        class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition"
-                    >
-                        Cancel
-                    </button>
-                    <button 
-                        type="button"
-                        wire:click="submitStockChange"
-                        aria-label="{{ $stockModalType === 'in' ? 'Add Stock' : 'Remove Stock' }}"
-                        class="px-4 py-2 inline-flex items-center gap-2 rounded-lg transition shadow-sm 
-                            {{ $stockModalType === 'in' ? 'bg-green-600 hover:bg-green-700 border border-green-600 text-white' : 'bg-red-600 hover:bg-red-700 border border-red-600 text-white' }}"
-                    >
-                        <span class="font-medium">{{ $stockModalType === 'in' ? 'Add Stock' : 'Remove Stock' }}</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-    @endif
+    <!-- Manual Stock modal removed/disabled -->
 
     <!-- Timeline Modal -->
     @if($showTimelineModal)

@@ -17,6 +17,7 @@ use App\Services\InventoryService;
 use App\Services\InvoiceService;
 use App\Services\LoyaltyService;
 use App\Services\OrganizationContext;
+use App\Services\PricingService;
 use App\Services\StoreContext;
 use App\Services\WhatsAppService;
 use Filament\Notifications\Notification;
@@ -130,14 +131,16 @@ class EnhancedPOS extends Page
             ->get()
             ->map(function ($variant) {
                 $storeId = $this->resolveStoreId();
-                $storePricing = $variant->storePricing->firstWhere('store_id', $storeId);
-                $price = $storePricing?->custom_price ?? $variant->selling_price_nepal ?? $variant->base_price ?? 0;
+                $organization = auth()->user()?->organization;
+                $price = PricingService::getStorePricing($variant, $storeId, $organization);
 
                 // Get available stock for this store
                 $stockLevel = \App\Models\StockLevel::where('product_variant_id', $variant->id)
                     ->where('store_id', $storeId)
                     ->first();
-                $availableStock = $stockLevel ? (int) $stockLevel->quantity : 0;
+                $totalStock = $stockLevel ? (int) $stockLevel->quantity : 0;
+                $reservedStock = $stockLevel ? (int) $stockLevel->reserved_quantity : 0;
+                $availableStock = max(0, $totalStock - $reservedStock);
 
                 return [
                     'id' => $variant->id,
@@ -148,6 +151,8 @@ class EnhancedPOS extends Page
                     'price' => $price,
                     'image' => $variant->product->image_url,
                     'available_stock' => $availableStock,
+                    'total_stock' => $totalStock,
+                    'reserved_stock' => $reservedStock,
                     'other_names' => collect([
                         $variant->product->name_hindi,
                         $variant->product->name_nepali,
@@ -670,20 +675,27 @@ class EnhancedPOS extends Page
             ->where('store_id', $storeId)
             ->first();
 
-        if (! $stockLevel || $stockLevel->quantity < $quantity) {
+        $totalStock = $stockLevel ? (int) $stockLevel->quantity : 0;
+        $reservedStock = $stockLevel ? (int) $stockLevel->reserved_quantity : 0;
+        $availableStock = max(0, $totalStock - $reservedStock);
+
+        // Check if already in cart and calculate total needed quantity
+        $existingIndex = collect($session['cart'])->search(function ($item) use ($variantId) {
+            return $item['variant_id'] == $variantId;
+        });
+
+        $currentCartQty = ($existingIndex !== false) ? $session['cart'][$existingIndex]['quantity'] : 0;
+        $totalNeeded = $currentCartQty + $quantity;
+
+        if ($availableStock < $totalNeeded) {
             Notification::make()
                 ->warning()
                 ->title('Insufficient Stock')
-                ->body('Available: '.($stockLevel->quantity ?? 0).' in stock')
+                ->body("Available: {$availableStock} / Total: {$totalStock} (Cart has {$currentCartQty}, requesting {$quantity} more)")
                 ->send();
 
             return;
         }
-
-        // Check if already in cart
-        $existingIndex = collect($session['cart'])->search(function ($item) use ($variantId) {
-            return $item['variant_id'] == $variantId;
-        });
 
         if ($existingIndex !== false) {
             $this->sessions[$this->activeSessionKey]['cart'][$existingIndex]['quantity'] += $quantity;
@@ -695,11 +707,11 @@ class EnhancedPOS extends Page
                 'variant_name' => $variant->pack_size.$variant->unit,
                 'sku' => $variant->sku,
                 'unit' => $variant->unit ?? 'pcs',
-                'price' => $variant->mrp_india ?? $variant->base_price ?? 0,
+                'price' => PricingService::getStorePricing($variant, $this->resolveStoreId(), auth()->user()?->organization),
                 'cost_price' => $variant->cost_price ?? 0,
                 'quantity' => $quantity,
                 'discount' => 0,
-                'tax_rate' => 12, // Default 12% GST
+                'tax_rate' => PricingService::getTaxRate(auth()->user()?->organization),
                 'image' => $variant->image_1 ?? $variant->product->image_1 ?? null,
             ];
         }
@@ -755,6 +767,36 @@ class EnhancedPOS extends Page
     public function updateQuantity($index, $quantity): void
     {
         if (! $this->activeSessionKey || $quantity < 1) {
+            return;
+        }
+
+        $session = $this->getCurrentSession();
+        if (! $session) {
+            return;
+        }
+
+        $cartItem = $session['cart'][$index] ?? null;
+        if (! $cartItem) {
+            return;
+        }
+
+        // Validate stock availability
+        $storeId = $this->resolveStoreId();
+        $stockLevel = StockLevel::where('product_variant_id', $cartItem['variant_id'])
+            ->where('store_id', $storeId)
+            ->first();
+
+        $totalStock = $stockLevel ? (int) $stockLevel->quantity : 0;
+        $reservedStock = $stockLevel ? (int) $stockLevel->reserved_quantity : 0;
+        $availableStock = max(0, $totalStock - $reservedStock);
+
+        if ($availableStock < $quantity) {
+            Notification::make()
+                ->warning()
+                ->title('Insufficient Stock')
+                ->body("Available: {$availableStock} / Total: {$totalStock}. Cannot set quantity to {$quantity}.")
+                ->send();
+
             return;
         }
 

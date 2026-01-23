@@ -140,7 +140,31 @@ class OrganizationResource extends Resource
                         Forms\Components\KeyValue::make('config')
                             ->label('Additional Configuration')
                             ->helperText('Key-value pairs for custom settings')
-                            ->nullable(),
+                            ->nullable()
+                            ->afterStateHydrated(function ($component, $state) {
+                                $normalized = collect($state ?? [])->mapWithKeys(function ($value, $key) {
+                                    if (is_array($value)) {
+                                        return [$key => json_encode($value)];
+                                    }
+
+                                    return [$key => $value];
+                                })->all();
+
+                                $component->state($normalized);
+                            })
+                            ->dehydrateStateUsing(function (?array $state) {
+                                return collect($state ?? [])->mapWithKeys(function ($value, $key) {
+                                    if (is_string($value)) {
+                                        $decoded = json_decode($value, true);
+
+                                        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                                            return [$key => $decoded];
+                                        }
+                                    }
+
+                                    return [$key => (filled($value) ? $value : null)];
+                                })->filter(static fn ($value, $key): bool => filled($key))->all();
+                            }),
                         Forms\Components\Toggle::make('active')
                             ->label('Active')
                             ->default(true)

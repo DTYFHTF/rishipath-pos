@@ -34,5 +34,14 @@ class AppServiceProvider extends ServiceProvider
                 // swallow any unexpected errors during login timestamp update
             }
         });
+
+        // Register Blade directives for pricing
+        \Illuminate\Support\Facades\Blade::directive('price', function ($expression) {
+            return "<?php echo \\App\\Services\\PricingService::formatPrice({$expression}, auth()->user()?->organization); ?>";
+        });
+
+        \Illuminate\Support\Facades\Blade::directive('currency', function () {
+            return "<?php echo \\App\\Services\\PricingService::getCurrencySymbol(auth()->user()?->organization); ?>";
+        });
     }
 }

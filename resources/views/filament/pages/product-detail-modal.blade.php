@@ -169,7 +169,7 @@
     $firstVariantId = $variants->first()?->id ?? null;
 @endphp
 
-<div class="space-y-6 p-4">
+<div class="space-y-4 p-4" x-data="{ activeTab: 'overview' }">
     {{-- Header Summary (compact) --}}
     <div class="flex flex-wrap items-center gap-3">
         <div class="flex items-center gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-3 py-2 text-sm">
@@ -201,39 +201,67 @@
         </div>
     </div>
 
-    <div class="flex justify-end">
+    <div class="flex justify-between items-center">
+        {{-- Tab Navigation --}}
+        <div class="flex items-center gap-1 bg-gray-100 dark:bg-gray-900 rounded-lg p-1">
+            <button 
+                @click="activeTab = 'overview'" 
+                :class="activeTab === 'overview' ? 'bg-white dark:bg-gray-800 shadow' : ''"
+                class="px-4 py-2 text-sm font-medium rounded-md transition"
+            >
+                📊 Overview
+            </button>
+            <button 
+                @click="activeTab = 'batches'" 
+                :class="activeTab === 'batches' ? 'bg-white dark:bg-gray-800 shadow' : ''"
+                class="px-4 py-2 text-sm font-medium rounded-md transition"
+            >
+                📦 Batches
+            </button>
+            <button 
+                @click="activeTab = 'movements'" 
+                :class="activeTab === 'movements' ? 'bg-white dark:bg-gray-800 shadow' : ''"
+                class="px-4 py-2 text-sm font-medium rounded-md transition"
+            >
+                📈 Movements
+            </button>
+            <button 
+                @click="activeTab = 'transactions'" 
+                :class="activeTab === 'transactions' ? 'bg-white dark:bg-gray-800 shadow' : ''"
+                class="px-4 py-2 text-sm font-medium rounded-md transition"
+            >
+                🧾 Transactions
+            </button>
+        </div>
+
+        {{-- Quick Actions --}}
         <div class="flex items-center gap-2">
             @if($purchaseCreateUrl)
-                <a href="{{ $purchaseCreateUrl }}" target="_blank" class="px-3 py-1 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700">+ Purchase</a>
-            @else
-                <button disabled class="px-3 py-1 text-sm bg-gray-200 text-gray-500 rounded">+ Purchase</button>
+                <a href="{{ $purchaseCreateUrl }}" target="_blank" class="px-3 py-1.5 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700 transition">+ Purchase</a>
             @endif
-
-            @if($firstVariantId)
-                <button wire:click="openStockIn({{ $firstVariantId }})" class="px-3 py-1 text-sm bg-yellow-100 text-yellow-800 rounded hover:bg-yellow-200">Adjust Stock</button>
-            @else
-                <button disabled class="px-3 py-1 text-sm bg-gray-200 text-gray-500 rounded">Adjust Stock</button>
-            @endif
-
-            <button type="button" onclick="document.getElementById('product-batches')?.scrollIntoView({behavior:'smooth'})" class="px-3 py-1 text-sm bg-gray-100 text-gray-800 rounded hover:bg-gray-200">View Batches</button>
+            {{-- Adjust Stock button removed (manual adjustments deprecated) --}}
         </div>
     </div>
 
-    {{-- Consistency Check --}}
-    @if($totalStock != $totalBatches && $totalBatches > 0)
-        <div class="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
-            <div class="flex items-center gap-2">
-                <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                </svg>
-                <span class="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-                    Stock Mismatch: Stock Level ({{ $totalStock }}) vs Batch Total ({{ $totalBatches }}) differ by {{ abs($totalStock - $totalBatches) }} units
-                </span>
-            </div>
-        </div>
-    @endif
+    {{-- Tab Content --}}
+    <div class="mt-4">
+        {{-- Overview Tab --}}
+        <div x-show="activeTab === 'overview'" class="space-y-4">
+            {{-- Consistency Check --}}
+            @if($totalStock != $totalBatches && $totalBatches > 0)
+                <div class="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                        </svg>
+                        <span class="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                            Stock Mismatch: Stock Level ({{ $totalStock }}) vs Batch Total ({{ $totalBatches }}) differ by {{ abs($totalStock - $totalBatches) }} units
+                        </span>
+                    </div>
+                </div>
+            @endif
 
-    {{-- Variants & Stock Levels --}}
+            {{-- Variants & Stock Levels --}}
     <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
         <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
             <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Variants & Stock</h3>
@@ -263,30 +291,44 @@
                                 {{ $stockLevel ? number_format($stockLevel->quantity) : 0 }}
                             </td>
                             <td class="px-4 py-2 text-sm text-right text-gray-600 dark:text-gray-400">{{ number_format($batchQty) }}</td>
-                            <td class="px-4 py-2 text-sm text-right text-gray-900 dark:text-gray-100">₹{{ number_format($variant->base_price, 2) }}</td>
-                            <td class="px-4 py-2 text-sm text-right text-gray-900 dark:text-gray-100">₹{{ number_format($variant->mrp_india ?? 0, 2) }}</td>
+                            <td class="px-4 py-2 text-sm text-right text-gray-900 dark:text-gray-100">
+                                @php
+                                    $organization = auth()->user()?->organization;
+                                    $price = \App\Services\PricingService::getSellingPrice($variant, $organization);
+                                    $currency = \App\Services\PricingService::getCurrencySymbol($organization);
+                                @endphp
+                                {{ $currency }}{{ number_format($price, 2) }}
+                            </td>
+                            <td class="px-4 py-2 text-sm text-right text-gray-900 dark:text-gray-100">
+                                @php
+                                    $mrpPrice = $variant->mrp_india ?? \App\Services\PricingService::getSellingPrice($variant, $organization) * 1.12;
+                                @endphp
+                                {{ $currency }}{{ number_format($mrpPrice, 2) }}
+                            </td>
                         </tr>
                     @endforeach
                 </tbody>
             </table>
         </div>
     </div>
+        </div> {{-- End Overview Tab --}}
 
-    {{-- Product Batches --}}
-    @php
-        $allBatches = ProductBatch::query()
-            ->whereIn('product_variant_id', $variants->pluck('id'))
-            ->when($storeId, fn($q) => $q->where('store_id', $storeId))
-            ->with(['productVariant', 'purchase', 'supplier'])
-            ->latest()
-            ->limit(10)
-            ->get();
-    @endphp
+        {{-- Batches Tab --}}
+        <div x-show="activeTab === 'batches'" class="space-y-4">
+            @php
+                $allBatches = ProductBatch::query()
+                    ->whereIn('product_variant_id', $variants->pluck('id'))
+                    ->when($storeId, fn($q) => $q->where('store_id', $storeId))
+                    ->with(['productVariant', 'purchase', 'supplier'])
+                    ->latest()
+                    ->limit(20)
+                    ->get();
+            @endphp
     
     @if($allBatches->count() > 0)
-        <div id="product-batches" class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+        <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
             <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Product Batches (Recent 10)</h3>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Product Batches (Recent 20)</h3>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full">
@@ -331,7 +373,10 @@
             </div>
         </div>
     @endif
+        </div> {{-- End Batches Tab --}}
 
+        {{-- Movements Tab --}}
+        <div x-show="activeTab === 'movements'" class="space-y-4">
     {{-- Recent Purchases --}}
     @if($recentPurchases->count() > 0)
         <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
@@ -405,7 +450,61 @@
             </div>
         </div>
     @endif
+    
+    {{-- Inventory Movements --}}
+    @if($recentMovements->count() > 0)
+        <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Inventory Timeline (Last 10)</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-50 dark:bg-gray-900">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Date</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Type</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">SKU</th>
+                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400">Qty</th>
+                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400">From</th>
+                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400">To</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">User</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                        @foreach($recentMovements as $movement)
+                            <tr>
+                                <td class="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{{ $movement->created_at->format('d/m/Y H:i') }}</td>
+                                <td class="px-4 py-2 text-sm">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+                                        @if($movement->type === 'purchase') bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
+                                        @elseif($movement->type === 'sale') bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200
+                                        @elseif($movement->type === 'adjustment') bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200
+                                        @else bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200
+                                        @endif
+                                    ">
+                                        {{ ucfirst($movement->type) }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">{{ $movement->productVariant->sku }}</td>
+                                <td class="px-4 py-2 text-sm text-right font-semibold {{ $movement->quantity >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                    {{ $movement->quantity >= 0 ? '+' : '' }}{{ number_format($movement->quantity) }}
+                                </td>
+                                <td class="px-4 py-2 text-sm text-right text-gray-600 dark:text-gray-400">{{ number_format($movement->from_quantity) }}</td>
+                                <td class="px-4 py-2 text-sm text-right text-gray-900 dark:text-gray-100">{{ number_format($movement->to_quantity) }}</td>
+                                <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">{{ $movement->user->name ?? '—' }}</td>
+                                <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">{{ Str::limit($movement->notes ?? '—', 30) }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    @endif
+        </div> {{-- End Movements Tab --}}
 
+        {{-- Transactions Tab --}}
+        <div x-show="activeTab === 'transactions'" class="space-y-4">
     {{-- Bill-wise Transactions --}}
     @if($bills->count() > 0)
         <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
@@ -505,55 +604,6 @@
             </div>
         </div>
     @endif
-
-    {{-- Inventory Movements --}}
-    @if($recentMovements->count() > 0)
-        <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-            <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Inventory Timeline (Last 10)</h3>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full">
-                    <thead class="bg-gray-50 dark:bg-gray-900">
-                        <tr>
-                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Date</th>
-                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Type</th>
-                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">SKU</th>
-                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400">Qty</th>
-                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400">From</th>
-                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400">To</th>
-                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">User</th>
-                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Notes</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                        @foreach($recentMovements as $movement)
-                            <tr>
-                                <td class="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{{ $movement->created_at->format('d/m/Y H:i') }}</td>
-                                <td class="px-4 py-2 text-sm">
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
-                                        @if($movement->type === 'purchase') bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
-                                        @elseif($movement->type === 'sale') bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200
-                                        @elseif($movement->type === 'adjustment') bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200
-                                        @else bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200
-                                        @endif
-                                    ">
-                                        {{ ucfirst($movement->type) }}
-                                    </span>
-                                </td>
-                                <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">{{ $movement->productVariant->sku }}</td>
-                                <td class="px-4 py-2 text-sm text-right font-semibold {{ $movement->quantity >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                    {{ $movement->quantity >= 0 ? '+' : '' }}{{ number_format($movement->quantity) }}
-                                </td>
-                                <td class="px-4 py-2 text-sm text-right text-gray-600 dark:text-gray-400">{{ number_format($movement->from_quantity) }}</td>
-                                <td class="px-4 py-2 text-sm text-right text-gray-900 dark:text-gray-100">{{ number_format($movement->to_quantity) }}</td>
-                                <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">{{ $movement->user->name ?? '—' }}</td>
-                                <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">{{ Str::limit($movement->notes ?? '—', 30) }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    @endif
+        </div> {{-- End Transactions Tab --}}
+    </div> {{-- End Tab Content --}}
 </div>

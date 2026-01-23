@@ -38,6 +38,21 @@ class ProductBatch extends Model
         'quantity_returned' => 'integer',
     ];
 
+    protected static function booted(): void
+    {
+        // Enforce purchase_id requirement for NEW batches only (traceability)
+        // Note: Existing batches without purchase_id are grandfathered in
+        static::creating(function ($batch) {
+            if (empty($batch->purchase_id)) {
+                \Log::warning('Attempted to create batch without purchase_id', [
+                    'batch_number' => $batch->batch_number,
+                    'variant_id' => $batch->product_variant_id,
+                ]);
+                throw new \Exception('Batches can only be created through Purchase Orders. Please create a Purchase Order and receive it to generate batches.');
+            }
+        });
+    }
+
     public function productVariant(): BelongsTo
     {
         return $this->belongsTo(ProductVariant::class);

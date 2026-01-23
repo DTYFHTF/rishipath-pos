@@ -38,10 +38,11 @@ class ProductVariantResource extends Resource
                             ->required()
                             ->unique(
                                 ignoreRecord: true,
-                                modifyRuleUsing: fn ($rule, $get) => $rule->whereHas(
-                                    'product',
-                                    fn ($query) => $query->where('organization_id', \App\Models\Product::find($get('product_id'))?->organization_id)
-                                )
+                                modifyRuleUsing: fn ($rule, $get) => $rule->where(function ($query) use ($get) {
+                                    $orgId = \App\Models\Product::find($get('product_id'))?->organization_id;
+                                    $productIds = \App\Models\Product::where('organization_id', $orgId)->pluck('id');
+                                    $query->whereIn('product_id', $productIds);
+                                })
                             )
                             ->maxLength(100),
                         Forms\Components\TextInput::make('pack_size')
@@ -94,10 +95,11 @@ class ProductVariantResource extends Resource
                             ->label('Barcode')
                             ->unique(
                                 ignoreRecord: true,
-                                modifyRuleUsing: fn ($rule, $get) => $rule->whereHas(
-                                    'product',
-                                    fn ($query) => $query->where('organization_id', \App\Models\Product::find($get('product_id'))?->organization_id)
-                                )
+                                modifyRuleUsing: fn ($rule, $get) => $rule->where(function ($query) use ($get) {
+                                    $orgId = \App\Models\Product::find($get('product_id'))?->organization_id;
+                                    $productIds = \App\Models\Product::where('organization_id', $orgId)->pluck('id');
+                                    $query->whereIn('product_id', $productIds);
+                                })
                             )
                             ->maxLength(100)
                             ->helperText('Leave empty to auto-generate'),

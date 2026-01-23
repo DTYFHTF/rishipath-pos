@@ -123,7 +123,12 @@
                                                 <div class="font-bold text-green-600 dark:text-green-400">₹{{ number_format($result['price'], 2) }}</div>
                                                 <div class="text-xs text-gray-400">{{ $result['sku'] }}</div>
                                                 <div class="text-xs mt-0.5 {{ ($result['available_stock'] ?? 0) > 0 ? 'text-emerald-500' : 'text-red-500' }}">
-                                                    Stock: {{ $result['available_stock'] ?? 0 }}
+                                                    @if(($result['reserved_stock'] ?? 0) > 0)
+                                                        <span class="font-medium">{{ $result['available_stock'] ?? 0 }}</span> / {{ $result['total_stock'] ?? 0 }}
+                                                        <span class="text-orange-500">({{ $result['reserved_stock'] }} reserved)</span>
+                                                    @else
+                                                        <span class="font-medium">{{ $result['available_stock'] ?? 0 }}</span> / {{ $result['total_stock'] ?? 0 }}
+                                                    @endif
                                                 </div>
                                             </div>
                                         </button>

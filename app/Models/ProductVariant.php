@@ -64,4 +64,21 @@ class ProductVariant extends Model
     {
         return $this->hasMany(InventoryMovement::class);
     }
+
+    /**
+     * Get the selling price based on organization context
+     */
+    public function getSellingPrice(?\App\Models\Organization $organization = null): float
+    {
+        return \App\Services\PricingService::getSellingPrice($this, $organization);
+    }
+
+    /**
+     * Get formatted price with currency symbol
+     */
+    public function getFormattedPrice(?\App\Models\Organization $organization = null, int $decimals = 2): string
+    {
+        $price = $this->getSellingPrice($organization);
+        return \App\Services\PricingService::formatPrice($price, $organization, $decimals);
+    }
 }

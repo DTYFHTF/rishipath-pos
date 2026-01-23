@@ -7,6 +7,7 @@ use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Services\ExportService;
 use App\Services\OrganizationContext;
+use App\Services\PricingService;
 use App\Services\StoreContext;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
@@ -193,7 +194,7 @@ class ProfitReport extends Page implements HasForms
 
             $unitPrice = $item->price > 0
                 ? $item->price
-                : ($item->productVariant->selling_price_nepal ?? $item->productVariant->selling_price ?? $item->productVariant->base_price ?? 0);
+                : PricingService::getSellingPrice($item->productVariant, auth()->user()?->organization);
 
             $revenue = $unitPrice * $item->quantity;
             $cost = ($item->productVariant->cost_price ?? 0) * $item->quantity;

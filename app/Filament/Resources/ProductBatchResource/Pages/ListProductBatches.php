@@ -22,7 +22,12 @@ class ListProductBatches extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            // Manual creation disabled - batches are created automatically via Purchase Orders
+            Actions\Action::make('info')
+                ->label('ℹ️ Batches are created via Purchase Orders')
+                ->color('info')
+                ->url(route('filament.admin.resources.purchases.index'))
+                ->icon('heroicon-o-shopping-cart'),
         ];
     }
 

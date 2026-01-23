@@ -21,6 +21,15 @@ class ProductBatchResource extends Resource
 
     protected static ?string $navigationLabel = 'Batches';
 
+    /**
+     * Disable manual batch creation.
+     * Batches can only be created through Purchase Orders.
+     */
+    public static function canCreate(): bool
+    {
+        return false;
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -209,7 +218,8 @@ class ProductBatchResource extends Resource
     {
         return [
             'index' => Pages\ListProductBatches::route('/'),
-            'create' => Pages\CreateProductBatch::route('/create'),
+            // Manual creation disabled - batches are created automatically via Purchase Orders
+            // 'create' => Pages\CreateProductBatch::route('/create'),
             'edit' => Pages\EditProductBatch::route('/{record}/edit'),
         ];
     }

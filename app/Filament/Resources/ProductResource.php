@@ -76,6 +76,7 @@ class ProductResource extends Resource
                                 'capsules' => '💊 Capsules/Tablets',
                                 'tea' => '🍵 Tea',
                                 'honey' => '🍯 Honey',
+                                'others' => '🧾 Others',
                             ])
                             ->searchable()
                             ->helperText('Traditional Ayurvedic product classification'),
@@ -196,6 +197,7 @@ class ProductResource extends Resource
                         'warning' => 'tailam',
                         'info' => 'ghritam',
                         'primary' => 'capsules',
+                        'secondary' => 'others',
                     ]),
                 Tables\Columns\TextColumn::make('variants_count')
                     ->counts('variants')
@@ -218,6 +220,7 @@ class ProductResource extends Resource
                         'capsules' => 'Capsules',
                         'tea' => 'Tea',
                         'honey' => 'Honey',
+                        'others' => 'Others',
                     ]),
                 Tables\Filters\TernaryFilter::make('active'),
             ])

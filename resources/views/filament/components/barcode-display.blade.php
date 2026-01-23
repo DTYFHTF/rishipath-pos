@@ -8,7 +8,12 @@
         <div class="text-lg font-semibold">{{ $record->product->name }}</div>
         <div class="text-gray-600">{{ $record->pack_size }} {{ $record->unit }}</div>
         <div class="text-sm text-gray-500">SKU: {{ $record->sku }}</div>
-        <div class="text-lg font-bold text-primary-600">₹{{ number_format($record->mrp_india, 2) }}</div>
+        @php
+            $organization = auth()->user()?->organization;
+            $price = \App\Services\PricingService::getSellingPrice($record, $organization);
+            $currency = \App\Services\PricingService::getCurrencySymbol($organization);
+        @endphp
+        <div class="text-lg font-bold text-primary-600">{{ $currency }}{{ number_format($price, 2) }}</div>
     </div>
     
     <div class="flex gap-2 justify-center pt-4">

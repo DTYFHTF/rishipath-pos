@@ -7,6 +7,7 @@ use App\Models\ProductVariant;
 use App\Models\StockLevel;
 use App\Models\Store;
 use App\Services\InventoryService;
+use App\Services\PricingService;
 use App\Services\StoreContext;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
@@ -45,17 +46,7 @@ class InventoryList extends Page implements HasForms
     public $showOutOfStock = false;
 
     // Stock In/Out modal
-    public $showStockModal = false;
-
-    public $stockModalType = 'in'; // 'in' or 'out'
-
-    public $stockModalVariantId;
-
-    public $stockModalQuantity;
-
-    public $stockModalReason = 'adjustment';
-
-    public $stockModalNotes;
+    // Manual stock adjustment modal removed / deprecated
 
     // Timeline modal
     public $showTimelineModal = false;
@@ -130,15 +121,14 @@ class InventoryList extends Page implements HasForms
         $outOfStock = (clone $baseQuery)->where('quantity', '<=', 0)->count();
         $positiveStock = (clone $baseQuery)->where('quantity', '>', 0)->count();
 
-        // Stock value calculations — handle schema variations (selling_price vs selling_price_nepal)
-        $salePriceColumn = Schema::hasColumn('product_variants', 'selling_price')
-            ? 'product_variants.selling_price'
-            : 'product_variants.selling_price_nepal';
+        // Stock value calculations — use PricingService to get correct price field
+        $organization = auth()->user()?->organization;
+        $priceField = PricingService::getPriceFieldName($organization);
 
         $stockValue = StockLevel::where('store_id', $this->storeId)
             ->join('product_variants', 'stock_levels.product_variant_id', '=', 'product_variants.id')
             ->selectRaw('SUM(stock_levels.quantity * COALESCE(product_variants.cost_price, 0)) as cost_value')
-            ->selectRaw("SUM(stock_levels.quantity * COALESCE({$salePriceColumn}, 0)) as sale_value")
+            ->selectRaw("SUM(stock_levels.quantity * COALESCE(product_variants.{$priceField}, product_variants.base_price, 0)) as sale_value")
             ->first();
 
         return [
@@ -151,79 +141,15 @@ class InventoryList extends Page implements HasForms
         ];
     }
 
-    public function openStockIn($variantId): void
-    {
-        $this->stockModalType = 'in';
-        $this->stockModalVariantId = $variantId;
-        $this->stockModalQuantity = null;
-        $this->stockModalReason = 'adjustment';
-        $this->stockModalNotes = null;
-        $this->showStockModal = true;
-    }
-
-    public function openStockOut($variantId): void
-    {
-        $this->stockModalType = 'out';
-        $this->stockModalVariantId = $variantId;
-        $this->stockModalQuantity = null;
-        $this->stockModalReason = 'adjustment';
-        $this->stockModalNotes = null;
-        $this->showStockModal = true;
-    }
-
+    // Deprecated: manual stock in/out via modal is disabled.
+    // Keep a disabled submit method for compatibility that informs users to use purchase/return flows.
     public function submitStockChange(): void
     {
-        $this->validate([
-            'stockModalVariantId' => 'required',
-            'stockModalQuantity' => 'required|integer|min:1',
-            'stockModalReason' => 'required',
-        ]);
-
-        try {
-            $type = $this->stockModalReason === 'damage' ? 'damage' : 'adjustment';
-            $notes = "[{$this->stockModalReason}] ".($this->stockModalNotes ?? '');
-
-            if ($this->stockModalType === 'in') {
-                InventoryService::increaseStock(
-                    $this->stockModalVariantId,
-                    $this->storeId,
-                    $this->stockModalQuantity,
-                    $type,
-                    'ManualStockIn',
-                    null,
-                    null,
-                    $notes
-                );
-                $message = "Added {$this->stockModalQuantity} units";
-            } else {
-                InventoryService::decreaseStock(
-                    $this->stockModalVariantId,
-                    $this->storeId,
-                    $this->stockModalQuantity,
-                    $type,
-                    'ManualStockOut',
-                    null,
-                    null,
-                    $notes
-                );
-                $message = "Removed {$this->stockModalQuantity} units";
-            }
-
-            Notification::make()
-                ->success()
-                ->title('Stock Updated')
-                ->body($message)
-                ->send();
-
-            $this->showStockModal = false;
-
-        } catch (\Exception $e) {
-            Notification::make()
-                ->danger()
-                ->title('Error')
-                ->body($e->getMessage())
-                ->send();
-        }
+        Notification::make()
+            ->warning()
+            ->title('Manual Adjustments Disabled')
+            ->body('Manual stock adjustments have been disabled. Use Purchases / Returns or dedicated stock workflows to update inventory.')
+            ->send();
     }
 
     public function openTimeline($variantId): void
@@ -275,7 +201,6 @@ class InventoryList extends Page implements HasForms
 
     public function closeModals(): void
     {
-        $this->showStockModal = false;
         $this->showTimelineModal = false;
         $this->showDetailsModal = false;
     }
