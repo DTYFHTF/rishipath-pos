@@ -19,7 +19,7 @@
                             ? 'bg-primary-600 text-white shadow-lg' 
                             : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700' 
                         }}
-                        {{ $session['status'] === 'parked' ? 'opacity-60' : '' }}"
+                        {{ ($session['status'] ?? null) === 'parked' ? 'opacity-60' : '' }}"
                 >
                     <x-heroicon-o-shopping-cart class="w-4 h-4" />
                     <span class="font-medium">{{ $session['name'] }}</span>
@@ -28,7 +28,7 @@
                             {{ count($session['cart']) }}
                         </span>
                     @endif
-                    @if($session['status'] === 'parked')
+                    @if(($session['status'] ?? null) === 'parked')
                         <x-heroicon-o-pause class="w-3 h-3" />
                     @endif
                 </button>

@@ -17,6 +17,7 @@ class InventoryService
      * @param  float  $quantityChange  Positive = increase, negative = decrease
      * @param  string  $type  One of: purchase, sale, adjustment, transfer, damage, return
      * @param  string|null  $referenceType  e.g. 'Sale', 'Purchase', 'StockAdjustment'
+     * @param  bool  $skipBatchSync  Skip batch synchronization (used when batches already allocated via FIFO)
      */
     public static function adjustStock(
         int $productVariantId,
@@ -27,58 +28,81 @@ class InventoryService
         ?int $referenceId = null,
         ?float $costPrice = null,
         ?string $notes = null,
-        ?int $userId = null
+        ?int $userId = null,
+        bool $skipBatchSync = false
     ): StockLevel {
-        return DB::transaction(function () use ($productVariantId, $storeId, $quantityChange, $type, $referenceType, $referenceId, $costPrice, $notes, $userId) {
-            $variant = ProductVariant::findOrFail($productVariantId);
-
-            $stock = StockLevel::lockForUpdate()->firstOrCreate(
-                [
-                    'product_variant_id' => $productVariantId,
-                    'store_id' => $storeId,
-                ],
-                [
-                    'quantity' => 0,
-                    'reserved_quantity' => 0,
-                    'reorder_level' => 10,
-                ]
-            );
-
-            $fromQuantity = $stock->quantity;
-            $toQuantity = $fromQuantity + $quantityChange;
-
-            // Prevent negative stock and throw when insufficient
-            if ($toQuantity < 0) {
-                throw new \Exception('Insufficient stock');
-            }
-
-            $stock->quantity = $toQuantity;
-            $stock->last_movement_at = now();
-            $stock->save();
-
-            // Sync Product Batches: update sum of remaining quantities
-            self::syncBatchQuantities($productVariantId, $storeId);
-
-            // Create movement record
-            InventoryMovement::create([
-                'organization_id' => $variant->product->organization_id ?? Auth::user()?->organization_id ?? 1,
-                'store_id' => $storeId,
-                'product_variant_id' => $productVariantId,
-                'batch_id' => null,
-                'type' => $type,
-                'quantity' => abs($quantityChange),
-                'unit' => $variant->unit ?? 'pcs',
-                'from_quantity' => $fromQuantity,
-                'to_quantity' => $toQuantity,
-                'reference_type' => $referenceType,
-                'reference_id' => $referenceId,
-                'cost_price' => $costPrice ?? $variant->cost_price,
-                'user_id' => $userId ?? Auth::id(),
-                'notes' => $notes,
-            ]);
-
-            return $stock;
+        return DB::transaction(function () use ($productVariantId, $storeId, $quantityChange, $type, $referenceType, $referenceId, $costPrice, $notes, $userId, $skipBatchSync) {
+            return self::adjustStockInternal($productVariantId, $storeId, $quantityChange, $type, $referenceType, $referenceId, $costPrice, $notes, $userId, $skipBatchSync);
         });
+    }
+
+    /**
+     * Internal method to adjust stock without transaction wrapper.
+     * Use this when already inside a transaction.
+     */
+    protected static function adjustStockInternal(
+        int $productVariantId,
+        int $storeId,
+        float $quantityChange,
+        string $type,
+        ?string $referenceType = null,
+        ?int $referenceId = null,
+        ?float $costPrice = null,
+        ?string $notes = null,
+        ?int $userId = null,
+        bool $skipBatchSync = false
+    ): StockLevel {
+        $variant = ProductVariant::findOrFail($productVariantId);
+
+        $stock = StockLevel::lockForUpdate()->firstOrCreate(
+            [
+                'product_variant_id' => $productVariantId,
+                'store_id' => $storeId,
+            ],
+            [
+                'quantity' => 0,
+                'reserved_quantity' => 0,
+                'reorder_level' => 10,
+            ]
+        );
+
+        $fromQuantity = $stock->quantity;
+        $toQuantity = $fromQuantity + $quantityChange;
+
+        // Prevent negative stock and throw when insufficient
+        if ($toQuantity < 0) {
+            throw new \Exception('Insufficient stock');
+        }
+
+        $stock->quantity = $toQuantity;
+        $stock->last_movement_at = now();
+        $stock->save();
+
+        // Sync Product Batches: update sum of remaining quantities
+        // Skip sync when batches were already allocated (e.g., from decreaseStock with FIFO)
+        if (!$skipBatchSync) {
+            self::syncBatchQuantities($productVariantId, $storeId);
+        }
+
+        // Create movement record
+        InventoryMovement::create([
+            'organization_id' => $variant->product->organization_id ?? Auth::user()?->organization_id ?? 1,
+            'store_id' => $storeId,
+            'product_variant_id' => $productVariantId,
+            'batch_id' => null,
+            'type' => $type,
+            'quantity' => abs($quantityChange),
+            'unit' => $variant->unit ?? 'pcs',
+            'from_quantity' => $fromQuantity,
+            'to_quantity' => $toQuantity,
+            'reference_type' => $referenceType,
+            'reference_id' => $referenceId,
+            'cost_price' => $costPrice ?? $variant->cost_price,
+            'user_id' => $userId ?? Auth::id(),
+            'notes' => $notes,
+        ]);
+
+        return $stock;
     }
 
     /**
@@ -175,8 +199,9 @@ class InventoryService
                 self::allocateFromBatches($productVariantId, $storeId, $quantity, $referenceType, $referenceId, $notes, $userId);
             }
             
-            // Update stock_levels
-            return self::adjustStock(
+            // Update stock_levels (skip batch sync since we already allocated via FIFO)
+            // Use internal method to avoid nested transactions
+            return self::adjustStockInternal(
                 $productVariantId,
                 $storeId,
                 -abs($quantity),
@@ -185,7 +210,8 @@ class InventoryService
                 $referenceId,
                 $costPrice,
                 $notes,
-                $userId
+                $userId,
+                true // skipBatchSync = true (batches already allocated above)
             );
         });
     }
@@ -218,39 +244,43 @@ class InventoryService
             ->lockForUpdate()
             ->get();
 
-        foreach ($batches as $batch) {
-            if ($remaining <= 0) {
-                break;
+        // Disable ProductBatchObserver to prevent automatic StockLevel sync during batch updates
+        // We'll manually update StockLevel after all batches are allocated
+        ProductBatch::withoutEvents(function () use ($batches, &$remaining, $productVariantId, $storeId, $referenceType, $referenceId, $notes, $userId) {
+            foreach ($batches as $batch) {
+                if ($remaining <= 0) {
+                    break;
+                }
+
+                $allocate = min($remaining, $batch->quantity_remaining);
+                
+                // Update batch quantities
+                $batch->quantity_remaining -= $allocate;
+                $batch->quantity_sold += $allocate;
+                $batch->save();
+
+                // Create movement record linked to this batch
+                $variant = ProductVariant::find($productVariantId);
+                InventoryMovement::create([
+                    'organization_id' => $variant->product->organization_id ?? Auth::user()?->organization_id ?? 1,
+                    'store_id' => $storeId,
+                    'product_variant_id' => $productVariantId,
+                    'batch_id' => $batch->id,
+                    'type' => 'sale',
+                    'quantity' => $allocate,
+                    'unit' => $variant->unit ?? 'pcs',
+                    'from_quantity' => $batch->quantity_remaining + $allocate,
+                    'to_quantity' => $batch->quantity_remaining,
+                    'reference_type' => $referenceType,
+                    'reference_id' => $referenceId,
+                    'cost_price' => $batch->purchase_price ?? $variant->cost_price,
+                    'user_id' => $userId ?? Auth::id(),
+                    'notes' => $notes ? "{$notes} (Batch: {$batch->batch_number})" : "Batch: {$batch->batch_number}",
+                ]);
+
+                $remaining -= $allocate;
             }
-
-            $allocate = min($remaining, $batch->quantity_remaining);
-            
-            // Update batch quantities
-            $batch->quantity_remaining -= $allocate;
-            $batch->quantity_sold += $allocate;
-            $batch->save();
-
-            // Create movement record linked to this batch
-            $variant = ProductVariant::find($productVariantId);
-            InventoryMovement::create([
-                'organization_id' => $variant->product->organization_id ?? Auth::user()?->organization_id ?? 1,
-                'store_id' => $storeId,
-                'product_variant_id' => $productVariantId,
-                'batch_id' => $batch->id,
-                'type' => 'sale',
-                'quantity' => $allocate,
-                'unit' => $variant->unit ?? 'pcs',
-                'from_quantity' => $batch->quantity_remaining + $allocate,
-                'to_quantity' => $batch->quantity_remaining,
-                'reference_type' => $referenceType,
-                'reference_id' => $referenceId,
-                'cost_price' => $batch->purchase_price ?? $variant->cost_price,
-                'user_id' => $userId ?? Auth::id(),
-                'notes' => $notes ? "{$notes} (Batch: {$batch->batch_number})" : "Batch: {$batch->batch_number}",
-            ]);
-
-            $remaining -= $allocate;
-        }
+        });
 
         if ($remaining > 0) {
             throw new \Exception("Insufficient batch stock. Needed {$quantity}, allocated " . ($quantity - $remaining));

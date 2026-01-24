@@ -134,8 +134,7 @@
                         </div>
                     </div>
                 </div>
-
-                <div class="border-2 border-gray-300 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800/20">
+                <div class="border-2 border-gray-300 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800">
                     <div class="text-2xl font-bold text-gray-600 dark:text-gray-400 mb-1">Class C</div>
                     <div class="text-sm text-gray-600 dark:text-gray-400">Low Priority</div>
                     <div class="mt-3 space-y-1">
@@ -171,7 +170,7 @@
                                 </div>
                                 <span class="px-2 py-1 bg-{{ $product['abc_class'] === 'A' ? 'green' : ($product['abc_class'] === 'B' ? 'yellow' : 'gray') }}-100 
                                     text-{{ $product['abc_class'] === 'A' ? 'green' : ($product['abc_class'] === 'B' ? 'yellow' : 'gray') }}-800 
-                                    dark:bg-{{ $product['abc_class'] === 'A' ? 'green' : ($product['abc_class'] === 'B' ? 'yellow' : 'gray') }}-900 
+                                    dark:bg-{{ $product['abc_class'] === 'A' ? 'green' : ($product['abc_class'] === 'B' ? 'yellow' : 'gray') }}-800 
                                     dark:text-{{ $product['abc_class'] === 'A' ? 'green' : ($product['abc_class'] === 'B' ? 'yellow' : 'gray') }}-200 
                                     rounded text-xs font-medium">
                                     Class {{ $product['abc_class'] }}
@@ -209,7 +208,7 @@
                                 </div>
                                 <span class="px-2 py-1 bg-{{ $product['abc_class'] === 'A' ? 'green' : ($product['abc_class'] === 'B' ? 'yellow' : 'gray') }}-100 
                                     text-{{ $product['abc_class'] === 'A' ? 'green' : ($product['abc_class'] === 'B' ? 'yellow' : 'gray') }}-800 
-                                    dark:bg-{{ $product['abc_class'] === 'A' ? 'green' : ($product['abc_class'] === 'B' ? 'yellow' : 'gray') }}-900 
+                                    dark:bg-{{ $product['abc_class'] === 'A' ? 'green' : ($product['abc_class'] === 'B' ? 'yellow' : 'gray') }}-800 
                                     dark:text-{{ $product['abc_class'] === 'A' ? 'green' : ($product['abc_class'] === 'B' ? 'yellow' : 'gray') }}-200 
                                     rounded text-xs font-medium">
                                     Class {{ $product['abc_class'] }}

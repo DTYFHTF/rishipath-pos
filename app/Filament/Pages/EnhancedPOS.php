@@ -225,10 +225,13 @@ class EnhancedPOS extends Page
 
         $userStores = auth()->user()->stores ?? [];
         if (! empty($userStores)) {
-            return $userStores[0];
+            // Ensure we're getting the first store ID from the array
+            return is_array($userStores) ? (int)$userStores[0] : (int)$userStores;
         }
 
-        return Store::first()?->id;
+        // Last resort: first store in database
+        $firstStore = Store::where('active', true)->first();
+        return $firstStore?->id;
     }
 
     /**
@@ -667,9 +670,17 @@ class EnhancedPOS extends Page
             return;
         }
 
-        // Check stock - get user's first store or system default
-        $userStores = auth()->user()->stores ?? [];
-        $storeId = ! empty($userStores) ? $userStores[0] : Store::first()?->id;
+        // Check stock - use same store resolution as search results
+        $storeId = $this->resolveStoreId();
+
+        if (!$storeId) {
+            Notification::make()
+                ->danger()
+                ->title('Store Not Found')
+                ->body('Please select a store or ensure you have access to a store.')
+                ->send();
+            return;
+        }
 
         $stockLevel = StockLevel::where('product_variant_id', $variantId)
             ->where('store_id', $storeId)
@@ -684,14 +695,14 @@ class EnhancedPOS extends Page
             return $item['variant_id'] == $variantId;
         });
 
-        $currentCartQty = ($existingIndex !== false) ? $session['cart'][$existingIndex]['quantity'] : 0;
-        $totalNeeded = $currentCartQty + $quantity;
+        $currentCartQty = ($existingIndex !== false) ? (int)$session['cart'][$existingIndex]['quantity'] : 0;
+        $totalNeeded = (int)$currentCartQty + (int)$quantity;
 
         if ($availableStock < $totalNeeded) {
             Notification::make()
                 ->warning()
                 ->title('Insufficient Stock')
-                ->body("Available: {$availableStock} / Total: {$totalStock} (Cart has {$currentCartQty}, requesting {$quantity} more)")
+                ->body("Available: {$availableStock}, Requested: {$totalNeeded}")
                 ->send();
 
             return;

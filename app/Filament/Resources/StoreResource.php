@@ -60,6 +60,9 @@ class StoreResource extends Resource
                 Forms\Components\TextInput::make('email')
                     ->email()
                     ->maxLength(255),
+                Forms\Components\Hidden::make('country_code')
+                    ->default(fn () => OrganizationContext::getCurrentOrganization()?->country_code ?? 'IN')
+                    ->required(),
                 Forms\Components\Toggle::make('active')
                     ->default(true),
             ]);
