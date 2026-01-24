@@ -1007,8 +1007,8 @@ class EnhancedPOS extends Page
                 $sale->saveQuietly();
             }
 
-            // Create ledger entry if customer and credit sale
-            if ($session['customer_id'] && (! $this->showSplitPayment && $session['payment_method'] === 'credit')) {
+            // Create ledger entry for all sales with a customer (not just credit)
+            if ($session['customer_id']) {
                 CustomerLedgerEntry::createSaleEntry($sale);
             }
 

@@ -4,10 +4,10 @@
        class="group flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200
               {{ request()->is('admin/enhanced-p-o-s*') 
                   ? 'bg-primary-50 text-primary-700 dark:bg-primary-500/10 dark:text-primary-400' 
-                  : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800' }}">
+                  : 'text-gray-700 hover:bg-gray-100 dark:text-white dark:hover:bg-white/5' }}">
         <x-filament::icon 
             icon="heroicon-o-shopping-cart" 
-            class="w-5 h-5 {{ request()->is('admin/pages/pos*') ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-gray-200' }}" 
+            class="w-5 h-5 {{ request()->is('admin/pages/pos*') ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 group-hover:text-gray-700 dark:text-white dark:group-hover:text-white' }}" 
         />
         <span>POS</span>
     </a>
@@ -17,10 +17,10 @@
        class="group flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200
               {{ request()->is('admin/products*') 
                   ? 'bg-primary-50 text-primary-700 dark:bg-primary-500/10 dark:text-primary-400' 
-                  : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800' }}">
+                  : 'text-gray-700 hover:bg-gray-100 dark:text-white dark:hover:bg-white/5' }}">
         <x-filament::icon 
             icon="heroicon-o-cube" 
-            class="w-5 h-5 {{ request()->is('admin/resources/products*') ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-gray-200' }}" 
+            class="w-5 h-5 {{ request()->is('admin/resources/products*') ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 group-hover:text-gray-700 dark:text-white dark:group-hover:text-white' }}" 
         />
         <span>Products</span>
     </a>
@@ -30,10 +30,10 @@
        class="group flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200
               {{ request()->is('admin/product-variants*') 
                   ? 'bg-primary-50 text-primary-700 dark:bg-primary-500/10 dark:text-primary-400' 
-                  : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800' }}">
+                  : 'text-gray-700 hover:bg-gray-100 dark:text-white dark:hover:bg-white/5' }}">
         <x-filament::icon 
             icon="heroicon-o-rectangle-stack" 
-            class="w-5 h-5 {{ request()->is('admin/resources/product-variants*') ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-gray-200' }}" 
+            class="w-5 h-5 {{ request()->is('admin/resources/product-variants*') ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 group-hover:text-gray-700 dark:text-white dark:group-hover:text-white' }}" 
         />
         <span>Variants</span>
     </a>
@@ -43,10 +43,10 @@
        class="group flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200
               {{ request()->is('admin/inventory*') 
                   ? 'bg-primary-50 text-primary-700 dark:bg-primary-500/10 dark:text-primary-400' 
-                  : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800' }}">
+                  : 'text-gray-700 hover:bg-gray-100 dark:text-white dark:hover:bg-white/5' }}">
         <x-filament::icon 
             icon="heroicon-o-cube-transparent" 
-            class="w-5 h-5 {{ request()->is('admin/resources/product-batches*') ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-gray-200' }}" 
+            class="w-5 h-5 {{ request()->is('admin/resources/product-batches*') ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 group-hover:text-gray-700 dark:text-white dark:group-hover:text-white' }}" 
         />
         <span>Inventory</span>
     </a>
@@ -56,10 +56,10 @@
        class="group flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200
               {{ request()->is('admin/customers*') 
                   ? 'bg-primary-50 text-primary-700 dark:bg-primary-500/10 dark:text-primary-400' 
-                  : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800' }}">
+                  : 'text-gray-700 hover:bg-gray-100 dark:text-white dark:hover:bg-white/5' }}">
         <x-filament::icon 
             icon="heroicon-o-users" 
-            class="w-5 h-5 {{ request()->is('admin/resources/customers*') ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-gray-200' }}" 
+            class="w-5 h-5 {{ request()->is('admin/resources/customers*') ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 group-hover:text-gray-700 dark:text-white dark:group-hover:text-white' }}" 
         />
         <span>Customers</span>
     </a>
@@ -69,10 +69,10 @@
        class="group flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200
               {{ request()->is('admin/suppliers*') 
                   ? 'bg-primary-50 text-primary-700 dark:bg-primary-500/10 dark:text-primary-400' 
-                  : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800' }}">
+                  : 'text-gray-700 hover:bg-gray-100 dark:text-white dark:hover:bg-white/5' }}">
         <x-filament::icon 
             icon="heroicon-o-rectangle-stack" 
-            class="w-5 h-5 {{ request()->is('admin/resources/suppliers*') ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-gray-200' }}" 
+            class="w-5 h-5 {{ request()->is('admin/resources/suppliers*') ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 group-hover:text-gray-700 dark:text-white dark:group-hover:text-white' }}" 
         />
         <span>Suppliers</span>
     </a>
@@ -82,10 +82,10 @@
        class="group flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200
               {{ request()->is('admin/sales*') 
                   ? 'bg-primary-50 text-primary-700 dark:bg-primary-500/10 dark:text-primary-400' 
-                  : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800' }}">
+                  : 'text-gray-700 hover:bg-gray-100 dark:text-white dark:hover:bg-white/5' }}">
         <x-filament::icon 
             icon="heroicon-o-shopping-cart" 
-            class="w-5 h-5 {{ request()->is('admin/resources/sales*') ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-gray-200' }}" 
+            class="w-5 h-5 {{ request()->is('admin/resources/sales*') ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 group-hover:text-gray-700 dark:text-white dark:group-hover:text-white' }}" 
         />
         <span>Sales</span>
     </a>
@@ -95,10 +95,10 @@
        class="group flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200
               {{ request()->is('admin/purchases*') 
                   ? 'bg-primary-50 text-primary-700 dark:bg-primary-500/10 dark:text-primary-400' 
-                  : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800' }}">
+                  : 'text-gray-700 hover:bg-gray-100 dark:text-white dark:hover:bg-white/5' }}">
         <x-filament::icon 
             icon="heroicon-o-shopping-bag" 
-            class="w-5 h-5 {{ request()->is('admin/resources/purchases*') ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-gray-200' }}" 
+            class="w-5 h-5 {{ request()->is('admin/resources/purchases*') ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 group-hover:text-gray-700 dark:text-white dark:group-hover:text-white' }}" 
         />
         <span>Purchases</span>
     </a>
@@ -111,10 +111,10 @@
        class="group flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200
               {{ request()->is('admin/*report*') 
                   ? 'bg-primary-50 text-primary-700 dark:bg-primary-500/10 dark:text-primary-400' 
-                  : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800' }}">
+                  : 'text-gray-700 hover:bg-gray-100 dark:text-white dark:hover:bg-white/5' }}">
         <x-filament::icon 
             icon="heroicon-o-chart-bar" 
-            class="w-5 h-5 {{ request()->is('admin/pages/*report*') ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-gray-200' }}" 
+            class="w-5 h-5 {{ request()->is('admin/pages/*report*') ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 group-hover:text-gray-700 dark:text-white dark:group-hover:text-white' }}" 
         />
         <span>Reports</span>
     </a>

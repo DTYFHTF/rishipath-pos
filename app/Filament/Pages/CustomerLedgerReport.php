@@ -152,19 +152,52 @@ class CustomerLedgerReport extends Page implements HasForms
 
     public function downloadPdf()
     {
-        // TODO: Implement PDF download
-        $this->dispatch('notify', [
-            'type' => 'info',
-            'message' => 'PDF download feature coming soon!',
+        if (empty($this->ledgerEntries) || ! $this->customerData) {
+            $this->dispatch('notify', [
+                'type' => 'warning',
+                'message' => 'No data to export. Please generate a report first.',
+            ]);
+
+            return;
+        }
+
+        $pdf = \Barryvdh\DomPdf\Facade\Pdf::loadView('exports.customer-ledger-pdf', [
+            'customerData' => $this->customerData,
+            'ledgerEntries' => $this->ledgerEntries,
+            'summary' => $this->summary,
+            'startDate' => $this->start_date,
+            'endDate' => $this->end_date,
         ]);
+
+        $filename = 'customer-ledger-' . str_replace(' ', '-', strtolower($this->customerData['name'])) . '-' . now()->format('Y-m-d') . '.pdf';
+
+        return response()->streamDownload(
+            fn () => print($pdf->output()),
+            $filename
+        );
     }
 
     public function downloadExcel()
     {
-        // TODO: Implement Excel download
-        $this->dispatch('notify', [
-            'type' => 'info',
-            'message' => 'Excel download feature coming soon!',
-        ]);
+        if (empty($this->ledgerEntries) || ! $this->customerData) {
+            $this->dispatch('notify', [
+                'type' => 'warning',
+                'message' => 'No data to export. Please generate a report first.',
+            ]);
+
+            return;
+        }
+
+        $export = new \App\Exports\CustomerLedgerExport(
+            $this->customerData,
+            $this->ledgerEntries,
+            $this->summary,
+            $this->start_date,
+            $this->end_date
+        );
+
+        $filename = 'customer-ledger-' . str_replace(' ', '-', strtolower($this->customerData['name'])) . '-' . now()->format('Y-m-d') . '.xlsx';
+
+        return \Maatwebsite\Excel\Facades\Excel::download($export, $filename);
     }
 }
