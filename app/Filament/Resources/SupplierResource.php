@@ -30,8 +30,23 @@ class SupplierResource extends Resource
                 Forms\Components\TextInput::make('name')
                     ->required(),
                 Forms\Components\TextInput::make('contact_person'),
-                Forms\Components\TextInput::make('phone')
-                    ->tel(),
+                Forms\Components\Grid::make(2)
+                    ->schema([
+                        Forms\Components\Select::make('country_code')
+                            ->options([
+                                'IN' => '🇮🇳 India',
+                                'US' => '🇺🇸 United States',
+                                'GB' => '🇬🇧 United Kingdom',
+                                'CN' => '🇨🇳 China',
+                                'NP' => '🇳🇵 Nepal',
+                            ])
+                            ->default('IN')
+                            ->searchable()
+                            ->columnSpan(1),
+                        Forms\Components\TextInput::make('phone')
+                            ->tel()
+                            ->columnSpan(1),
+                    ]),
                 Forms\Components\TextInput::make('email')
                     ->email(),
                 Forms\Components\Textarea::make('address')
@@ -53,16 +68,6 @@ class SupplierResource extends Resource
                     ])
                     ->searchable()
                     ->helperText('State for GST compliance'),
-                Forms\Components\Select::make('country_code')
-                    ->options([
-                        'IN' => '🇮🇳 India',
-                        'US' => '🇺🇸 United States',
-                        'GB' => '🇬🇧 United Kingdom',
-                        'CN' => '🇨🇳 China',
-                        'NP' => '🇳🇵 Nepal',
-                    ])
-                    ->default('IN')
-                    ->searchable(),
                 Forms\Components\TextInput::make('tax_number')
                     ->helperText('GST Number for Indian suppliers'),
                 Forms\Components\RichEditor::make('notes')
@@ -77,7 +82,11 @@ class SupplierResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn ($query) => $query->where('organization_id', OrganizationContext::getCurrentOrganizationId() ?? auth()->user()->organization_id))
+            ->modifyQueryUsing(function ($query) {
+                $orgId = OrganizationContext::getCurrentOrganizationId() 
+                    ?? auth()->user()?->organization_id ?? 1;
+                return $query->where('organization_id', $orgId);
+            })
             ->columns([
                 Tables\Columns\TextColumn::make('organization.name')
                     ->numeric()

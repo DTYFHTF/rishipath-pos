@@ -33,6 +33,8 @@ class CustomerLedgerReport extends Page implements HasForms
 
     public ?string $end_date = null;
 
+    public ?string $entry_type = null;
+
     public $ledgerEntries = [];
 
     public $customerData = null;
@@ -55,12 +57,13 @@ class CustomerLedgerReport extends Page implements HasForms
                     ->schema([
                         Select::make('customer_id')
                             ->label('Customer')
-                            ->options(Customer::where('organization_id', OrganizationContext::getCurrentOrganizationId() ?? auth()->user()->organization_id)
+                            ->options(Customer::where('organization_id', OrganizationContext::getCurrentOrganizationId() ?? \Illuminate\Support\Facades\Auth::user()?->organization_id ?? 1)
                                 ->where('active', true)
                                 ->pluck('name', 'id'))
                             ->searchable()
                             ->required()
                             ->live()
+                            ->columnSpan(['sm' => 2])
                             ->afterStateUpdated(fn () => $this->generateReport()),
 
                         DatePicker::make('start_date')
@@ -68,6 +71,7 @@ class CustomerLedgerReport extends Page implements HasForms
                             ->required()
                             ->native(false)
                             ->live()
+                            ->columnSpan(1)
                             ->afterStateUpdated(fn () => $this->generateReport()),
 
                         DatePicker::make('end_date')
@@ -75,9 +79,22 @@ class CustomerLedgerReport extends Page implements HasForms
                             ->required()
                             ->native(false)
                             ->live()
+                            ->columnSpan(1)
+                            ->afterStateUpdated(fn () => $this->generateReport()),
+
+                        Select::make('entry_type')
+                            ->label('Type')
+                            ->options([
+                                'receivable' => 'Receivable',
+                                'payment' => 'Payment',
+                                'credit_note' => 'Credit Note',
+                            ])
+                            ->placeholder('All Types')
+                            ->live()
+                            ->columnSpan(1)
                             ->afterStateUpdated(fn () => $this->generateReport()),
                     ])
-                    ->columns(3)
+                    ->columns(5)
                     ->compact(),
             ]);
     }
@@ -98,14 +115,16 @@ class CustomerLedgerReport extends Page implements HasForms
         }
 
         $this->customerData = [
+            'id' => $customer->id,
             'name' => $customer->name,
             'phone' => $customer->phone,
             'email' => $customer->email,
             'customer_code' => $customer->customer_code,
+            'loyalty_points' => $customer->loyalty_points ?? 0,
         ];
 
         $query = CustomerLedgerEntry::forCustomer($this->customer_id)
-            ->where('organization_id', OrganizationContext::getCurrentOrganizationId() ?? auth()->user()->organization_id)
+            ->where('organization_id', OrganizationContext::getCurrentOrganizationId() ?? \Illuminate\Support\Facades\Auth::user()?->organization_id ?? 1)
             ->with(['store', 'createdBy'])
             ->orderBy('transaction_date', 'desc')
             ->orderBy('created_at', 'desc');
@@ -118,12 +137,18 @@ class CustomerLedgerReport extends Page implements HasForms
             $query->where('transaction_date', '<=', $this->end_date);
         }
 
+        if ($this->entry_type) {
+            $query->where('entry_type', $this->entry_type);
+        }
+
         $this->ledgerEntries = $query->get()->map(function ($entry) {
             return [
                 'id' => $entry->id,
                 'date' => $entry->transaction_date->format('d M Y'),
                 'description' => $entry->description,
                 'reference' => $entry->reference_number,
+                'reference_id' => $entry->reference_id,
+                'reference_type' => $entry->reference_type,
                 'type' => $entry->entry_type,
                 'debit' => $entry->debit_amount,
                 'credit' => $entry->credit_amount,

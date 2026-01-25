@@ -1,157 +1,170 @@
 <x-filament-panels::page>
     <div class="space-y-6">
-        <!-- Filters -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                    <label class="block text-sm font-medium mb-1">Supplier</label>
-                    <select 
-                        wire:model.live="supplierId"
-                        class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900"
-                    >
-                        <option value="">All Suppliers</option>
-                        @foreach(\App\Models\Supplier::where('active', true)->orderBy('name')->get() as $supplier)
-                            <option value="{{ $supplier->id }}">{{ $supplier->name }} ({{ $supplier->supplier_code }})</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">Start Date</label>
-                    <input 
-                        type="date"
-                        wire:model.live="startDate"
-                        class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900"
-                    />
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">End Date</label>
-                    <input 
-                        type="date"
-                        wire:model.live="endDate"
-                        class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900"
-                    />
-                </div>
-            </div>
-        </div>
+        {{-- Filters Form --}}
+        <x-filament::card>
+            <form wire:submit.prevent="generateReport">
+                {{ $this->form }}
+            </form>
+        </x-filament::card>
 
-        <!-- Overall Metrics (Ultra Compact - Inline) -->
-        @php $metrics = $this->getOverallMetrics(); @endphp
-        <div class="flex flex-wrap gap-2">
-            <div class="bg-white dark:bg-gray-800 rounded shadow-sm px-3 py-1.5 border-l-2 border-red-500 flex items-center gap-2">
-                <span class="text-xs text-gray-500">Payable:</span>
-                <span class="text-sm font-bold text-red-600">₹{{ number_format($metrics['total_payable'], 0) }}</span>
-            </div>
-            <div class="bg-white dark:bg-gray-800 rounded shadow-sm px-3 py-1.5 border-l-2 border-orange-500 flex items-center gap-2">
-                <span class="text-xs text-gray-500">With Balance:</span>
-                <span class="text-base font-bold text-orange-600">{{ $metrics['suppliers_with_balance'] }}</span>
-            </div>
-            <div class="bg-white dark:bg-gray-800 rounded shadow-sm px-3 py-1.5 border-l-2 border-blue-500 flex items-center gap-2">
-                <span class="text-xs text-gray-500">Suppliers:</span>
-                <span class="text-base font-bold">{{ $metrics['total_suppliers'] }}</span>
-            </div>
-            <div class="bg-white dark:bg-gray-800 rounded shadow-sm px-3 py-1.5 border-l-2 border-purple-500 flex items-center gap-2">
-                <span class="text-xs text-gray-500">Purchases:</span>
-                <span class="text-sm font-bold text-purple-600">₹{{ number_format($metrics['period_purchases'], 0) }}</span>
-            </div>
-            <div class="bg-white dark:bg-gray-800 rounded shadow-sm px-3 py-1.5 border-l-2 border-green-500 flex items-center gap-2">
-                <span class="text-xs text-gray-500">Payments:</span>
-                <span class="text-sm font-bold text-green-600">₹{{ number_format($metrics['period_payments'], 0) }}</span>
-            </div>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Supplier Balances -->
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                <h3 class="text-lg font-semibold mb-4">📋 Supplier Balances</h3>
-                <div class="space-y-2 max-h-96 overflow-y-auto">
-                    @foreach($this->getSupplierSummary() as $supplier)
-                        <div 
-                            wire:click="$set('supplierId', {{ $supplier['id'] }})"
-                            class="p-3 rounded-lg cursor-pointer transition-colors
-                                {{ $supplierId == $supplier['id'] ? 'bg-primary-100 dark:bg-primary-900/30 border-2 border-primary-500' : 'hover:bg-gray-200/30 dark:hover:bg-gray-700/50 border border-gray-200 dark:border-gray-700' }}"
-                        >
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <div class="font-medium text-sm">{{ $supplier['name'] }}</div>
-                                    <div class="text-xs text-gray-500">{{ $supplier['code'] }}</div>
-                                </div>
-                                <div class="text-right">
-                                    <div class="font-bold {{ $supplier['current_balance'] > 0 ? 'text-red-600' : 'text-green-600' }}">
-                                        ₹{{ number_format($supplier['current_balance'], 0) }}
-                                    </div>
-                                    <div class="text-xs text-gray-500">{{ $supplier['purchase_count'] }} purchases</div>
-                                </div>
-                            </div>
+        @if($supplierData)
+            {{-- Supplier Info + Summary - Inventory Style --}}
+            <x-filament::card>
+                <div class="space-y-3">
+                    {{-- Supplier Details - Compact Layout --}}
+                    <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                        <div>
+                            <span class="text-gray-500 dark:text-gray-400">Name:</span>
+                            <span class="font-semibold text-gray-900 dark:text-gray-100">{{ $supplierData['name'] }}</span>
                         </div>
-                    @endforeach
+                        <div>
+                            <span class="text-gray-500 dark:text-gray-400">ID:</span>
+                            <span class="font-semibold text-gray-900 dark:text-gray-100">{{ $supplierData['id'] }}</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-500 dark:text-gray-400">Code:</span>
+                            <span class="font-semibold text-gray-900 dark:text-gray-100">{{ $supplierData['supplier_code'] }}</span>
+                        </div>
+                        @if($supplierData['contact_person'])
+                        <div>
+                            <span class="text-gray-500 dark:text-gray-400">Contact:</span>
+                            <span class="font-semibold text-gray-900 dark:text-gray-100">{{ $supplierData['contact_person'] }}</span>
+                        </div>
+                        @endif
+                        <div>
+                            <span class="text-gray-500 dark:text-gray-400">Phone:</span>
+                            <span class="font-semibold text-gray-900 dark:text-gray-100">{{ $supplierData['phone'] }}</span>
+                        </div>
+                        @if($supplierData['email'])
+                        <div>
+                            <span class="text-gray-500 dark:text-gray-400">Email:</span>
+                            <span class="font-semibold text-gray-900 dark:text-gray-100">{{ $supplierData['email'] }}</span>
+                        </div>
+                        @endif
+                    </div>
+                    
+                    {{-- Summary - Horizontal Cards --}}
+                    <div class="flex flex-wrap gap-2">
+                        <div class="bg-white dark:bg-gray-800 rounded shadow-sm px-3 py-1.5 border-l-2 border-green-500 flex items-center gap-2">
+                            <span class="text-xs text-gray-500">Paid:</span>
+                            <span class="text-base font-bold text-green-600">₹{{ number_format($summary['total_debit'], 2) }}</span>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 rounded shadow-sm px-3 py-1.5 border-l-2 border-red-500 flex items-center gap-2">
+                            <span class="text-xs text-gray-500">Payable:</span>
+                            <span class="text-base font-bold text-red-600">₹{{ number_format($summary['total_credit'], 2) }}</span>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 rounded shadow-sm px-3 py-1.5 border-l-2 border-gray-500 flex items-center gap-2">
+                            <span class="text-xs text-gray-500">Net:</span>
+                            <span class="text-base font-bold">₹{{ number_format($summary['net_amount'], 2) }}</span>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 rounded shadow-sm px-3 py-1.5 border-l-2 border-orange-500 flex items-center gap-2">
+                            <span class="text-xs text-gray-500">We Owe:</span>
+                            <span class="text-base font-bold {{ $summary['current_balance'] > 0 ? 'text-orange-600' : 'text-green-600' }}">₹{{ number_format($summary['current_balance'], 2) }}</span>
+                        </div>
+                    </div>
                 </div>
-            </div>
+            </x-filament::card>
 
-            <!-- Ledger Entries -->
-            <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                <h3 class="text-lg font-semibold mb-4">
-                    📜 Ledger Entries
-                    @if($selectedSupplier = $this->getSelectedSupplier())
-                        <span class="text-sm font-normal text-gray-500">- {{ $selectedSupplier->name }}</span>
-                    @endif
-                </h3>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
-                        <thead class="bg-gray-50 dark:bg-gray-700">
-                            <tr>
-                                <th class="px-3 py-2 text-left font-semibold">Date</th>
-                                <th class="px-3 py-2 text-left font-semibold">Supplier</th>
-                                <th class="px-3 py-2 text-center font-semibold">Type</th>
-                                <th class="px-3 py-2 text-right font-semibold">Amount</th>
-                                <th class="px-3 py-2 text-right font-semibold">Balance</th>
-                                <th class="px-3 py-2 text-left font-semibold">Reference</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                            @forelse($this->getLedgerEntries() as $entry)
-                                <tr class="hover:bg-gray-200/30 dark:hover:bg-gray-700/50 transition-colors">
-                                    <td class="px-3 py-2 text-xs">
-                                        {{ $entry->created_at->format('M d, Y H:i') }}
-                                    </td>
-                                    <td class="px-3 py-2">
-                                        <div class="font-medium text-sm">{{ $entry->supplier->name ?? '-' }}</div>
-                                    </td>
-                                    <td class="px-3 py-2 text-center">
-                                        <span class="px-2 py-0.5 text-xs rounded
-                                            @if($entry->type === 'purchase') bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200
-                                            @elseif($entry->type === 'payment') bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
-                                            @elseif($entry->type === 'return') bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200
-                                            @else bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200
-                                            @endif">
-                                            {{ ucfirst($entry->type) }}
-                                        </span>
-                                    </td>
-                                    <td class="px-3 py-2 text-right font-semibold {{ $entry->amount > 0 ? 'text-red-600' : 'text-green-600' }}">
-                                        {{ $entry->amount > 0 ? '+' : '' }}₹{{ number_format($entry->amount, 0) }}
-                                    </td>
-                                    <td class="px-3 py-2 text-right font-medium">
-                                        ₹{{ number_format($entry->balance_after, 0) }}
-                                    </td>
-                                    <td class="px-3 py-2 text-xs text-gray-500">
-                                        @if($entry->purchase)
-                                            {{ $entry->purchase->purchase_number }}
-                                        @endif
-                                        @if($entry->reference_number)
-                                            <br>Ref: {{ $entry->reference_number }}
-                                        @endif
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="6" class="px-3 py-8 text-center text-gray-500">
-                                        No ledger entries found
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
+            {{-- Ledger Table --}}
+            <x-filament::card>
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Ledger Entries</h3>
+                    <div class="flex gap-2">
+                        <x-filament::button wire:click="downloadExcel" color="success" size="sm">
+                            <x-heroicon-o-arrow-down-tray class="w-4 h-4 mr-1" />
+                            Excel
+                        </x-filament::button>
+                        <x-filament::button wire:click="downloadPdf" color="danger" size="sm">
+                            <x-heroicon-o-arrow-down-tray class="w-4 h-4 mr-1" />
+                            PDF
+                        </x-filament::button>
+                    </div>
                 </div>
-            </div>
-        </div>
+
+                @if(count($ledgerEntries) > 0)
+                    <div class="overflow-x-auto max-h-[600px] overflow-y-auto">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-50 dark:bg-gray-800 sticky top-0 z-10">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-gray-700 dark:text-gray-300">Date</th>
+                                    <th class="px-4 py-3 text-left text-gray-700 dark:text-gray-300">Reference</th>
+                                    <th class="px-4 py-3 text-left text-gray-700 dark:text-gray-300">Description</th>
+                                    <th class="px-4 py-3 text-left text-gray-700 dark:text-gray-300">Type</th>
+                                    <th class="px-4 py-3 text-right text-gray-700 dark:text-gray-300">Paid (₹)</th>
+                                    <th class="px-4 py-3 text-right text-gray-700 dark:text-gray-300">Payable (₹)</th>
+                                    <th class="px-4 py-3 text-right text-gray-700 dark:text-gray-300">Balance (₹)</th>
+                                    <th class="px-4 py-3 text-center text-gray-700 dark:text-gray-300">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                                @foreach($ledgerEntries as $entry)
+                                    <tr class="hover:bg-gray-200/30 dark:hover:bg-gray-700/50 transition-colors">
+                                        <td class="px-4 py-3 text-gray-900 dark:text-gray-100">{{ $entry['date'] }}</td>
+                                        <td class="px-4 py-3">
+                                            @if($entry['reference'] && $entry['reference_type'] === 'Sale' && $entry['reference_id'])
+                                                <a href="{{ route('filament.admin.resources.sales.view', ['record' => $entry['reference_id']]) }}" 
+                                                   class="text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1"
+                                                   title="View Invoice">
+                                                    {{ $entry['reference'] }}
+                                                    <x-heroicon-o-arrow-top-right-on-square class="w-3 h-3" />
+                                                </a>
+                                            @else
+                                                <span class="text-gray-900 dark:text-gray-100">{{ $entry['reference'] ?? '-' }}</span>
+                                            @endif
+                                        </td>
+                                        <td class="px-4 py-3 text-gray-900 dark:text-gray-100">
+                                            {{ $entry['description'] }}
+                                            @if($entry['store'])
+                                                <span class="text-xs text-gray-500 dark:text-gray-400">({{ $entry['store'] }})</span>
+                                            @endif
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            <span class="px-2 py-1 text-xs rounded-full
+                                                {{ $entry['type'] === 'receivable' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400' : '' }}
+                                                {{ $entry['type'] === 'payment' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400' : '' }}
+                                                {{ $entry['type'] === 'credit_note' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-400' : '' }}">
+                                                {{ $entry['type'] === 'receivable' ? 'Receivable' : ucwords(str_replace('_', ' ', $entry['type'])) }}
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-3 text-right {{ $entry['debit'] > 0 ? 'text-red-600 dark:text-red-400 font-semibold' : 'text-gray-500 dark:text-gray-400' }}">
+                                            {{ $entry['debit'] > 0 ? number_format($entry['debit'], 2) : '-' }}
+                                        </td>
+                                        <td class="px-4 py-3 text-right {{ $entry['credit'] > 0 ? 'text-green-600 dark:text-green-400 font-semibold' : 'text-gray-500 dark:text-gray-400' }}">
+                                            {{ $entry['credit'] > 0 ? number_format($entry['credit'], 2) : '-' }}
+                                        </td>
+                                        <td class="px-4 py-3 text-right font-semibold {{ $entry['balance'] > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400' }}">
+                                            {{ number_format($entry['balance'], 2) }}
+                                        </td>
+                                        <td class="px-4 py-3 text-center">
+                                            <span class="px-2 py-1 text-xs rounded-full
+                                                {{ $entry['status'] === 'completed' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400' : '' }}
+                                                {{ $entry['status'] === 'pending' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400' : '' }}
+                                                {{ $entry['status'] === 'overdue' ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400' : '' }}">
+                                                {{ ucfirst($entry['status']) }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                            <tfoot class="bg-gray-50 dark:bg-gray-800 font-bold">
+                                <tr>
+                                    <td colspan="4" class="px-4 py-3 text-right text-gray-900 dark:text-gray-100">Total:</td>
+                                    <td class="px-4 py-3 text-right text-red-600 dark:text-red-400">{{ number_format($summary['total_debit'], 2) }}</td>
+                                    <td class="px-4 py-3 text-right text-green-600 dark:text-green-400">{{ number_format($summary['total_credit'], 2) }}</td>
+                                    <td class="px-4 py-3 text-right {{ $summary['current_balance'] > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400' }}">
+                                        {{ number_format($summary['current_balance'], 2) }}
+                                    </td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                @else
+                    <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+                        No ledger entries found for the selected period.
+                    </div>
+                @endif
+            </x-filament::card>
+        @endif
     </div>
 </x-filament-panels::page>

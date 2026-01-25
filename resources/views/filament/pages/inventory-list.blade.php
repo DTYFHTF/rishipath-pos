@@ -172,7 +172,7 @@
                     </button>
                 </div>
                 
-                <div class="overflow-y-auto flex-1">
+                <div class="overflow-y-auto flex-1 max-h-[500px]">
                     <div class="space-y-3">
                         @forelse($this->getTimelineMovements() as $movement)
                             <div class="border-l-4 {{ $movement->quantity > 0 && in_array($movement->type, ['purchase', 'return', 'adjustment']) ? 'border-green-500' : 'border-red-500' }} pl-4 py-2">
@@ -234,7 +234,7 @@
                         </svg>
                     </button>
                 </div>
-                <div class="overflow-y-auto flex-1">
+                <div class="overflow-y-auto flex-1 max-h-[600px]">
                     @if($this->getDetailsProduct())
                         @include('filament.pages.product-detail-modal', ['product' => $this->getDetailsProduct()])
                     @endif

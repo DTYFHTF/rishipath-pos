@@ -384,6 +384,10 @@ class EnhancedPOS extends Page
         }
 
         $this->customerSearch = '';
+
+        // Recalculate cart so any loyalty tier discount (if applicable) is applied immediately
+        $this->recalculateCart();
+        $this->saveCurrentSession();
     }
 
     /**
@@ -872,10 +876,30 @@ class EnhancedPOS extends Page
             $totalTax += $tax;
         }
 
+        // Compute loyalty tier discount (percentage-based benefit) dynamically
+        $loyaltyDiscount = 0;
+        $customerId = $this->sessions[$this->activeSessionKey]['customer_id'] ?? null;
+        if ($customerId) {
+            $customer = Customer::find($customerId);
+            if ($customer) {
+                try {
+                    $loyaltySummary = (new LoyaltyService())->getCustomerSummary($customer);
+                    $percent = $loyaltySummary['discount_percentage'] ?? 0;
+                    if ($percent > 0) {
+                        $loyaltyDiscount = round($subtotal * ($percent / 100), 2);
+                    }
+                } catch (\Throwable $e) {
+                    // If loyalty service fails, fallback silently (no discount)
+                    $loyaltyDiscount = 0;
+                }
+            }
+        }
+
         $this->sessions[$this->activeSessionKey]['subtotal'] = $subtotal;
-        $this->sessions[$this->activeSessionKey]['discount'] = $totalDiscount;
+        $this->sessions[$this->activeSessionKey]['loyalty_discount'] = $loyaltyDiscount;
+        $this->sessions[$this->activeSessionKey]['discount'] = $totalDiscount + $loyaltyDiscount;
         $this->sessions[$this->activeSessionKey]['tax'] = $totalTax;
-        $this->sessions[$this->activeSessionKey]['total'] = $subtotal - $totalDiscount + $totalTax;
+        $this->sessions[$this->activeSessionKey]['total'] = $subtotal - ($totalDiscount + $loyaltyDiscount) + $totalTax;
     }
 
     /**
@@ -936,7 +960,7 @@ class EnhancedPOS extends Page
                 'customer_phone' => $session['customer_phone'] ?? null,
                 'customer_email' => $session['customer_email'] ?? null,
                 'invoice_number' => 'INV-'.time(),
-                'date' => now()->toDateString(),
+                'date' => now(),
                 'time' => now()->toTimeString(),
                 'subtotal' => $session['subtotal'],
                 'discount_amount' => $session['discount'],
@@ -1018,7 +1042,8 @@ class EnhancedPOS extends Page
                 $sale->saveQuietly();
             }
 
-            // Create ledger entry for all sales with a customer (not just credit)
+            // Create ledger entry for all sales with a customer
+            // This tracks all transactions: debit methods (cash/card/UPI) and credit method (pay later)
             if ($session['customer_id']) {
                 CustomerLedgerEntry::createSaleEntry($sale);
             }

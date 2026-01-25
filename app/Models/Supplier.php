@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Supplier extends Model
@@ -47,8 +48,8 @@ class Supplier extends Model
         return $this->hasMany(Purchase::class);
     }
 
-    public function ledgerEntries(): HasMany
+    public function ledgerEntries(): MorphMany
     {
-        return $this->hasMany(SupplierLedgerEntry::class);
+        return $this->morphMany(CustomerLedgerEntry::class, 'ledgerable');
     }
 }

@@ -63,6 +63,9 @@ class Sale extends Model
 
         static::created(function ($sale) {
             if ($sale->customer_id) {
+                // Create customer ledger entry for the sale
+                CustomerLedgerEntry::createSaleEntry($sale);
+                
                 // Ensure customer stats update on creation
                 $sale->customer?->recalculateTotals();
             }

@@ -26,10 +26,18 @@ class AppServiceProvider extends ServiceProvider
         // Register ProductBatch observer to auto-sync stock levels
         ProductBatch::observe(ProductBatchObserver::class);
 
-        // Update user's last_login_at timestamp when they login
+        // Initialize organization context on every authenticated request
+        if (\Illuminate\Support\Facades\Auth::check()) {
+            \App\Services\OrganizationContext::initialize();
+        }
+
+        // Update user's last_login_at timestamp and initialize organization context
         Event::listen(Login::class, function (Login $event) {
             try {
                 $event->user?->update(['last_login_at' => now()]);
+                
+                // Initialize organization context for the session
+                \App\Services\OrganizationContext::initialize();
             } catch (\Throwable $e) {
                 // swallow any unexpected errors during login timestamp update
             }

@@ -1,8 +1,8 @@
 <x-filament-panels::page>
     <div class="space-y-6">
         <!-- Filters -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h3 class="text-lg font-semibold mb-4">Filter Options</h3>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-3">
+            <h3 class="text-lg font-semibold mb-3">Filter Options</h3>
             <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
                 <div>
                     <label class="block text-sm font-medium mb-1">Start Date</label>

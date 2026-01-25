@@ -1,7 +1,7 @@
 <x-filament-panels::page>
-    <div class="space-y-6">
+    <div class="space-y-4">
         <!-- Filters -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-3">
             <h3 class="text-lg font-semibold mb-4">Filter Options</h3>
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
@@ -75,7 +75,7 @@
         </div>
 
         <!-- Profit by Category -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-3">
             <h3 class="text-lg font-semibold mb-4">Profit by Category</h3>
             <div class="overflow-x-auto">
                 <table class="w-full">
@@ -116,7 +116,7 @@
         <!-- Top & Least Profitable Products Side by Side -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <!-- Top Profitable Products -->
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-3">
                 <h3 class="text-lg font-semibold mb-4 text-green-600 dark:text-green-400">🏆 Top 10 Profitable Products</h3>
                 <div class="space-y-3">
                     @foreach($this->getTopProfitableProducts(10) as $product)
@@ -145,7 +145,7 @@
             </div>
 
             <!-- Least Profitable Products -->
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-3">
                 <h3 class="text-lg font-semibold mb-4 text-red-600 dark:text-red-400">⚠️ Least Profitable Products</h3>
                 <div class="space-y-3">
                     @foreach($this->getLeastProfitableProducts(10) as $product)
@@ -175,7 +175,7 @@
         </div>
 
         <!-- Daily Profit Trend -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-3">
             <h3 class="text-lg font-semibold mb-4">Daily Profit Trend</h3>
             <div class="overflow-x-auto">
                 <table class="w-full">

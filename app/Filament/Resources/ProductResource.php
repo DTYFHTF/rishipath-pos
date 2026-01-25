@@ -178,7 +178,11 @@ class ProductResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn ($query) => $query->where('organization_id', OrganizationContext::getCurrentOrganizationId() ?? auth()->user()->organization_id))
+            ->modifyQueryUsing(function ($query) {
+                $orgId = OrganizationContext::getCurrentOrganizationId() 
+                    ?? auth()->user()?->organization_id ?? 1;
+                return $query->where('organization_id', $orgId);
+            })
             ->columns([
                 Tables\Columns\TextColumn::make('sku')
                     ->label('SKU')

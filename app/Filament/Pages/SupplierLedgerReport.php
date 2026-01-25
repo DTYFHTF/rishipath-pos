@@ -3,190 +3,226 @@
 namespace App\Filament\Pages;
 
 use App\Models\Supplier;
-use App\Models\SupplierLedgerEntry;
+use App\Models\CustomerLedgerEntry;
+use App\Services\OrganizationContext;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
+use Filament\Forms\Form;
 use Filament\Pages\Page;
 
-class SupplierLedgerReport extends Page
+class SupplierLedgerReport extends Page implements HasForms
 {
-    protected static ?string $navigationIcon = 'heroicon-o-building-storefront';
+    use InteractsWithForms;
 
-    protected static string $view = 'filament.pages.supplier-ledger-report';
+    protected static ?string $navigationIcon = 'heroicon-o-building-library';
 
     protected static ?string $navigationGroup = 'Reports';
 
-    protected static ?string $navigationLabel = 'Supplier Ledger';
+    protected static ?int $navigationSort = 8;
 
-    protected static ?int $navigationSort = 11;
+    protected static string $view = 'filament.pages.supplier-ledger-report';
 
-    public static function canAccess(): bool
-    {
-        return auth()->user()?->hasPermission('view_reports') ?? false;
-    }
+    protected static ?string $title = 'Supplier Ledger';
 
-    public $supplierId;
+    public ?int $supplier_id = null;
 
-    public $startDate;
+    public ?string $start_date = null;
 
-    public $endDate;
+    public ?string $end_date = null;
+
+    public ?string $entry_type = null;
+
+    public $ledgerEntries = [];
+
+    public $supplierData = null;
+
+    public $summary = [];
 
     public function mount(): void
     {
-        $this->startDate = now()->startOfMonth()->format('Y-m-d');
-        $this->endDate = now()->format('Y-m-d');
+        $this->form->fill([
+            'start_date' => now()->startOfMonth()->format('Y-m-d'),
+            'end_date' => now()->format('Y-m-d'),
+        ]);
     }
 
-    public function getSupplierSummary(): array
+    public function form(Form $form): Form
     {
-        $query = Supplier::where('active', true);
+        return $form
+            ->schema([
+                Section::make('Filters')
+                    ->schema([
+                        Select::make('supplier_id')
+                            ->label('Supplier')
+                            ->options(Supplier::where('organization_id', OrganizationContext::getCurrentOrganizationId() ?? \Illuminate\Support\Facades\Auth::user()?->organization_id ?? 1)
+                                ->where('active', true)
+                                ->pluck('name', 'id'))
+                            ->searchable()
+                            ->required()
+                            ->live()
+                            ->columnSpan(['sm' => 2])
+                            ->afterStateUpdated(fn () => $this->generateReport()),
 
-        $suppliers = $query->get()->map(function ($supplier) {
-            $purchases = $supplier->purchases()
-                ->where('status', 'received')
-                ->when($this->startDate, fn ($q) => $q->whereDate('purchase_date', '>=', $this->startDate))
-                ->when($this->endDate, fn ($q) => $q->whereDate('purchase_date', '<=', $this->endDate));
+                        DatePicker::make('start_date')
+                            ->label('Start Date')
+                            ->required()
+                            ->native(false)
+                            ->live()
+                            ->columnSpan(1)
+                            ->afterStateUpdated(fn () => $this->generateReport()),
 
-            return [
-                'id' => $supplier->id,
-                'name' => $supplier->name,
-                'code' => $supplier->supplier_code,
-                'purchase_count' => $purchases->count(),
-                'total_purchases' => $purchases->sum('total'),
-                'total_paid' => $purchases->sum('amount_paid'),
-                'current_balance' => $supplier->current_balance,
-            ];
-        });
+                        DatePicker::make('end_date')
+                            ->label('End Date')
+                            ->required()
+                            ->native(false)
+                            ->live()
+                            ->columnSpan(1)
+                            ->afterStateUpdated(fn () => $this->generateReport()),
 
-        return $suppliers->sortByDesc('current_balance')->values()->toArray();
+                        Select::make('entry_type')
+                            ->label('Type')
+                            ->options([
+                                'receivable' => 'Payable',
+                                'payment' => 'Payment',
+                                'debit_note' => 'Debit Note',
+                            ])
+                            ->placeholder('All Types')
+                            ->live()
+                            ->columnSpan(1)
+                            ->afterStateUpdated(fn () => $this->generateReport()),
+                    ])
+                    ->columns(5)
+                    ->compact(),
+            ]);
     }
 
-    public function getOverallMetrics(): array
+    public function generateReport()
     {
-        $suppliers = Supplier::where('active', true)->get();
+        if (! $this->supplier_id) {
+            $this->ledgerEntries = [];
+            $this->supplierData = null;
+            $this->summary = [];
 
-        $totalPayable = $suppliers->sum('current_balance');
-        $suppliersWithBalance = $suppliers->where('current_balance', '>', 0)->count();
-
-        $periodQuery = SupplierLedgerEntry::query()
-            ->when($this->startDate, fn ($q) => $q->whereDate('created_at', '>=', $this->startDate))
-            ->when($this->endDate, fn ($q) => $q->whereDate('created_at', '<=', $this->endDate));
-
-        $purchases = (clone $periodQuery)->where('type', 'purchase')->sum('amount');
-        $payments = abs((clone $periodQuery)->where('type', 'payment')->sum('amount'));
-
-        return [
-            'total_payable' => $totalPayable,
-            'suppliers_with_balance' => $suppliersWithBalance,
-            'period_purchases' => $purchases,
-            'period_payments' => $payments,
-            'total_suppliers' => $suppliers->count(),
-        ];
-    }
-
-    public function getLedgerEntries(): \Illuminate\Database\Eloquent\Collection
-    {
-        $query = SupplierLedgerEntry::with(['supplier', 'purchase', 'createdBy'])
-            ->when($this->supplierId, fn ($q) => $q->where('supplier_id', $this->supplierId))
-            ->when($this->startDate, fn ($q) => $q->whereDate('created_at', '>=', $this->startDate))
-            ->when($this->endDate, fn ($q) => $q->whereDate('created_at', '<=', $this->endDate))
-            ->orderByDesc('created_at');
-
-        return $query->limit(100)->get();
-    }
-
-    public function getSelectedSupplier(): ?Supplier
-    {
-        if (! $this->supplierId) {
-            return null;
+            return;
         }
 
-        return Supplier::find($this->supplierId);
-    }
+        $supplier = Supplier::find($this->supplier_id);
 
-    public function exportCsv()
-    {
-        $suppliers = $this->getSupplierSummary();
-        $filename = 'supplier-summary-' . now()->format('Y-m-d') . '.csv';
+        if (! $supplier) {
+            $this->ledgerEntries = [];
+            $this->supplierData = null;
+            $this->summary = [];
 
-        $headers = [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            return;
+        }
+
+        $this->supplierData = [
+            'id' => $supplier->id,
+            'name' => $supplier->name,
+            'supplier_code' => $supplier->supplier_code,
+            'phone' => $supplier->phone,
+            'email' => $supplier->email,
+            'contact_person' => $supplier->contact_person,
         ];
 
-        $callback = function () use ($suppliers) {
-            $file = fopen('php://output', 'w');
-            
-            // Header row
-            fputcsv($file, [
-                'Supplier Code',
-                'Supplier Name',
-                'Purchase Count',
-                'Total Purchases',
-                'Total Paid',
-                'Current Balance',
-            ]);
+        $query = CustomerLedgerEntry::forSupplier($this->supplier_id)
+            ->whereBetween('transaction_date', [$this->start_date, $this->end_date])
+            ->orderBy('transaction_date', 'asc')
+            ->orderBy('id', 'asc');
 
-            // Data rows
-            foreach ($suppliers as $supplier) {
-                fputcsv($file, [
-                    $supplier['code'],
-                    $supplier['name'],
-                    $supplier['purchase_count'],
-                    number_format($supplier['total_purchases'], 2),
-                    number_format($supplier['total_paid'], 2),
-                    number_format($supplier['current_balance'], 2),
-                ]);
-            }
+        if ($this->entry_type) {
+            $query->where('entry_type', $this->entry_type);
+        }
 
-            fclose($file);
-        };
+        $this->ledgerEntries = $query->get()->map(function ($entry) {
+            return [
+                'id' => $entry->id,
+                'date' => $entry->transaction_date->format('d-M-Y'),
+                'type' => ucwords(str_replace('_', ' ', $entry->entry_type)),
+                'reference' => $entry->reference_number,
+                'reference_type' => $entry->reference_type,
+                'reference_id' => $entry->reference_id,
+                'description' => $entry->description,
+                // For suppliers: CREDIT = we owe them, DEBIT = we paid them (inverted from customers)
+                'credit' => $entry->credit_amount, // Amount we owe
+                'debit' => $entry->debit_amount,   // Amount we paid
+                'balance' => $entry->balance,
+                'status' => $entry->status,
+                'store' => $entry->store?->name,
+                'payment_method' => $entry->payment_method,
+                'created_by' => $entry->createdBy?->name,
+            ];
+        })->toArray();
 
-        return response()->stream($callback, 200, $headers);
+        $this->calculateSummary();
     }
 
-    public function exportLedgerCsv()
+    protected function calculateSummary()
     {
-        $entries = $this->getLedgerEntries();
-        $filename = 'supplier-ledger-' . now()->format('Y-m-d') . '.csv';
+        $totalDebit = collect($this->ledgerEntries)->sum('debit');
+        $totalCredit = collect($this->ledgerEntries)->sum('credit');
+        $currentBalance = CustomerLedgerEntry::getLedgerableBalance(Supplier::find($this->supplier_id));
 
-        $headers = [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        $this->summary = [
+            'total_debit' => $totalDebit,      // Total payments made
+            'total_credit' => $totalCredit,    // Total amount owed
+            'net_amount' => $totalCredit - $totalDebit,
+            'current_balance' => $currentBalance, // Amount we currently owe
+            'outstanding' => $currentBalance,
         ];
+    }
 
-        $callback = function () use ($entries) {
-            $file = fopen('php://output', 'w');
-            
-            // Header row
-            fputcsv($file, [
-                'Date',
-                'Supplier',
-                'Type',
-                'Purchase Number',
-                'Description',
-                'Debit',
-                'Credit',
-                'Balance',
-                'User',
+    public function downloadPdf()
+    {
+        if (empty($this->ledgerEntries) || ! $this->supplierData) {
+            $this->dispatch('notify', [
+                'type' => 'warning',
+                'message' => 'No data to export. Please generate a report first.',
             ]);
 
-            // Data rows
-            foreach ($entries as $entry) {
-                fputcsv($file, [
-                    $entry->created_at->format('Y-m-d H:i'),
-                    $entry->supplier->name,
-                    $entry->type,
-                    $entry->purchase?->purchase_number ?? '—',
-                    $entry->description,
-                    $entry->amount > 0 ? number_format($entry->amount, 2) : '',
-                    $entry->amount < 0 ? number_format(abs($entry->amount), 2) : '',
-                    number_format($entry->balance_after, 2),
-                    $entry->createdBy?->name ?? '—',
-                ]);
-            }
+            return;
+        }
 
-            fclose($file);
-        };
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('exports.supplier-ledger-pdf', [
+            'supplierData' => $this->supplierData,
+            'ledgerEntries' => $this->ledgerEntries,
+            'summary' => $this->summary,
+            'startDate' => $this->start_date,
+            'endDate' => $this->end_date,
+        ]);
 
-        return response()->stream($callback, 200, $headers);
+        $filename = 'supplier-ledger-' . str_replace(' ', '-', strtolower($this->supplierData['name'])) . '-' . now()->format('Y-m-d') . '.pdf';
+
+        return response()->streamDownload(
+            fn () => print($pdf->output()),
+            $filename
+        );
+    }
+
+    public function downloadExcel()
+    {
+        if (empty($this->ledgerEntries) || ! $this->supplierData) {
+            $this->dispatch('notify', [
+                'type' => 'warning',
+                'message' => 'No data to export. Please generate a report first.',
+            ]);
+
+            return;
+        }
+
+        $export = new \App\Exports\SupplierLedgerExport(
+            $this->supplierData,
+            $this->ledgerEntries,
+            $this->summary,
+            $this->start_date,
+            $this->end_date
+        );
+
+        $filename = 'supplier-ledger-' . str_replace(' ', '-', strtolower($this->supplierData['name'])) . '-' . now()->format('Y-m-d') . '.xlsx';
+
+        return \Maatwebsite\Excel\Facades\Excel::download($export, $filename);
     }
 }

@@ -177,7 +177,11 @@ class SaleResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn ($query) => $query->where('organization_id', OrganizationContext::getCurrentOrganizationId() ?? auth()->user()->organization_id))
+            ->modifyQueryUsing(function ($query) {
+                $orgId = OrganizationContext::getCurrentOrganizationId() 
+                    ?? auth()->user()?->organization_id ?? 1;
+                return $query->where('organization_id', $orgId);
+            })
             ->columns([
                 Tables\Columns\TextColumn::make('receipt_number')
                     ->searchable()
@@ -273,6 +277,12 @@ class SaleResource extends Resource
                             ->label('Receipt #')
                             ->copyable()
                             ->icon('heroicon-m-document-text'),
+                        Infolists\Components\TextEntry::make('invoice_number')
+                            ->label('Invoice #')
+                            ->copyable()
+                            ->badge()
+                            ->color('info')
+                            ->icon('heroicon-m-document-duplicate'),
                         Infolists\Components\TextEntry::make('date')
                             ->date('d M Y')
                             ->icon('heroicon-m-calendar'),
@@ -286,13 +296,20 @@ class SaleResource extends Resource
                         Infolists\Components\TextEntry::make('cashier.name')
                             ->icon('heroicon-m-user'),
                     ])
-                    ->columns(3),
+                    ->columns(5)
+                    ->compact(),
 
                 Infolists\Components\Section::make('Customer Information')
                     ->schema([
                         Infolists\Components\TextEntry::make('customer.name')
                             ->default('Walk-in Customer')
                             ->icon('heroicon-m-user-circle'),
+                        Infolists\Components\TextEntry::make('customer.customer_code')
+                            ->label('Customer Code')
+                            ->badge()
+                            ->color('gray')
+                            ->icon('heroicon-m-identification')
+                            ->default('N/A'),
                         Infolists\Components\TextEntry::make('customer_phone')
                             ->icon('heroicon-m-phone')
                             ->default('N/A'),
@@ -305,7 +322,8 @@ class SaleResource extends Resource
                             ->color('success')
                             ->default('N/A'),
                     ])
-                    ->columns(2),
+                    ->columns(3)
+                    ->compact(),
 
                 Infolists\Components\Section::make('Products Purchased')
                     ->schema([
@@ -342,7 +360,8 @@ class SaleResource extends Resource
                             ])
                             ->columns(6)
                             ->columnSpanFull(),
-                    ]),
+                    ])
+                    ->compact(),
 
                 Infolists\Components\Section::make('Payment Summary')
                     ->schema([
@@ -360,7 +379,8 @@ class SaleResource extends Resource
                             ->size('lg')
                             ->color('success'),
                     ])
-                    ->columns(4),
+                    ->columns(4)
+                    ->compact(),
 
                 Infolists\Components\Section::make('Payment Details')
                     ->schema([
@@ -390,7 +410,8 @@ class SaleResource extends Resource
                             ->icon(fn ($state) => $state > 0 ? 'heroicon-m-banknotes' : null)
                             ->default('₹0.00'),
                     ])
-                    ->columns(4),
+                    ->columns(4)
+                    ->compact(),
             ]);
     }
 

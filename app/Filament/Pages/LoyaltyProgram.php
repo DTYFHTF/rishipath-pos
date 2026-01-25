@@ -28,7 +28,7 @@ class LoyaltyProgram extends Page
 
     public function getStats(): array
     {
-        $orgId = OrganizationContext::getCurrentOrganizationId() ?? auth()->user()->organization_id;
+        $orgId = OrganizationContext::getCurrentOrganizationId() ?? \Illuminate\Support\Facades\Auth::user()?->organization_id ?? 1;
 
         $totalMembers = Customer::where('organization_id', $orgId)
             ->whereNotNull('loyalty_enrolled_at')
@@ -71,7 +71,7 @@ class LoyaltyProgram extends Page
 
     public function getTopMembers(): array
     {
-        return Customer::where('organization_id', auth()->user()->organization_id)
+        return Customer::where('organization_id', \Illuminate\Support\Facades\Auth::user()?->organization_id ?? 1)
             ->whereNotNull('loyalty_enrolled_at')
             ->with('loyaltyTier')
             ->orderBy('loyalty_points', 'desc')
@@ -82,7 +82,7 @@ class LoyaltyProgram extends Page
 
     public function getRecentActivity(): array
     {
-        return LoyaltyPoint::where('organization_id', auth()->user()->organization_id)
+        return LoyaltyPoint::where('organization_id', \Illuminate\Support\Facades\Auth::user()?->organization_id ?? 1)
             ->with(['customer', 'sale'])
             ->orderBy('created_at', 'desc')
             ->limit(20)
@@ -92,7 +92,7 @@ class LoyaltyProgram extends Page
 
     public function getTiers(): array
     {
-        return LoyaltyTier::where('organization_id', auth()->user()->organization_id)
+        return LoyaltyTier::where('organization_id', \Illuminate\Support\Facades\Auth::user()?->organization_id ?? 1)
             ->where('active', true)
             ->orderBy('order')
             ->get()

@@ -48,27 +48,12 @@ class ViewSale extends ViewRecord
                     }
                 }),
             
-            Actions\Action::make('downloadInvoice')
-                ->label('Download Invoice')
-                ->icon('heroicon-o-arrow-down-tray')
+            Actions\Action::make('viewInvoice')
+                ->label('View Invoice')
+                ->icon('heroicon-o-document-text')
                 ->color('info')
-                ->action(function ($record) {
-                    try {
-                        $invoice = app(InvoiceService::class);
-                        $pdfPath = $invoice->generateAndSaveInvoice($record);
-
-                        return response()->download(
-                            storage_path('app/public/' . $pdfPath),
-                            "invoice-{$record->receipt_number}.pdf"
-                        );
-                    } catch (\Exception $e) {
-                        Notification::make()
-                            ->title('Failed to generate invoice')
-                            ->body($e->getMessage())
-                            ->danger()
-                            ->send();
-                    }
-                }),
+                ->url(fn ($record) => route('filament.admin.resources.sales.invoice', ['record' => $record->id]))
+                ->openUrlInNewTab(),
             
             Actions\Action::make('sendInvoiceWhatsApp')
                 ->label('Send Invoice via WhatsApp')

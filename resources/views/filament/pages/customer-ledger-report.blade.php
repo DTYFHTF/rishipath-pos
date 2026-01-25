@@ -8,67 +8,60 @@
         </x-filament::card>
 
         @if($customerData)
-            {{-- Customer Info --}}
+            {{-- Customer Info + Summary - Inventory Style --}}
             <x-filament::card>
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Customer Name</p>
-                        <p class="font-semibold text-gray-900 dark:text-gray-100">{{ $customerData['name'] }}</p>
+                <div class="space-y-3">
+                    {{-- Customer Details - Compact Layout --}}
+                    <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                        <div>
+                            <span class="text-gray-500 dark:text-gray-400">Name:</span>
+                            <span class="font-semibold text-gray-900 dark:text-gray-100">{{ $customerData['name'] }}</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-500 dark:text-gray-400">ID:</span>
+                            <span class="font-semibold text-gray-900 dark:text-gray-100">{{ $customerData['id'] }}</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-500 dark:text-gray-400">Code:</span>
+                            <span class="font-semibold text-gray-900 dark:text-gray-100">{{ $customerData['customer_code'] }}</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-500 dark:text-gray-400">Phone:</span>
+                            <span class="font-semibold text-gray-900 dark:text-gray-100">{{ $customerData['phone'] }}</span>
+                        </div>
+                        @if($customerData['email'])
+                        <div>
+                            <span class="text-gray-500 dark:text-gray-400">Email:</span>
+                            <span class="font-semibold text-gray-900 dark:text-gray-100">{{ $customerData['email'] }}</span>
+                        </div>
+                        @endif
+                        <div>
+                            <span class="text-gray-500 dark:text-gray-400">Loyalty:</span>
+                            <span class="font-semibold text-yellow-600 dark:text-yellow-400">{{ $customerData['loyalty_points'] ?? 0 }} pts</span>
+                        </div>
                     </div>
-                    <div>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Customer Code</p>
-                        <p class="font-semibold text-gray-900 dark:text-gray-100">{{ $customerData['customer_code'] }}</p>
-                    </div>
-                    <div>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Phone</p>
-                        <p class="font-semibold text-gray-900 dark:text-gray-100">{{ $customerData['phone'] }}</p>
-                    </div>
-                    <div>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Email</p>
-                        <p class="font-semibold text-gray-900 dark:text-gray-100">{{ $customerData['email'] ?? 'N/A' }}</p>
+                    
+                    {{-- Summary - Horizontal Cards --}}
+                    <div class="flex flex-wrap gap-2">
+                        <div class="bg-white dark:bg-gray-800 rounded shadow-sm px-3 py-1.5 border-l-2 border-red-500 flex items-center gap-2">
+                            <span class="text-xs text-gray-500">Debit:</span>
+                            <span class="text-base font-bold text-red-600">₹{{ number_format($summary['total_debit'], 2) }}</span>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 rounded shadow-sm px-3 py-1.5 border-l-2 border-green-500 flex items-center gap-2">
+                            <span class="text-xs text-gray-500">Credit:</span>
+                            <span class="text-base font-bold text-green-600">₹{{ number_format($summary['total_credit'], 2) }}</span>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 rounded shadow-sm px-3 py-1.5 border-l-2 border-gray-500 flex items-center gap-2">
+                            <span class="text-xs text-gray-500">Net:</span>
+                            <span class="text-base font-bold">₹{{ number_format($summary['net_amount'], 2) }}</span>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 rounded shadow-sm px-3 py-1.5 border-l-2 border-orange-500 flex items-center gap-2">
+                            <span class="text-xs text-gray-500">Outstanding:</span>
+                            <span class="text-base font-bold {{ $summary['current_balance'] > 0 ? 'text-orange-600' : 'text-green-600' }}">₹{{ number_format($summary['current_balance'], 2) }}</span>
+                        </div>
                     </div>
                 </div>
             </x-filament::card>
-
-            {{-- Summary Cards --}}
-            <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-                <x-filament::card>
-                    <div class="text-center">
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Total Debit</p>
-                        <p class="text-2xl font-bold text-red-600 dark:text-red-400">₹{{ number_format($summary['total_debit'], 2) }}</p>
-                    </div>
-                </x-filament::card>
-
-                <x-filament::card>
-                    <div class="text-center">
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Total Credit</p>
-                        <p class="text-2xl font-bold text-green-600 dark:text-green-400">₹{{ number_format($summary['total_credit'], 2) }}</p>
-                    </div>
-                </x-filament::card>
-
-                <x-filament::card>
-                    <div class="text-center">
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Net Amount</p>
-                        <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">₹{{ number_format($summary['net_amount'], 2) }}</p>
-                    </div>
-                </x-filament::card>
-
-                <x-filament::card>
-                    <div class="text-center">
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Current Balance</p>
-                        <p class="text-2xl font-bold {{ $summary['current_balance'] > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400' }}">
-                            ₹{{ number_format($summary['current_balance'], 2) }}
-                        </p>
-                    </div>
-                </x-filament::card>
-
-                <x-filament::card>
-                    <div class="text-center">
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Outstanding</p>
-                        <p class="text-2xl font-bold text-orange-600 dark:text-orange-400">₹{{ number_format($summary['outstanding'], 2) }}</p>
-                    </div>
-                </x-filament::card>
-            </div>
 
             {{-- Ledger Table --}}
             <x-filament::card>
@@ -87,9 +80,9 @@
                 </div>
 
                 @if(count($ledgerEntries) > 0)
-                    <div class="overflow-x-auto">
+                    <div class="overflow-x-auto max-h-[600px] overflow-y-auto">
                         <table class="w-full text-sm">
-                            <thead class="bg-gray-50 dark:bg-gray-800">
+                            <thead class="bg-gray-50 dark:bg-gray-800 sticky top-0 z-10">
                                 <tr>
                                     <th class="px-4 py-3 text-left text-gray-700 dark:text-gray-300">Date</th>
                                     <th class="px-4 py-3 text-left text-gray-700 dark:text-gray-300">Reference</th>
@@ -105,7 +98,18 @@
                                 @foreach($ledgerEntries as $entry)
                                     <tr class="hover:bg-gray-200/30 dark:hover:bg-gray-700/50 transition-colors">
                                         <td class="px-4 py-3 text-gray-900 dark:text-gray-100">{{ $entry['date'] }}</td>
-                                        <td class="px-4 py-3 text-gray-900 dark:text-gray-100">{{ $entry['reference'] ?? '-' }}</td>
+                                        <td class="px-4 py-3">
+                                            @if($entry['reference'] && $entry['reference_type'] === 'Sale' && $entry['reference_id'])
+                                                <a href="{{ route('filament.admin.resources.sales.view', ['record' => $entry['reference_id']]) }}" 
+                                                   class="text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1"
+                                                   title="View Invoice">
+                                                    {{ $entry['reference'] }}
+                                                    <x-heroicon-o-arrow-top-right-on-square class="w-3 h-3" />
+                                                </a>
+                                            @else
+                                                <span class="text-gray-900 dark:text-gray-100">{{ $entry['reference'] ?? '-' }}</span>
+                                            @endif
+                                        </td>
                                         <td class="px-4 py-3 text-gray-900 dark:text-gray-100">
                                             {{ $entry['description'] }}
                                             @if($entry['store'])
@@ -114,10 +118,10 @@
                                         </td>
                                         <td class="px-4 py-3">
                                             <span class="px-2 py-1 text-xs rounded-full
-                                                {{ $entry['type'] === 'sale' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400' : '' }}
+                                                {{ $entry['type'] === 'receivable' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400' : '' }}
                                                 {{ $entry['type'] === 'payment' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400' : '' }}
                                                 {{ $entry['type'] === 'credit_note' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-400' : '' }}">
-                                                {{ ucwords(str_replace('_', ' ', $entry['type'])) }}
+                                                {{ $entry['type'] === 'receivable' ? 'Receivable' : ucwords(str_replace('_', ' ', $entry['type'])) }}
                                             </span>
                                         </td>
                                         <td class="px-4 py-3 text-right {{ $entry['debit'] > 0 ? 'text-red-600 dark:text-red-400 font-semibold' : 'text-gray-500 dark:text-gray-400' }}">

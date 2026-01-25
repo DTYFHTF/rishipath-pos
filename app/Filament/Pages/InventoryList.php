@@ -65,7 +65,22 @@ class InventoryList extends Page implements HasForms
 
     public function mount(): void
     {
-        $this->storeId = StoreContext::getCurrentStoreId() ?? Store::first()?->id;
+        // Get store with actual stock, prioritizing current organization
+        $storeId = StoreContext::getCurrentStoreId();
+        
+        if (!$storeId) {
+            $orgId = auth()->user()->organization_id;
+            $storeId = Store::where('organization_id', $orgId)
+                ->whereHas('stockLevels')
+                ->first()?->id;
+        }
+        
+        // Fallback to any store with stock
+        if (!$storeId) {
+            $storeId = Store::whereHas('stockLevels')->first()?->id;
+        }
+        
+        $this->storeId = $storeId ?? Store::first()?->id;
     }
 
     public function handleStoreSwitch($storeId): void

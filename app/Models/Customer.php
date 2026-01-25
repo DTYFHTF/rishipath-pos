@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Customer extends Model
 {
@@ -97,9 +98,9 @@ class Customer extends Model
         return $this->hasMany(LoyaltyPoint::class);
     }
 
-    public function ledgerEntries(): HasMany
+    public function ledgerEntries(): MorphMany
     {
-        return $this->hasMany(CustomerLedgerEntry::class);
+        return $this->morphMany(CustomerLedgerEntry::class, 'ledgerable');
     }
 
     /**

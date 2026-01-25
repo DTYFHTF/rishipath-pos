@@ -62,6 +62,7 @@ class AdminadminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+                \App\Http\Middleware\InitializeOrganizationContext::class,
             ]);
     }
 }

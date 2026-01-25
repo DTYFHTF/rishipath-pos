@@ -194,7 +194,7 @@ class ProfitReport extends Page implements HasForms
 
             $unitPrice = $item->price > 0
                 ? $item->price
-                : PricingService::getSellingPrice($item->productVariant, auth()->user()?->organization);
+                : PricingService::getSellingPrice($item->productVariant, \Illuminate\Support\Facades\Auth::user()?->organization);
 
             $revenue = $unitPrice * $item->quantity;
             $cost = ($item->productVariant->cost_price ?? 0) * $item->quantity;

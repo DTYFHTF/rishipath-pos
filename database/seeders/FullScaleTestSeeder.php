@@ -139,17 +139,17 @@ class FullScaleTestSeeder extends Seeder
         // Create product variants for all products
         $variants = $this->createProductVariants($org, $products);
         
-        // Create inventory batches in stores
-        $this->createInventoryBatches($org, $stores, $variants, $suppliers);
-        
         // Create loyalty tiers
         $this->createLoyaltyTiers($org);
         
         // Create customers
         $customers = $this->createCustomers($org);
         
-        // Create cashier users
+        // Create cashier users (needed before purchases)
         $cashiers = $this->createCashiers($org, $stores);
+        
+        // Create purchases (which will create batches when received)
+        $this->createPurchases($org, $stores, $suppliers, $variants, $cashiers);
         
         // Create sales transactions
         $this->createSales($org, $stores, $customers, $cashiers, $variants);
@@ -416,51 +416,6 @@ class FullScaleTestSeeder extends Seeder
         }
     }
 
-    private function createInventoryBatches(Organization $org, array $stores, array $variants, array $suppliers): void
-    {
-        $this->command->info("  Creating inventory batches for {$org->name}...");
-        
-        $batchCount = 0;
-
-        foreach ($stores as $store) {
-            // Each store gets 60-80% of all variants in stock
-            $storeVariants = $this->faker->randomElements($variants, rand(
-                (int)(count($variants) * 0.6),
-                (int)(count($variants) * 0.8)
-            ));
-
-            foreach ($storeVariants as $variant) {
-                // Create 1-2 batches per variant per store
-                $numBatches = rand(1, 2);
-                
-                for ($i = 0; $i < $numBatches; $i++) {
-                    $batchNumber = 'BATCH-' . strtoupper(Str::random(8));
-                    $quantity = rand(50, 500);
-                    $sold = rand(0, (int)($quantity * 0.3)); // 0-30% sold
-
-                    ProductBatch::create([
-                        'product_variant_id' => $variant->id,
-                        'store_id' => $store->id,
-                        'batch_number' => $batchNumber,
-                        'manufactured_date' => now()->subDays(rand(30, 180)),
-                        'expiry_date' => now()->addDays(rand(365, 1095)), // 1-3 years
-                        'purchase_date' => now()->subDays(rand(15, 90)),
-                        'purchase_price' => $variant->cost_price ?? ($variant->base_price * 0.7),
-                        'supplier_id' => $this->faker->randomElement($suppliers)->id,
-                        'quantity_received' => $quantity,
-                        'quantity_remaining' => $quantity - $sold,
-                        'quantity_sold' => $sold,
-                        'quantity_damaged' => 0,
-                        'quantity_returned' => 0,
-                    ]);
-                    $batchCount++;
-                }
-            }
-        }
-
-        $this->command->info("    ✓ Created {$batchCount} inventory batches across stores");
-    }
-
     private function createLoyaltyTiers(Organization $org): void
     {
         $this->command->info("  Creating loyalty tiers for {$org->name}...");
@@ -547,23 +502,27 @@ class FullScaleTestSeeder extends Seeder
 
             $customerCode = strtoupper(substr($org->slug, 0, 3)) . '-CUST-' . str_pad($i + 1, 4, '0', STR_PAD_LEFT);
             
-            $customer = Customer::create([
-                'organization_id' => $org->id,
-                'customer_code' => $customerCode,
-                'name' => $faker->name(),
-                'phone' => $org->slug . '-' . $faker->numerify('##########'), // Prefix with org to avoid duplicates
-                'email' => $org->slug . '-cust-' . ($i + 1) . '@' . $faker->freeEmailDomain(), // Org-specific email
-                'address' => $faker->address(),
-                'city' => $faker->city(),
-                'date_of_birth' => $dob->format('Y-m-d'),
-                'birthday' => $dob->format('Y-m-d'),
-                'total_purchases' => 0,
-                'total_spent' => 0,
-                'loyalty_points' => 0,
-                'loyalty_tier_id' => null,
-                'loyalty_enrolled_at' => $enrolledInLoyalty ? now()->subDays(rand(1, 730)) : null,
-                'active' => true,
-            ]);
+            $customer = Customer::firstOrCreate(
+                [
+                    'organization_id' => $org->id,
+                    'customer_code' => $customerCode,
+                ],
+                [
+                    'name' => $faker->name(),
+                    'phone' => $org->slug . '-' . $faker->numerify('##########'), // Prefix with org to avoid duplicates
+                    'email' => $org->slug . '-cust-' . ($i + 1) . '@' . $faker->freeEmailDomain(), // Org-specific email
+                    'address' => $faker->address(),
+                    'city' => $faker->city(),
+                    'date_of_birth' => $dob->format('Y-m-d'),
+                    'birthday' => $dob->format('Y-m-d'),
+                    'total_purchases' => 0,
+                    'total_spent' => 0,
+                    'loyalty_points' => 0,
+                    'loyalty_tier_id' => null,
+                    'loyalty_enrolled_at' => $enrolledInLoyalty ? now()->subDays(rand(1, 730)) : null,
+                    'active' => true,
+                ]
+            );
             $customers[] = $customer;
         }
 
@@ -606,6 +565,125 @@ class FullScaleTestSeeder extends Seeder
         return $cashiers;
     }
 
+    private function createPurchases(Organization $org, array $stores, array $suppliers, array $variants, array $cashiers): void
+    {
+        $this->command->info("  Creating purchase orders for {$org->name}...");
+        
+        $purchaseCount = 0;
+        $purchaseItemsCount = 0;
+
+        // Create 50-80 purchases spread across last 90 days
+        $numPurchases = rand(50, 80);
+
+        for ($i = 0; $i < $numPurchases; $i++) {
+            $store = $this->faker->randomElement($stores);
+            $supplier = $this->faker->randomElement($suppliers);
+            $cashier = $this->faker->randomElement($cashiers);
+            
+            $purchaseDate = now()->subDays(rand(0, 90));
+            $expectedDeliveryDate = $purchaseDate->copy()->addDays(rand(3, 15));
+            
+            // Randomly decide if this purchase has been received
+            $isReceived = rand(0, 100) < 70; // 70% received
+            $receivedDate = $isReceived ? $purchaseDate->copy()->addDays(rand(3, 10)) : null;
+            
+            // Randomly decide payment status
+            $paymentStatus = $this->faker->randomElement(['unpaid', 'paid', 'partial']);
+            
+            $status = $isReceived ? 'received' : ($receivedDate ? 'received' : 'ordered');
+            
+            // Calculate amounts FIRST before creating purchase
+            $numItems = rand(3, 10);
+            $subtotal = 0;
+            $selectedVariants = $this->faker->randomElements($variants, min($numItems, count($variants)));
+            
+            $purchaseItems = [];
+            foreach ($selectedVariants as $variant) {
+                $quantity = rand(20, 200);
+                $costPrice = $variant->cost_price ?? ($variant->base_price * 0.7);
+                $itemTotal = $costPrice * $quantity;
+                $subtotal += $itemTotal;
+
+                $taxRate = $org->country_code === 'IN' ? 12.00 : 13.00;
+                $taxAmount = round($itemTotal * $taxRate / 100, 2);
+
+                $purchaseItems[] = [
+                    'product_variant_id' => $variant->id,
+                    'product_name' => $variant->product->name,
+                    'product_sku' => $variant->sku,
+                    'quantity_ordered' => $quantity,
+                    'quantity_received' => 0,
+                    'unit' => $variant->unit,
+                    'unit_cost' => $costPrice,
+                    'tax_rate' => $taxRate,
+                    'tax_amount' => $taxAmount,
+                    'discount_amount' => 0,
+                    'line_total' => $itemTotal + $taxAmount,
+                    'created_at' => $purchaseDate,
+                    'updated_at' => $purchaseDate,
+                ];
+            }
+
+            $taxRate = $org->country_code === 'IN' ? 0.12 : 0.13;
+            $taxAmount = round($subtotal * $taxRate, 2);
+            $shippingCost = rand(0, 1) ? rand(100, 500) : 0;
+            $totalAmount = $subtotal + $taxAmount + $shippingCost;
+            
+            $amountPaid = match($paymentStatus) {
+                'paid' => $totalAmount,
+                'partial' => round($totalAmount * rand(30, 70) / 100, 2),
+                default => 0,
+            };
+            
+            // NOW create purchase with all calculated amounts
+            $purchase = Purchase::create([
+                'organization_id' => $org->id,
+                'store_id' => $store->id,
+                'supplier_id' => $supplier->id,
+                'purchase_date' => $purchaseDate,
+                'expected_delivery_date' => $expectedDeliveryDate,
+                'received_date' => $receivedDate,
+                'status' => $status,
+                'payment_status' => $paymentStatus,
+                'supplier_invoice_number' => 'INV-' . strtoupper(Str::random(8)),
+                'shipping_cost' => $shippingCost,
+                'subtotal' => $subtotal,
+                'tax_amount' => $taxAmount,
+                'total' => $totalAmount,
+                'amount_paid' => $amountPaid,
+                'notes' => rand(0, 100) < 30 ? $this->faker->sentence() : null,
+                'created_by' => $cashier->id,
+                'received_by' => $isReceived ? $cashier->id : null,
+            ]);
+
+            // Insert purchase items
+            foreach ($purchaseItems as $item) {
+                $item['purchase_id'] = $purchase->id;
+                \DB::table('purchase_items')->insert($item);
+                $purchaseItemsCount++;
+            }
+
+            // If the purchase is received, call the receive method to create batches
+            if ($isReceived && $receivedDate) {
+                try {
+                    $purchase->status = 'received';
+                    $purchase->received_date = $receivedDate;
+                    $purchase->received_by = $cashier->id;
+                    $purchase->save();
+                    
+                    // This will trigger batch creation
+                    $purchase->receive(userId: $cashier->id);
+                } catch (\Throwable $e) {
+                    $this->command->warn("    ! Failed to receive purchase {$purchase->purchase_number}: " . $e->getMessage());
+                }
+            }
+
+            $purchaseCount++;
+        }
+
+        $this->command->info("    ✓ Created {$purchaseCount} purchases with {$purchaseItemsCount} items");
+    }
+
     private function createSales(Organization $org, array $stores, array $customers, array $cashiers, array $variants): void
     {
         $this->command->info("  Creating sales transactions for {$org->name}...");
@@ -624,30 +702,6 @@ class FullScaleTestSeeder extends Seeder
             
             $saleDate = now()->subDays(rand(0, 90));
             
-            // Create sale
-            $sale = Sale::create([
-                'organization_id' => $org->id,
-                'store_id' => $store->id,
-                'terminal_id' => $terminal->id,
-                'receipt_number' => $this->generateReceiptNumber($org, $saleDate),
-                'date' => $saleDate->toDateString(),
-                'time' => $saleDate->format('H:i:s'),
-                'cashier_id' => $cashier->id,
-                'customer_id' => $customer?->id,
-                'customer_name' => $customer?->name,
-                'subtotal' => 0,
-                'tax_amount' => 0,
-                'discount_amount' => 0,
-                'total_amount' => 0,
-                'payment_method' => $this->faker->randomElement(['cash', 'card', 'upi', 'esewa', 'khalti']),
-                'payment_status' => 'paid',
-                'amount_paid' => 0,
-            ]);
-
-            // Add 1-5 items to the sale
-            $numItems = rand(1, 5);
-            $subtotal = 0;
-
             // Get variants available in this store
             $storeVariants = ProductBatch::where('store_id', $store->id)
                 ->where('quantity_remaining', '>', 0)
@@ -658,7 +712,11 @@ class FullScaleTestSeeder extends Seeder
 
             if ($storeVariants->count() === 0) continue;
 
+            // Select items and calculate totals BEFORE creating sale
+            $numItems = rand(1, 5);
             $selectedVariants = $storeVariants->random(min($numItems, $storeVariants->count()));
+            $subtotal = 0;
+            $saleItems = [];
 
             foreach ($selectedVariants as $variant) {
                 $quantity = rand(1, 3);
@@ -669,8 +727,7 @@ class FullScaleTestSeeder extends Seeder
                 $taxRate = $org->country_code === 'IN' ? 12.00 : 13.00;
                 $taxAmount = round($itemTotal * $taxRate / 100, 2);
 
-                \DB::table('sale_items')->insert([
-                    'sale_id' => $sale->id,
+                $saleItems[] = [
                     'product_variant_id' => $variant->id,
                     'product_name' => $variant->product->name,
                     'product_sku' => $variant->sku,
@@ -685,20 +742,39 @@ class FullScaleTestSeeder extends Seeder
                     'total' => $itemTotal + $taxAmount,
                     'created_at' => $saleDate,
                     'updated_at' => $saleDate,
-                ]);
-                $saleItemsCount++;
+                ];
             }
 
             $taxRate = $org->country_code === 'IN' ? 0.12 : 0.13;
             $taxAmount = round($subtotal * $taxRate, 2);
             $totalAmount = $subtotal + $taxAmount;
 
-            $sale->update([
+            // Create sale with calculated amounts
+            $sale = Sale::create([
+                'organization_id' => $org->id,
+                'store_id' => $store->id,
+                'terminal_id' => $terminal->id,
+                'receipt_number' => $this->generateReceiptNumber($org, $saleDate),
+                'date' => $saleDate->toDateString(),
+                'time' => $saleDate->format('H:i:s'),
+                'cashier_id' => $cashier->id,
+                'customer_id' => $customer?->id,
+                'customer_name' => $customer?->name,
                 'subtotal' => $subtotal,
                 'tax_amount' => $taxAmount,
+                'discount_amount' => 0,
                 'total_amount' => $totalAmount,
+                'payment_method' => $this->faker->randomElement(['cash', 'card', 'upi', 'esewa', 'khalti']),
+                'payment_status' => 'paid',
                 'amount_paid' => $totalAmount,
             ]);
+
+            // Insert sale items
+            foreach ($saleItems as $item) {
+                $item['sale_id'] = $sale->id;
+                \DB::table('sale_items')->insert($item);
+                $saleItemsCount++;
+            }
 
             // Award loyalty points if customer exists and is enrolled
             if ($customer && $customer->loyalty_enrolled_at) {
