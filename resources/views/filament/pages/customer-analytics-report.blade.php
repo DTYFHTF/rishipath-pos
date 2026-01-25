@@ -27,7 +27,7 @@
                         class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900"
                     >
                         <option value="">All Stores</option>
-                        @foreach(\App\Models\Store::all() as $store)
+                        @foreach(\App\Services\StoreContext::getAccessibleStores() as $store)
                             <option value="{{ $store->id }}">{{ $store->name }}</option>
                         @endforeach
                     </select>

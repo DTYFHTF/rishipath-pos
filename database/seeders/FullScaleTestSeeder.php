@@ -163,6 +163,7 @@ class FullScaleTestSeeder extends Seeder
         
         $stores = [];
         $storeData = $org->country_code === 'IN' ? [
+            ['code' => 'MAIN', 'name' => 'Main Store', 'city' => 'Mumbai', 'state' => 'Maharashtra'],
             ['code' => 'MUM', 'name' => 'Mumbai Branch', 'city' => 'Mumbai', 'state' => 'Maharashtra'],
             ['code' => 'DEL', 'name' => 'Delhi Branch', 'city' => 'New Delhi', 'state' => 'Delhi'],
             ['code' => 'BLR', 'name' => 'Bangalore Branch', 'city' => 'Bangalore', 'state' => 'Karnataka'],

@@ -8,6 +8,10 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
+// Notification Automation
+Schedule::command('notifications:low-stock')->hourly();
+Schedule::command('notifications:payment-reminders')->dailyAt('09:00');
+
 // Loyalty Program Scheduled Tasks
 Schedule::command('loyalty:birthday-bonuses')->daily()->at('00:01');
 
