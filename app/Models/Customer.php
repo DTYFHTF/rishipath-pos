@@ -13,6 +13,7 @@ class Customer extends Model
         'organization_id',
         'customer_code',
         'name',
+        'country_code',
         'phone',
         'email',
         'address',

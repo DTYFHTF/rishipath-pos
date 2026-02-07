@@ -341,7 +341,10 @@ class PurchaseResource extends Resource
                             ->content(function ($record) {
                                 $items = $record->items->map(function ($item) {
                                     $remaining = $item->quantity_ordered - $item->quantity_received;
-                                    return "• {$item->product_name} ({$item->product_sku}): {$remaining} {$item->unit}";
+                                    $variant = $item->productVariant;
+                                    $packSize = $variant ? $variant->pack_size : 1;
+                                    $unit = $item->unit;
+                                    return "• {$item->product_name} ({$item->product_sku}): {$packSize}{$unit} × {$remaining} qty";
                                 })->implode('<br>');
                                 return new \Illuminate\Support\HtmlString($items);
                             }),

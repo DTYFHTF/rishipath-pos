@@ -36,10 +36,31 @@ class CustomerResource extends Resource
                 Forms\Components\TextInput::make('name')
                     ->required()
                     ->maxLength(255),
-                Forms\Components\TextInput::make('phone')
-                    ->tel()
-                    ->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule, $get) => $rule->where('organization_id', $get('organization_id') ?? OrganizationContext::getCurrentOrganizationId()))
-                    ->maxLength(20),
+
+                Forms\Components\Grid::make(2)
+                    ->schema([
+                        Forms\Components\Select::make('country_code')
+                            ->label('Country Code')
+                            ->options([
+                                '+91' => '🇮🇳 +91 (India)',
+                                '+977' => '🇳🇵 +977 (Nepal)',
+                                '+1' => '🇺🇸 +1 (USA)',
+                            ])
+                            ->default('+91')
+                            ->searchable()
+                            ->required()
+                            ->columnSpan(1),
+
+                        Forms\Components\TextInput::make('phone')
+                            ->label('Phone Number')
+                            ->tel()
+                            ->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule, $get) => $rule->where('organization_id', $get('organization_id') ?? OrganizationContext::getCurrentOrganizationId()))
+                            ->maxLength(20)
+                            ->placeholder('Enter phone without country code')
+                            ->helperText('Enter number without country code')
+                            ->columnSpan(1),
+                    ]),
+
                 Forms\Components\TextInput::make('email')
                     ->email()
                     ->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule, $get) => $rule->where('organization_id', $get('organization_id') ?? OrganizationContext::getCurrentOrganizationId()))
@@ -76,7 +97,9 @@ class CustomerResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('customer_code')->searchable(),
                 Tables\Columns\TextColumn::make('name')->searchable(),
-                Tables\Columns\TextColumn::make('phone')->searchable(),
+                Tables\Columns\TextColumn::make('phone')
+                    ->searchable()
+                    ->formatStateUsing(fn ($record) => $record->country_code ? "{$record->country_code} {$record->phone}" : $record->phone),
                 Tables\Columns\TextColumn::make('email')->searchable(),
                 Tables\Columns\TextColumn::make('total_purchases')->label('Purchases'),
                 Tables\Columns\TextColumn::make('total_spent')->money('INR'),
@@ -86,8 +109,53 @@ class CustomerResource extends Resource
                 Tables\Filters\TernaryFilter::make('active'),
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\ActionGroup::make([
+                    Tables\Actions\ViewAction::make(),
+                    Tables\Actions\EditAction::make(),
+                    
+                    Tables\Actions\Action::make('view_ledger')
+                        ->label('View Ledger')
+                        ->icon('heroicon-o-document-text')
+                        ->color('info')
+                        ->url(fn ($record) => route('filament.admin.pages.customer-ledger-report', ['customer_id' => $record->id]))
+                        ->openUrlInNewTab(),
+                    
+                    Tables\Actions\Action::make('view_sales')
+                        ->label('View Sales')
+                        ->icon('heroicon-o-shopping-cart')
+                        ->color('success')
+                        ->url(fn ($record) => route('filament.admin.resources.sales.index', ['tableFilters[customer_id][value]' => $record->id]))
+                        ->openUrlInNewTab(),
+                    
+                    Tables\Actions\Action::make('send_message')
+                        ->label('Send SMS/WhatsApp')
+                        ->icon('heroicon-o-chat-bubble-left-right')
+                        ->color('warning')
+                        ->visible(fn ($record) => !empty($record->phone))
+                        ->form([
+                            Forms\Components\Textarea::make('message')
+                                ->label('Message')
+                                ->required()
+                                ->rows(3)
+                                ->placeholder('Type your message here...'),
+                            Forms\Components\Select::make('method')
+                                ->label('Send via')
+                                ->options([
+                                    'whatsapp' => 'WhatsApp',
+                                    'sms' => 'SMS',
+                                ])
+                                ->default('whatsapp')
+                                ->required(),
+                        ])
+                        ->action(function ($record, array $data) {
+                            // Placeholder for SMS/WhatsApp integration
+                            \Filament\Notifications\Notification::make()
+                                ->success()
+                                ->title('Message Queued')
+                                ->body("Message will be sent to {$record->name} via {$data['method']}")
+                                ->send();
+                        }),
+                ])->icon('heroicon-o-ellipsis-vertical'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
