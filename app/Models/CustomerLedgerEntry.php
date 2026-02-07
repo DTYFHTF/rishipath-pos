@@ -162,93 +162,46 @@ class CustomerLedgerEntry extends Model
             return null;
         }
         
-        $previousBalance = self::getLedgerableBalance($customer);
-        
-        // Customer Ledger (Accounts Receivable) standard accounting:
-        // - DEBIT = Customer OWES us (increases their debt)
-        // - CREDIT = Customer PAYS us (decreases their debt)
-        
-        // Full Audit Trail Approach:
-        // 1. Credit Sale: Record DEBIT (customer owes) - balance increases
-        // 2. Cash/Card/UPI Sale: Record DEBIT (sale) + CREDIT (payment) - balance stays same (full audit)
+        // IMPORTANT: Customer Ledger (Accounts Receivable) should ONLY track CREDIT SALES
+        // Cash/Card/UPI sales are not "receivables" - customer doesn't owe us anything
+        // Those are recorded in Sales table for history, but not in AR ledger
         
         $isCredit = $sale->payment_method === 'credit';
+        
+        // Only create ledger entry for CREDIT sales
+        if (!$isCredit) {
+            // Cash/Card/UPI sale - no ledger entry needed
+            // Customer paid immediately, no receivable to track
+            return null;
+        }
+        
+        // Credit sale: Customer OWES us - create receivable entry
+        $previousBalance = self::getLedgerableBalance($customer);
         
         // Normalize payment method to allowed values
         $allowedMethods = ['cash', 'card', 'upi', 'bank_transfer', 'cheque', 'credit'];
         $paymentMethod = in_array($sale->payment_method, $allowedMethods) ? $sale->payment_method : null;
         
-        if ($isCredit) {
-            // Credit sale: Customer OWES us (DEBIT only)
-            return self::create([
-                'organization_id' => $sale->organization_id,
-                'store_id' => $sale->store_id,
-                'customer_id' => $customer->id, // Backward compatibility
-                'ledgerable_type' => Customer::class,
-                'ledgerable_id' => $customer->id,
-                'entry_type' => 'receivable',
-                'reference_type' => 'Sale',
-                'reference_id' => $sale->id,
-                'reference_number' => $sale->invoice_number,
-                'debit_amount' => $sale->total_amount,
-                'credit_amount' => 0,
-                'balance' => $previousBalance + $sale->total_amount,
-                'description' => "Credit Sale - Invoice #{$sale->invoice_number} ({$sale->store->name})",
-                'transaction_date' => $sale->date,
-                'due_date' => now()->addDays(30),
-                'payment_method' => $paymentMethod,
-                'status' => 'pending',
-                'created_by' => $sale->cashier_id,
-            ]);
-        } else {
-            // Cash/Card/UPI sale: Record TWO entries for full audit trail
-            // Entry 1: DEBIT (sale transaction)
-            $saleEntry = self::create([
-                'organization_id' => $sale->organization_id,
-                'store_id' => $sale->store_id,
-                'customer_id' => $customer->id, // Backward compatibility
-                'ledgerable_type' => Customer::class,
-                'ledgerable_id' => $customer->id,
-                'entry_type' => 'receivable',
-                'reference_type' => 'Sale',
-                'reference_id' => $sale->id,
-                'reference_number' => $sale->invoice_number,
-                'debit_amount' => $sale->total_amount,
-                'credit_amount' => 0,
-                'balance' => $previousBalance + $sale->total_amount,
-                'description' => "Sale - Invoice #{$sale->invoice_number} ({$sale->store->name})",
-                'transaction_date' => $sale->date,
-                'due_date' => null,
-                'payment_method' => $paymentMethod,
-                'status' => 'completed',
-                'created_by' => $sale->cashier_id,
-            ]);
-            
-            // Entry 2: CREDIT (immediate payment)
-            self::create([
-                'organization_id' => $sale->organization_id,
-                'store_id' => $sale->store_id,
-                'customer_id' => $customer->id, // Backward compatibility
-                'ledgerable_type' => Customer::class,
-                'ledgerable_id' => $customer->id,
-                'entry_type' => 'payment',
-                'reference_type' => 'Sale',
-                'reference_id' => $sale->id,
-                'reference_number' => $sale->invoice_number,
-                'debit_amount' => 0,
-                'credit_amount' => $sale->total_amount,
-                'balance' => $previousBalance + $sale->total_amount - $sale->total_amount, // Net zero
-                'description' => "Payment - Invoice #{$sale->invoice_number} ({$sale->store->name}) - Paid via {$paymentMethod}",
-                'transaction_date' => $sale->date,
-                'due_date' => null,
-                'payment_method' => $paymentMethod,
-                'payment_reference' => $sale->invoice_number,
-                'status' => 'completed',
-                'created_by' => $sale->cashier_id,
-            ]);
-            
-            return $saleEntry;
-        }
+        return self::create([
+            'organization_id' => $sale->organization_id,
+            'store_id' => $sale->store_id,
+            'customer_id' => $customer->id, // Backward compatibility
+            'ledgerable_type' => Customer::class,
+            'ledgerable_id' => $customer->id,
+            'entry_type' => 'receivable',
+            'reference_type' => 'Sale',
+            'reference_id' => $sale->id,
+            'reference_number' => $sale->invoice_number,
+            'debit_amount' => $sale->total_amount,
+            'credit_amount' => 0,
+            'balance' => $previousBalance + $sale->total_amount,
+            'description' => "Credit Sale - Invoice #{$sale->invoice_number} ({$sale->store->name})",
+            'transaction_date' => $sale->date,
+            'due_date' => now()->addDays(30),
+            'payment_method' => $paymentMethod,
+            'status' => 'pending',
+            'created_by' => $sale->cashier_id,
+        ]);
     }
 
     public static function createPaymentEntry(Customer $customer, array $data): self

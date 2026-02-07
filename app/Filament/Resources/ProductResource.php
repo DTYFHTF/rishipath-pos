@@ -47,11 +47,11 @@ class ProductResource extends Resource
             ->schema([
                 Forms\Components\Section::make('Basic Information')
                     ->schema([
-                        Forms\Components\TextInput::make('sku')
+                        Forms\Components\Placeholder::make('sku_info')
                             ->label('SKU')
-                            ->required()
-                            ->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule, $get) => $rule->where('organization_id', $get('organization_id') ?? OrganizationContext::getCurrentOrganizationId()))
-                            ->maxLength(100),
+                            ->content(fn ($record) => $record?->sku ?? 'Will be auto-generated')
+                            ->visible(fn ($record) => $record !== null),
+
                         Forms\Components\Select::make('category_id')
                             ->relationship('category', 'name')
                             ->required()

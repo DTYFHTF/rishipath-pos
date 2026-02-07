@@ -53,9 +53,22 @@ class SupplierLedgerEntry extends Model
 
     /**
      * Create a ledger entry for a purchase (increases payable).
+     * 
+     * IMPORTANT: Only creates entries for unpaid/partial purchases (credit purchases).
+     * Paid purchases should NOT create ledger entries as they don't create a payable.
+     * 
+     * Supplier Ledger = Accounts Payable (money we OWE suppliers)
+     * - We only track purchases where we still owe money
+     * - Paid purchases are not payables, so they don't appear in the ledger
      */
-    public static function createPurchaseEntry(Purchase $purchase): self
+    public static function createPurchaseEntry(Purchase $purchase): ?self
     {
+        // Only create ledger entry for unpaid or partially paid purchases
+        // Paid purchases don't create a payable, so no ledger entry needed
+        if ($purchase->payment_status === 'paid') {
+            return null;
+        }
+
         return DB::transaction(function () use ($purchase) {
             $supplier = Supplier::lockForUpdate()->find($purchase->supplier_id);
 

@@ -22,6 +22,9 @@ class ProductVariant extends Model
         'barcode',
         'hsn_code',
         'weight',
+        'image_1',
+        'image_2',
+        'image_3',
         'active',
     ];
 
@@ -63,6 +66,76 @@ class ProductVariant extends Model
     public function inventoryMovements(): HasMany
     {
         return $this->hasMany(InventoryMovement::class);
+    }
+
+    /**
+     * Generate semantic variant SKU: [Product SKU]-[Size][Unit]
+     * Example: AYU-OIL-AML-200ML
+     */
+    public static function generateVariantSku(
+        ?string $productSku,
+        $packSize,
+        ?string $unit
+    ): string {
+        $base = $productSku ?? 'PROD';
+        
+        // Format size (remove decimals if whole number)
+        $size = is_numeric($packSize) ? (int) $packSize : $packSize;
+        
+        // Abbreviate unit
+        $unitCode = static::abbreviateUnit($unit ?? 'PCS');
+        
+        return strtoupper("{$base}-{$size}{$unitCode}");
+    }
+
+    /**
+     * Get standard unit abbreviations
+     */
+    protected static function abbreviateUnit(string $unit): string
+    {
+        $map = [
+            'GMS' => 'G',
+            'KG' => 'KG',
+            'ML' => 'ML',
+            'L' => 'L',
+            'PCS' => 'PC',
+        ];
+
+        $upper = strtoupper($unit);
+        return $map[$upper] ?? substr($upper, 0, 2);
+    }
+
+    protected static function booted()
+    {
+        parent::booted();
+
+        static::creating(function ($variant) {
+            if (empty($variant->sku)) {
+                $variant->sku = static::generateSkuFromVariant($variant);
+            }
+        });
+
+        static::updating(function ($variant) {
+            // Regenerate SKU if key fields changed
+            if ($variant->isDirty(['product_id', 'pack_size', 'unit'])) {
+                $variant->sku = static::generateSkuFromVariant($variant);
+            }
+        });
+    }
+
+    /**
+     * Generate SKU from variant instance
+     */
+    protected static function generateSkuFromVariant(ProductVariant $variant): string
+    {
+        $productSku = $variant->product?->sku ?? 
+            Product::find($variant->product_id)?->sku;
+        
+        return static::generateVariantSku(
+            $productSku,
+            $variant->pack_size,
+            $variant->unit
+        );
     }
 
     /**

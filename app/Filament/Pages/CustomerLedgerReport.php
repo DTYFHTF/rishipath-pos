@@ -17,6 +17,10 @@ class CustomerLedgerReport extends Page implements HasForms
 {
     use InteractsWithForms;
 
+    protected $queryString = [
+        'customer_id' => ['except' => null],
+        'show_transactions' => ['except' => false],
+    ];
     protected static ?string $navigationIcon = 'heroicon-o-book-open';
 
     protected static ?string $navigationGroup = 'Reports';
@@ -40,13 +44,58 @@ class CustomerLedgerReport extends Page implements HasForms
     public $customerData = null;
 
     public $summary = [];
+    
+    public bool $show_transactions = false;
+
+    public $transactions = [];
 
     public function mount(): void
     {
+        // Get customer_id from URL query parameter
+        $customerId = request()->query('customer_id');
+        
         $this->form->fill([
+            'customer_id' => $customerId,
+            'show_transactions' => request()->query('show_transactions') ? true : false,
             'start_date' => now()->startOfMonth()->format('Y-m-d'),
             'end_date' => now()->format('Y-m-d'),
         ]);
+        
+        // If customer_id is provided, automatically load the ledger
+        if ($customerId) {
+            $this->customer_id = $customerId;
+            $this->start_date = now()->startOfMonth()->format('Y-m-d');
+            $this->end_date = now()->format('Y-m-d');
+            $this->generateReport();
+        }
+    }
+
+    // Handlers to sync form state to component properties and regenerate report
+    public function handleCustomerUpdated($state)
+    {
+        $this->customer_id = $state;
+        $this->generateReport();
+    }
+
+    public function handleShowTransactionsUpdated($state)
+    {
+        $this->show_transactions = (bool) $state;
+        $this->generateReport();
+    }
+
+    public function handleDateUpdated($field, $state)
+    {
+        if (in_array($field, ['start_date', 'end_date'])) {
+            $this->{$field} = $state;
+        }
+
+        $this->generateReport();
+    }
+
+    public function handleEntryTypeUpdated($state)
+    {
+        $this->entry_type = $state;
+        $this->generateReport();
     }
 
     public function form(Form $form): Form
@@ -64,7 +113,7 @@ class CustomerLedgerReport extends Page implements HasForms
                             ->required()
                             ->live()
                             ->columnSpan(['sm' => 2])
-                            ->afterStateUpdated(fn () => $this->generateReport()),
+                            ->afterStateUpdated(fn ($state) => $this->handleCustomerUpdated($state)),
 
                         DatePicker::make('start_date')
                             ->label('Start Date')
@@ -72,7 +121,7 @@ class CustomerLedgerReport extends Page implements HasForms
                             ->native(false)
                             ->live()
                             ->columnSpan(1)
-                            ->afterStateUpdated(fn () => $this->generateReport()),
+                            ->afterStateUpdated(fn ($state) => $this->handleDateUpdated('start_date', $state)),
 
                         DatePicker::make('end_date')
                             ->label('End Date')
@@ -80,7 +129,7 @@ class CustomerLedgerReport extends Page implements HasForms
                             ->native(false)
                             ->live()
                             ->columnSpan(1)
-                            ->afterStateUpdated(fn () => $this->generateReport()),
+                            ->afterStateUpdated(fn ($state) => $this->handleDateUpdated('end_date', $state)),
 
                         Select::make('entry_type')
                             ->label('Type')
@@ -91,8 +140,14 @@ class CustomerLedgerReport extends Page implements HasForms
                             ])
                             ->placeholder('All Types')
                             ->live()
-                            ->columnSpan(1)
-                            ->afterStateUpdated(fn () => $this->generateReport()),
+                                ->columnSpan(1)
+                                ->afterStateUpdated(fn ($state) => $this->handleEntryTypeUpdated($state)),
+
+                            \Filament\Forms\Components\Toggle::make('show_transactions')
+                                ->label('Show transactions')
+                                ->helperText('Also load all sales/payments/returns for this customer in the selected date range')
+                                ->columnSpan(1)
+                                ->afterStateUpdated(fn ($state) => $this->handleShowTransactionsUpdated($state)),
                     ])
                     ->columns(5)
                     ->compact(),
@@ -101,6 +156,28 @@ class CustomerLedgerReport extends Page implements HasForms
 
     public function generateReport()
     {
+        // Sync form state to component properties so Livewire query string updates
+        try {
+            $state = $this->form->getState();
+            if (isset($state['customer_id'])) {
+                $this->customer_id = $state['customer_id'];
+            }
+            if (isset($state['show_transactions'])) {
+                $this->show_transactions = (bool) $state['show_transactions'];
+            }
+            if (isset($state['start_date'])) {
+                $this->start_date = $state['start_date'];
+            }
+            if (isset($state['end_date'])) {
+                $this->end_date = $state['end_date'];
+            }
+            if (isset($state['entry_type'])) {
+                $this->entry_type = $state['entry_type'];
+            }
+        } catch (\Throwable $e) {
+            // If form not initialized yet, ignore
+        }
+
         if (! $this->customer_id) {
             $this->ledgerEntries = [];
             $this->customerData = null;
@@ -173,6 +250,33 @@ class CustomerLedgerReport extends Page implements HasForms
             'current_balance' => $currentBalance,
             'outstanding' => $outstanding,
         ];
+
+        // Load transactions (sales) if requested
+        $this->transactions = [];
+        if (!empty($this->show_transactions)) {
+            $salesQuery = \App\Models\Sale::where('customer_id', $this->customer_id)
+                ->orderBy('date', 'desc')
+                ->orderBy('created_at', 'desc');
+
+            if ($this->start_date) {
+                $salesQuery->where('date', '>=', $this->start_date);
+            }
+            if ($this->end_date) {
+                $salesQuery->where('date', '<=', $this->end_date);
+            }
+
+            $this->transactions = $salesQuery->get()->map(function ($sale) {
+                return [
+                    'id' => $sale->id,
+                    'invoice' => $sale->invoice_number,
+                    'date' => $sale->date?->format('d M Y') ?? $sale->created_at->format('d M Y'),
+                    'payment_method' => $sale->payment_method,
+                    'payment_status' => $sale->payment_status,
+                    'total' => $sale->total_amount,
+                    'status' => $sale->status,
+                ];
+            })->toArray();
+        }
     }
 
     public function downloadPdf()

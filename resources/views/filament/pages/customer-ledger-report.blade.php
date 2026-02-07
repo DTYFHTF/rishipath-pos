@@ -63,6 +63,42 @@
                 </div>
             </x-filament::card>
 
+            {{-- Transactions Table (optional) --}}
+            @if(!empty($transactions) && count($transactions) > 0)
+                <x-filament::card>
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Transactions</h3>
+                    </div>
+
+                    <div class="overflow-x-auto max-h-[400px] overflow-y-auto">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-50 dark:bg-gray-800 sticky top-0 z-10">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-gray-700 dark:text-gray-300">Date</th>
+                                    <th class="px-4 py-3 text-left text-gray-700 dark:text-gray-300">Invoice</th>
+                                    <th class="px-4 py-3 text-left text-gray-700 dark:text-gray-300">Payment</th>
+                                    <th class="px-4 py-3 text-right text-gray-700 dark:text-gray-300">Total (₹)</th>
+                                    <th class="px-4 py-3 text-center text-gray-700 dark:text-gray-300">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                                @foreach($transactions as $t)
+                                    <tr class="hover:bg-gray-200/30 dark:hover:bg-gray-700/50 transition-colors">
+                                        <td class="px-4 py-3 text-gray-900 dark:text-gray-100">{{ $t['date'] }}</td>
+                                        <td class="px-4 py-3 text-gray-900 dark:text-gray-100">
+                                            <a href="{{ route('filament.admin.resources.sales.view', ['record' => $t['id']]) }}" class="text-primary-600 dark:text-primary-400 hover:underline">{{ $t['invoice'] }}</a>
+                                        </td>
+                                        <td class="px-4 py-3 text-gray-900 dark:text-gray-100">{{ ucfirst($t['payment_method']) }} ({{ ucfirst($t['payment_status']) }})</td>
+                                        <td class="px-4 py-3 text-right font-semibold">{{ number_format($t['total'], 2) }}</td>
+                                        <td class="px-4 py-3 text-center">{{ ucfirst($t['status']) }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </x-filament::card>
+            @endif
+
             {{-- Ledger Table --}}
             <x-filament::card>
                 <div class="flex justify-between items-center mb-4">

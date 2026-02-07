@@ -43,10 +43,22 @@ class SupplierLedgerReport extends Page implements HasForms
 
     public function mount(): void
     {
+        // Get supplier_id from URL query parameter
+        $supplierId = request()->query('supplier_id');
+        
         $this->form->fill([
+            'supplier_id' => $supplierId,
             'start_date' => now()->startOfMonth()->format('Y-m-d'),
             'end_date' => now()->format('Y-m-d'),
         ]);
+        
+        // If supplier_id is provided, automatically load the ledger
+        if ($supplierId) {
+            $this->supplier_id = $supplierId;
+            $this->start_date = now()->startOfMonth()->format('Y-m-d');
+            $this->end_date = now()->format('Y-m-d');
+            $this->generateReport();
+        }
     }
 
     public function form(Form $form): Form

@@ -124,7 +124,24 @@ class SupplierResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\ActionGroup::make([
+                    Tables\Actions\ViewAction::make(),
+                    Tables\Actions\EditAction::make(),
+                    
+                    Tables\Actions\Action::make('view_ledger')
+                        ->label('View Ledger')
+                        ->icon('heroicon-o-document-text')
+                        ->color('info')
+                        ->url(fn ($record) => route('filament.admin.pages.supplier-ledger-report', ['supplier_id' => $record->id]))
+                        ->openUrlInNewTab(),
+                    
+                    Tables\Actions\Action::make('view_purchases')
+                        ->label('View Purchases')
+                        ->icon('heroicon-o-shopping-bag')
+                        ->color('success')
+                        ->url(fn ($record) => route('filament.admin.resources.purchases.index', ['tableFilters[supplier_id][value]' => $record->id]))
+                        ->openUrlInNewTab(),
+                ]),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

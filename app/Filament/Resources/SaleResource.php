@@ -224,6 +224,12 @@ class SaleResource extends Resource
                     ->label('Synced'),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('customer_id')
+                    ->label('Customer')
+                    ->relationship('customer', 'name')
+                    ->searchable()
+                    ->preload(),
+                    
                 Tables\Filters\SelectFilter::make('store')
                     ->relationship('store', 'name'),
                 Tables\Filters\SelectFilter::make('payment_method')

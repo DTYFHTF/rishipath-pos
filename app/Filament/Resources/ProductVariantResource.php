@@ -33,18 +33,12 @@ class ProductVariantResource extends Resource
                             ->required()
                             ->searchable()
                             ->preload(),
-                        Forms\Components\TextInput::make('sku')
+
+                        Forms\Components\Placeholder::make('sku_info')
                             ->label('SKU')
-                            ->required()
-                            ->unique(
-                                ignoreRecord: true,
-                                modifyRuleUsing: fn ($rule, $get) => $rule->where(function ($query) use ($get) {
-                                    $orgId = \App\Models\Product::find($get('product_id'))?->organization_id;
-                                    $productIds = \App\Models\Product::where('organization_id', $orgId)->pluck('id');
-                                    $query->whereIn('product_id', $productIds);
-                                })
-                            )
-                            ->maxLength(100),
+                            ->content(fn ($record) => $record?->sku ?? 'Will be auto-generated')
+                            ->visible(fn ($record) => $record !== null),
+
                         Forms\Components\TextInput::make('pack_size')
                             ->label('Pack Size')
                             ->required()
