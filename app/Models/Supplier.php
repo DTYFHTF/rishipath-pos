@@ -52,4 +52,33 @@ class Supplier extends Model
     {
         return $this->morphMany(CustomerLedgerEntry::class, 'ledgerable');
     }
+
+    /**
+     * Generate next supplier code for current date
+     */
+    public static function generateNextSupplierCode(): string
+    {
+        $date = date('Ymd');
+        $last = static::where('supplier_code', 'like', "SUP-{$date}-%")->orderBy('supplier_code', 'desc')->first();
+
+        if ($last) {
+            $lastNumber = (int) substr($last->supplier_code, -4);
+            $newNumber = str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
+        } else {
+            $newNumber = '0001';
+        }
+
+        return "SUP-{$date}-{$newNumber}";
+    }
+
+    protected static function booted()
+    {
+        parent::booted();
+
+        static::creating(function ($supplier) {
+            if (empty($supplier->supplier_code)) {
+                $supplier->supplier_code = static::generateNextSupplierCode();
+            }
+        });
+    }
 }

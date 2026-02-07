@@ -95,11 +95,11 @@ class OrganizationResource extends Resource
                             ->required()
                             ->label('Country Code')
                             ->options(fn () => [
-                                'IN' => '🇮🇳 India (IN)',
-                                'US' => '🇺🇸 United States (US)',
-                                'GB' => '🇬🇧 United Kingdom (GB)',
-                                'NP' => '🇳🇵 Nepal (NP)',
-                                'CN' => '🇨🇳 China (CN)',
+                                'IN' => '🇮🇳 +91 (India)',
+                                'US' => '🇺🇸 +1 (United States)',
+                                'GB' => '🇬🇧 +44 (United Kingdom)',
+                                'NP' => '🇳🇵 +977 (Nepal)',
+                                'CN' => '🇨🇳 +86 (China)',
                             ])
                             ->searchable()
                             ->default('IN')

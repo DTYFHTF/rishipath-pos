@@ -24,9 +24,10 @@ class SupplierResource extends Resource
                 Forms\Components\Select::make('organization_id')
                     ->relationship('organization', 'name')
                     ->required(),
-                Forms\Components\TextInput::make('supplier_code')
-                    ->required()
-                    ->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule, $get) => $rule->where('organization_id', $get('organization_id') ?? OrganizationContext::getCurrentOrganizationId())),
+                Forms\Components\Placeholder::make('supplier_code')
+                    ->label('Supplier Code')
+                    ->content(fn ($record) => $record?->supplier_code ?? 'Will be auto-generated')
+                    ->visible(fn ($record) => $record !== null),
                 Forms\Components\TextInput::make('name')
                     ->required(),
                 Forms\Components\TextInput::make('contact_person'),
@@ -34,11 +35,11 @@ class SupplierResource extends Resource
                     ->schema([
                         Forms\Components\Select::make('country_code')
                             ->options([
-                                'IN' => '🇮🇳 India',
-                                'US' => '🇺🇸 United States',
-                                'GB' => '🇬🇧 United Kingdom',
-                                'CN' => '🇨🇳 China',
-                                'NP' => '🇳🇵 Nepal',
+                                'IN' => '🇮🇳 +91 India',
+                                'US' => '🇺🇸 +1 United States',
+                                'GB' => '🇬🇧 +44 United Kingdom',
+                                'CN' => '🇨🇳 +86 China',
+                                'NP' => '🇳🇵 +977 Nepal',
                             ])
                             ->default('IN')
                             ->searchable()
