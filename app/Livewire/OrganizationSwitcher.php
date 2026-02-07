@@ -10,8 +10,8 @@ use Livewire\Component;
 
 class OrganizationSwitcher extends Component
 {
-    public $currentOrganizationId;
-    public $organizations;
+    public ?int $currentOrganizationId;
+    public ?iterable $organizations = null;
 
     public function mount()
     {

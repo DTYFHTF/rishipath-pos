@@ -8,6 +8,7 @@ use App\Models\PaymentSplit;
 use App\Models\PosSession;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\Reward;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\StockLevel;
@@ -69,6 +70,11 @@ class EnhancedPOS extends Page
 
     // Prevent duplicate sale submissions
     public $processingSale = false;
+
+    // Reward redemption
+    public $showRewardModal = false;
+    public $availableRewards = [];
+    public $selectedRewardId = null;
 
     // Keyboard shortcuts enabled
     public $shortcutsEnabled = true;
@@ -376,11 +382,15 @@ class EnhancedPOS extends Page
             $this->sessions[$this->activeSessionKey]['customer_name'] = $customer?->name;
             $this->sessions[$this->activeSessionKey]['customer_phone'] = $customer?->phone;
             $this->sessions[$this->activeSessionKey]['customer_email'] = $customer?->email;
+            $this->sessions[$this->activeSessionKey]['applied_reward_id'] = null;
+            $this->sessions[$this->activeSessionKey]['reward_discount'] = 0;
         } else {
             $this->sessions[$this->activeSessionKey]['customer_id'] = null;
             $this->sessions[$this->activeSessionKey]['customer_name'] = null;
             $this->sessions[$this->activeSessionKey]['customer_phone'] = null;
             $this->sessions[$this->activeSessionKey]['customer_email'] = null;
+            $this->sessions[$this->activeSessionKey]['applied_reward_id'] = null;
+            $this->sessions[$this->activeSessionKey]['reward_discount'] = 0;
         }
 
         $this->customerSearch = '';
@@ -401,7 +411,12 @@ class EnhancedPOS extends Page
 
         $this->sessions[$this->activeSessionKey]['customer_id'] = null;
         $this->sessions[$this->activeSessionKey]['customer_name'] = null;
+        $this->sessions[$this->activeSessionKey]['applied_reward_id'] = null;
+        $this->sessions[$this->activeSessionKey]['reward_discount'] = 0;
         $this->customerSearch = '';
+        
+        $this->recalculateCart();
+        $this->saveCurrentSession();
     }
 
     /**
@@ -412,6 +427,139 @@ class EnhancedPOS extends Page
         // Store the current session for later
         session()->put('pos_return_session', $this->activeSessionKey);
         $this->redirect(route('filament.admin.resources.customers.create'));
+    }
+
+    /**
+     * Open reward redemption modal
+     */
+    public function openRewardModal(): void
+    {
+        $session = $this->getCurrentSession();
+        
+        if (!$session || !$session['customer_id']) {
+            Notification::make()
+                ->warning()
+                ->title('No Customer Selected')
+                ->body('Please select a customer to view available rewards.')
+                ->send();
+            return;
+        }
+
+        $customer = Customer::with('loyaltyTier')->find($session['customer_id']);
+        
+        if (!$customer) {
+            return;
+        }
+
+        // Get available rewards using LoyaltyService
+        $loyaltyService = new LoyaltyService();
+        $this->availableRewards = $loyaltyService->getAvailableRewards($customer);
+        
+        if (empty($this->availableRewards)) {
+            Notification::make()
+                ->info()
+                ->title('No Rewards Available')
+                ->body("Customer has {$customer->loyalty_points} points. Keep shopping to unlock rewards!")
+                ->send();
+            return;
+        }
+        
+        $this->showRewardModal = true;
+    }
+
+    /**
+     * Apply selected reward to cart
+     */
+    public function applyReward($rewardId): void
+    {
+        $session = $this->getCurrentSession();
+        
+        if (!$session || !$session['customer_id']) {
+            Notification::make()
+                ->danger()
+                ->title('Error')
+                ->body('No customer selected.')
+                ->send();
+            return;
+        }
+
+        $customer = Customer::find($session['customer_id']);
+        $reward = Reward::find($rewardId);
+        
+        if (!$customer || !$reward) {
+            Notification::make()
+                ->danger()
+                ->title('Error')
+                ->body('Invalid reward or customer.')
+                ->send();
+            return;
+        }
+
+        // Verify customer can redeem
+        if (!$reward->canBeRedeemedBy($customer)) {
+            Notification::make()
+                ->warning()
+                ->title('Cannot Redeem')
+                ->body('Customer does not meet requirements for this reward.')
+                ->send();
+            return;
+        }
+
+        // Calculate discount amount based on reward type
+        $discountAmount = 0;
+        $subtotal = $session['subtotal'] ?? 0;
+        
+        switch ($reward->type) {
+            case 'discount':
+            case 'discount_percentage':
+                $discountAmount = round($subtotal * ($reward->discount_value / 100), 2);
+                break;
+            case 'discount_fixed':
+                $discountAmount = min($reward->discount_value, $subtotal);
+                break;
+            default:
+                $discountAmount = $reward->discount_value;
+                break;
+        }
+
+        // Apply reward to session
+        $this->sessions[$this->activeSessionKey]['applied_reward_id'] = $rewardId;
+        $this->sessions[$this->activeSessionKey]['reward_discount'] = $discountAmount;
+        $this->sessions[$this->activeSessionKey]['reward_points_cost'] = $reward->points_required;
+        
+        $this->recalculateCart();
+        $this->saveCurrentSession();
+        
+        $this->showRewardModal = false;
+        
+        Notification::make()
+            ->success()
+            ->title('Reward Applied')
+            ->body("Applied: {$reward->name} (-₹" . number_format($discountAmount, 2) . ")")
+            ->send();
+    }
+
+    /**
+     * Remove applied reward from cart
+     */
+    public function removeReward(): void
+    {
+        if (!$this->activeSessionKey) {
+            return;
+        }
+        
+        $this->sessions[$this->activeSessionKey]['applied_reward_id'] = null;
+        $this->sessions[$this->activeSessionKey]['reward_discount'] = 0;
+        $this->sessions[$this->activeSessionKey]['reward_points_cost'] = 0;
+        
+        $this->recalculateCart();
+        $this->saveCurrentSession();
+        
+        Notification::make()
+            ->info()
+            ->title('Reward Removed')
+            ->body('Reward discount has been removed from cart.')
+            ->send();
     }
 
     /**
@@ -448,6 +596,9 @@ class EnhancedPOS extends Page
                 'customer_name' => null,
                 'customer_phone' => null,
                 'customer_email' => null,
+            'applied_reward_id' => null,
+            'reward_discount' => 0,
+            'reward_points_cost' => 0,
             'cart' => [],
             'subtotal' => 0,
             'discount' => 0,
@@ -895,11 +1046,14 @@ class EnhancedPOS extends Page
             }
         }
 
+        // Add reward discount if applied
+        $rewardDiscount = $this->sessions[$this->activeSessionKey]['reward_discount'] ?? 0;
+
         $this->sessions[$this->activeSessionKey]['subtotal'] = $subtotal;
         $this->sessions[$this->activeSessionKey]['loyalty_discount'] = $loyaltyDiscount;
-        $this->sessions[$this->activeSessionKey]['discount'] = $totalDiscount + $loyaltyDiscount;
+        $this->sessions[$this->activeSessionKey]['discount'] = $totalDiscount + $loyaltyDiscount + $rewardDiscount;
         $this->sessions[$this->activeSessionKey]['tax'] = $totalTax;
-        $this->sessions[$this->activeSessionKey]['total'] = $subtotal - ($totalDiscount + $loyaltyDiscount) + $totalTax;
+        $this->sessions[$this->activeSessionKey]['total'] = $subtotal - ($totalDiscount + $loyaltyDiscount + $rewardDiscount) + $totalTax;
     }
 
     /**
@@ -959,6 +1113,7 @@ class EnhancedPOS extends Page
                 'customer_name' => $session['customer_name'] ?? 'Walk-in Customer',
                 'customer_phone' => $session['customer_phone'] ?? null,
                 'customer_email' => $session['customer_email'] ?? null,
+                'reward_id' => $session['applied_reward_id'] ?? null,
                 'invoice_number' => 'INV-'.time(),
                 'date' => now(),
                 'time' => now()->toTimeString(),
@@ -984,9 +1139,28 @@ class EnhancedPOS extends Page
                 $taxAmount = round((($subtotal - $discount) * ($taxRate / 100)), 2);
                 $total = round(($subtotal - $discount) + $taxAmount, 2);
 
+                // Allocate stock with FIFO batch tracking
+                $allocationResult = InventoryService::decreaseStockWithBatchInfo(
+                    $item['variant_id'],
+                    $this->resolveStoreId(),
+                    $item['quantity'],
+                    'sale',
+                    'Sale',
+                    $sale->id,
+                    $item['cost_price'] ?? null,
+                    "Sale {$sale->invoice_number}"
+                );
+                
+                // Get primary batch (first allocated batch for this item)
+                $primaryBatchId = null;
+                if (!empty($allocationResult['allocated_batches'])) {
+                    $primaryBatchId = $allocationResult['allocated_batches'][0]['batch_id'];
+                }
+
                 SaleItem::create([
                     'sale_id' => $sale->id,
                     'product_variant_id' => $item['variant_id'],
+                    'batch_id' => $primaryBatchId,
                     'product_name' => $item['product_name'] ?? null,
                     'product_sku' => $item['sku'] ?? '',
                     'quantity' => $quantity,
@@ -999,18 +1173,6 @@ class EnhancedPOS extends Page
                     'tax_amount' => $taxAmount,
                     'total' => $total,
                 ]);
-
-                // Update stock with audit trail
-                InventoryService::decreaseStock(
-                    $item['variant_id'],
-                    $this->resolveStoreId(),
-                    $item['quantity'],
-                    'sale',
-                    'Sale',
-                    $sale->id,
-                    $item['cost_price'] ?? null,
-                    "Sale {$sale->invoice_number}"
-                );
             }
 
             // Save split payments
@@ -1052,6 +1214,16 @@ class EnhancedPOS extends Page
             if ($session['customer_id']) {
                 $loyaltyService = new LoyaltyService;
                 $loyaltyService->awardPointsForSale($sale);
+                
+                // Process reward redemption if applied
+                if (!empty($session['applied_reward_id'])) {
+                    $customer = Customer::find($session['customer_id']);
+                    $reward = Reward::find($session['applied_reward_id']);
+                    
+                    if ($customer && $reward) {
+                        $loyaltyService->redeemReward($customer, $reward, auth()->id());
+                    }
+                }
             }
 
             DB::commit();
@@ -1216,6 +1388,11 @@ class EnhancedPOS extends Page
         $this->sessions[$this->activeSessionKey]['customer_name'] = null;
         $this->sessions[$this->activeSessionKey]['customer_phone'] = null;
         $this->sessions[$this->activeSessionKey]['customer_email'] = null;
+        
+        // Reset reward info
+        $this->sessions[$this->activeSessionKey]['applied_reward_id'] = null;
+        $this->sessions[$this->activeSessionKey]['reward_discount'] = 0;
+        $this->sessions[$this->activeSessionKey]['reward_points_cost'] = 0;
         
         // Reset payment fields
         $this->sessions[$this->activeSessionKey]['payment_method'] = 'cash';

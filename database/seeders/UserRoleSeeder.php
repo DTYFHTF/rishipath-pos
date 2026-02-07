@@ -54,32 +54,50 @@ class UserRoleSeeder extends Seeder
             ]
         );
 
-        // Define all permissions for super admin
+        // Define all permissions for super admin (expanded)
         $allPermissions = [
             // Dashboard
             'view_dashboard', 'view_pos_stats', 'view_inventory_overview', 'view_low_stock_alerts',
+
             // POS
             'access_pos_billing', 'create_sales', 'void_sales', 'apply_discounts', 'process_refunds', 'view_sales', 'view_own_sales_only',
+            'split_payments', 'apply_loyalty_points', 'redeem_rewards',
+
             // Products
             'view_products', 'create_products', 'edit_products', 'delete_products',
+            'import_products', 'export_products',
             'view_product_variants', 'create_product_variants', 'edit_product_variants', 'delete_product_variants',
             'view_categories', 'create_categories', 'edit_categories', 'delete_categories',
-            // Inventory
+
+            // Inventory & Purchases
             'view_inventory', 'view_stock_levels', 'view_product_batches', 'create_product_batches',
             'edit_product_batches', 'delete_product_batches', 'adjust_stock', 'view_stock_adjustments',
             'view_inventory_movements', 'view_suppliers', 'create_suppliers', 'edit_suppliers', 'delete_suppliers',
+            'transfer_stock', 'create_purchases', 'view_purchases', 'edit_purchases', 'delete_purchases', 'receive_purchases', 'return_purchases',
+
+            // Suppliers & Purchase Orders
+            'create_purchase_orders', 'approve_purchase_orders',
+
             // Customers
             'view_customers', 'create_customers', 'edit_customers', 'delete_customers', 'view_customer_purchase_history',
+
             // Reports
-            'view_sales_reports', 'view_inventory_reports', 'view_profit_reports', 'export_reports', 'email_reports',
+            'view_sales_reports', 'view_inventory_reports', 'view_profit_reports', 'export_reports', 'email_reports', 'view_payment_reports',
+
+            // Accounting / Ledger
+            'view_ledger', 'create_ledger_entries', 'view_payments', 'manage_payments',
+
             // Users
             'view_users', 'create_users', 'edit_users', 'delete_users',
+
             // Roles
             'view_roles', 'create_roles', 'edit_roles', 'delete_roles',
+
             // Settings
             'view_settings', 'edit_settings', 'view_stores', 'create_stores', 'edit_stores', 'delete_stores',
+
             // Loyalty
-            'view_loyalty_program', 'manage_loyalty_program',
+            'view_loyalty_program', 'manage_loyalty_program', 'manage_rewards', 'view_loyalty_dashboard',
         ];
 
         // Create roles
@@ -144,6 +162,7 @@ class UserRoleSeeder extends Seeder
                     'view_own_sales_only', 'view_products', 'view_product_variants',
                     'view_categories', 'view_inventory', 'view_stock_levels',
                     'view_customers', 'create_customers', 'view_loyalty_program',
+                    'redeem_rewards', 'apply_loyalty_points',
                 ],
                 'is_system_role' => true,
             ]
@@ -161,7 +180,7 @@ class UserRoleSeeder extends Seeder
                     'create_product_batches', 'edit_product_batches',
                     'adjust_stock', 'view_stock_adjustments', 'view_inventory_movements',
                     'view_suppliers', 'create_suppliers', 'edit_suppliers',
-                    'view_inventory_reports',
+                    'view_inventory_reports', 'transfer_stock', 'view_purchases', 'receive_purchases', 'create_purchases',
                 ],
                 'is_system_role' => true,
             ]

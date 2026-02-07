@@ -194,8 +194,8 @@ class InventoryService
         ?int $userId = null
     ): StockLevel {
         return DB::transaction(function () use ($productVariantId, $storeId, $quantity, $type, $referenceType, $referenceId, $costPrice, $notes, $userId) {
-            // For sales, allocate from batches using FIFO (oldest expiring first)
-            if ($type === 'sale') {
+            // For sales and transfers, allocate from batches using FIFO (oldest expiring first)
+            if (in_array($type, ['sale', 'transfer'], true)) {
                 self::allocateFromBatches($productVariantId, $storeId, $quantity, $referenceType, $referenceId, $notes, $userId);
             }
             
@@ -215,10 +215,56 @@ class InventoryService
             );
         });
     }
+    
+    /**
+     * Decrease stock and return allocated batch information.
+     * Useful when you need to know which batches were used (e.g., for sale_items.batch_id).
+     */
+    public static function decreaseStockWithBatchInfo(
+        int $productVariantId,
+        int $storeId,
+        float $quantity,
+        string $type = 'sale',
+        ?string $referenceType = null,
+        ?int $referenceId = null,
+        ?float $costPrice = null,
+        ?string $notes = null,
+        ?int $userId = null
+    ): array {
+        return DB::transaction(function () use ($productVariantId, $storeId, $quantity, $type, $referenceType, $referenceId, $costPrice, $notes, $userId) {
+            $allocatedBatches = [];
+            
+            // For sales and transfers, allocate from batches using FIFO (oldest expiring first)
+            if (in_array($type, ['sale', 'transfer'], true)) {
+                $allocatedBatches = self::allocateFromBatches($productVariantId, $storeId, $quantity, $referenceType, $referenceId, $notes, $userId);
+            }
+            
+            // Update stock_levels (skip batch sync since we already allocated via FIFO)
+            // Use internal method to avoid nested transactions
+            $stockLevel = self::adjustStockInternal(
+                $productVariantId,
+                $storeId,
+                -abs($quantity),
+                $type,
+                $referenceType,
+                $referenceId,
+                $costPrice,
+                $notes,
+                $userId,
+                true // skipBatchSync = true (batches already allocated above)
+            );
+            
+            return [
+                'stock_level' => $stockLevel,
+                'allocated_batches' => $allocatedBatches,
+            ];
+        });
+    }
 
     /**
      * Allocate quantity from product batches using FIFO (First Expiry, First Out).
      * Updates quantity_remaining and quantity_sold on batches.
+     * Returns array of allocated batches with quantities.
      */
     protected static function allocateFromBatches(
         int $productVariantId,
@@ -228,8 +274,9 @@ class InventoryService
         ?int $referenceId = null,
         ?string $notes = null,
         ?int $userId = null
-    ): void {
+    ): array {
         $remaining = $quantity;
+        $allocatedBatches = [];
         
         // Get batches ordered by expiry (FIFO), then by ID (oldest first)
         $batches = ProductBatch::where('product_variant_id', $productVariantId)
@@ -246,13 +293,20 @@ class InventoryService
 
         // Disable ProductBatchObserver to prevent automatic StockLevel sync during batch updates
         // We'll manually update StockLevel after all batches are allocated
-        ProductBatch::withoutEvents(function () use ($batches, &$remaining, $productVariantId, $storeId, $referenceType, $referenceId, $notes, $userId) {
+        ProductBatch::withoutEvents(function () use ($batches, &$remaining, $productVariantId, $storeId, $referenceType, $referenceId, $notes, $userId, &$allocatedBatches) {
             foreach ($batches as $batch) {
                 if ($remaining <= 0) {
                     break;
                 }
 
                 $allocate = min($remaining, $batch->quantity_remaining);
+                
+                // Track allocated batch
+                $allocatedBatches[] = [
+                    'batch_id' => $batch->id,
+                    'batch_number' => $batch->batch_number,
+                    'quantity' => $allocate,
+                ];
                 
                 // Update batch quantities
                 $batch->quantity_remaining -= $allocate;
@@ -285,6 +339,8 @@ class InventoryService
         if ($remaining > 0) {
             throw new \Exception("Insufficient batch stock. Needed {$quantity}, allocated " . ($quantity - $remaining));
         }
+        
+        return $allocatedBatches;
     }
 
     /**
@@ -338,6 +394,28 @@ class InventoryService
                 $userId
             );
 
+            // Create a receiving ProductBatch record at the destination store
+            // so transferred stock has traceability and can be allocated later.
+            $variant = ProductVariant::find($productVariantId);
+            $batch = ProductBatch::create([
+                'purchase_id' => null,
+                'product_variant_id' => $productVariantId,
+                'store_id' => $toStoreId,
+                'batch_number' => 'TRF-' . now()->format('YmdHis') . '-' . ($fromStoreId) . '-' . ($toStoreId),
+                'manufactured_date' => null,
+                'expiry_date' => null,
+                'purchase_date' => now(),
+                'purchase_price' => $variant?->cost_price ?? 0,
+                'supplier_id' => null,
+                'quantity_received' => (int) $quantity,
+                'quantity_remaining' => (int) $quantity,
+                'quantity_sold' => 0,
+                'quantity_damaged' => 0,
+                'quantity_returned' => 0,
+                'notes' => "Transfer from store {$fromStoreId}" . ($notes ? ": {$notes}" : ''),
+            ]);
+
+            // Now increase stock at destination (this will sync batch quantities)
             $toStock = self::increaseStock(
                 $productVariantId,
                 $toStoreId,

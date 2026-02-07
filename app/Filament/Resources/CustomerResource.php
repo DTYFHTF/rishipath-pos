@@ -24,9 +24,15 @@ class CustomerResource extends Resource
         return $form
             ->schema([
                 Forms\Components\TextInput::make('customer_code')
+                    ->label('Customer Code')
+                    ->default(fn ($record) => $record?->customer_code ?? Customer::generateNextCustomerCode())
+                    ->disabled(fn ($record) => $record === null)
+                    ->dehydrated()
                     ->required()
                     ->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule, $get) => $rule->where('organization_id', $get('organization_id') ?? OrganizationContext::getCurrentOrganizationId()))
-                    ->maxLength(50),
+                    ->maxLength(50)
+                    ->helperText('Auto-generated based on current date'),
+
                 Forms\Components\TextInput::make('name')
                     ->required()
                     ->maxLength(255),

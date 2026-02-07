@@ -40,6 +40,26 @@ class Customer extends Model
     ];
 
     /**
+     * Generate next customer code for current date
+     */
+    public static function generateNextCustomerCode(): string
+    {
+        $date = date('Ymd');
+        $lastCustomer = static::where('customer_code', 'like', "CUST-{$date}-%")
+            ->orderBy('customer_code', 'desc')
+            ->first();
+
+        if ($lastCustomer) {
+            $lastNumber = (int) substr($lastCustomer->customer_code, -4);
+            $newNumber = str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
+        } else {
+            $newNumber = '0001';
+        }
+
+        return "CUST-{$date}-{$newNumber}";
+    }
+
+    /**
      * Boot function to auto-generate customer code
      */
     protected static function boot()
@@ -48,20 +68,7 @@ class Customer extends Model
 
         static::creating(function ($customer) {
             if (empty($customer->customer_code)) {
-                // Generate code: CUST-YYYYMMDD-XXXX
-                $date = date('Ymd');
-                $lastCustomer = static::where('customer_code', 'like', "CUST-{$date}-%")
-                    ->orderBy('customer_code', 'desc')
-                    ->first();
-
-                if ($lastCustomer) {
-                    $lastNumber = (int) substr($lastCustomer->customer_code, -4);
-                    $newNumber = str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
-                } else {
-                    $newNumber = '0001';
-                }
-
-                $customer->customer_code = "CUST-{$date}-{$newNumber}";
+                $customer->customer_code = static::generateNextCustomerCode();
             }
         });
     }

@@ -375,6 +375,25 @@
                                 </div>
                             @endif
                             
+                            @if(!empty($session['applied_reward_id']))
+                                <div class="flex justify-between text-purple-600 dark:text-purple-400 items-center">
+                                    <span>🎁 Reward:</span>
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-medium">-₹{{ number_format($session['reward_discount'] ?? 0, 2) }}</span>
+                                        <button 
+                                            wire:click="removeReward"
+                                            class="text-red-500 hover:text-red-700 text-xs"
+                                            title="Remove reward"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="text-xs text-purple-600 dark:text-purple-400 -mt-2">
+                                    ({{ $session['reward_points_cost'] ?? 0 }} points will be deducted)
+                                </div>
+                            @endif
+                            
                             <div class="flex justify-between text-gray-600 dark:text-gray-400">
                                 <span>Tax:</span>
                                 <span class="font-medium">₹{{ number_format($session['tax'] ?? 0, 2) }}</span>
@@ -385,6 +404,17 @@
                                 <span>₹{{ number_format($session['total'] ?? 0, 2) }}</span>
                             </div>
                         </div>
+                        
+                        {{-- Redeem Rewards Button --}}
+                        @if($session['customer_id'] && empty($session['applied_reward_id']))
+                            <button
+                                wire:click="openRewardModal"
+                                class="w-full mt-4 px-4 py-2 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-900/50 transition font-medium flex items-center justify-center gap-2"
+                            >
+                                <x-heroicon-o-gift class="w-5 h-5" />
+                                Redeem Rewards
+                            </button>
+                        @endif
                     </x-filament::card>
 
                     {{-- Payment Section - Optimized Layout --}}
@@ -571,6 +601,121 @@
                                 style="background-color:#16a34a;color:#ffffff;"
                             >
                                 Complete Payment
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            {{-- Reward Redemption Modal --}}
+            @if($showRewardModal)
+                <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]" wire:click.self="$set('showRewardModal', false)">
+                    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto" role="dialog" aria-modal="true">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-2xl font-bold text-gray-900 dark:text-gray-100">🎁 Available Rewards</h3>
+                            <button
+                                wire:click="$set('showRewardModal', false)"
+                                class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                            >
+                                <x-heroicon-o-x-mark class="w-6 h-6" />
+                            </button>
+                        </div>
+                        
+                        @php
+                            $customer = $session['customer_id'] ? \App\Models\Customer::with('loyaltyTier')->find($session['customer_id']) : null;
+                        @endphp
+                        
+                        @if($customer)
+                            <div class="mb-6 p-4 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg border border-purple-200 dark:border-purple-700">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <div class="text-sm text-gray-600 dark:text-gray-400">Customer Points</div>
+                                        <div class="text-3xl font-bold text-purple-700 dark:text-purple-300">{{ number_format($customer->loyalty_points) }}</div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-sm text-gray-600 dark:text-gray-400">Tier</div>
+                                        @if($customer->loyaltyTier)
+                                            <x-filament::badge color="{{ $customer->loyaltyTier->badge_color }}">
+                                                {{ $customer->loyaltyTier->name }}
+                                            </x-filament::badge>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+
+                        <div class="space-y-3">
+                            @forelse($availableRewards as $reward)
+                                <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:border-purple-500 dark:hover:border-purple-500 transition">
+                                    <div class="flex items-start gap-4">
+                                        @if($reward['image_url'])
+                                            <img src="{{ Storage::url($reward['image_url']) }}" alt="{{ $reward['name'] }}" class="w-20 h-20 object-cover rounded-lg">
+                                        @else
+                                            <div class="w-20 h-20 bg-gradient-to-br from-purple-400 to-pink-400 rounded-lg flex items-center justify-center text-3xl">
+                                                🎁
+                                            </div>
+                                        @endif
+                                        
+                                        <div class="flex-1">
+                                            <h4 class="font-bold text-lg text-gray-900 dark:text-gray-100">{{ $reward['name'] }}</h4>
+                                            @if($reward['description'])
+                                                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{!! \Illuminate\Support\Str::limit(strip_tags($reward['description']), 120) !!}</p>
+                                            @endif
+                                            
+                                            <div class="flex items-center gap-4 mt-3">
+                                                <div class="flex items-center gap-1 text-purple-600 dark:text-purple-400">
+                                                    <x-heroicon-o-star class="w-4 h-4" />
+                                                    <span class="font-medium">{{ $reward['points_required'] }} points</span>
+                                                </div>
+                                                
+                                                <div class="flex items-center gap-1 text-green-600 dark:text-green-400">
+                                                    <x-heroicon-o-tag class="w-4 h-4" />
+                                                    <span class="font-medium">
+                                                        @if($reward['type'] === 'discount_percentage')
+                                                            {{ $reward['discount_value'] }}% off
+                                                        @elseif($reward['type'] === 'discount_fixed')
+                                                            ₹{{ number_format($reward['discount_value'], 2) }} off
+                                                        @else
+                                                            {{ ucfirst($reward['type']) }}
+                                                        @endif
+                                                    </span>
+                                                </div>
+                                                
+                                                @if($reward['valid_until'])
+                                                    <div class="text-xs text-gray-500 dark:text-gray-400">
+                                                        Valid until {{ \Carbon\Carbon::parse($reward['valid_until'])->format('M d, Y') }}
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        </div>
+                                        
+                                        <button
+                                            wire:click="applyReward({{ $reward['id'] }})"
+                                            class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium whitespace-nowrap"
+                                        >
+                                            Apply
+                                        </button>
+                                    </div>
+                                </div>
+                            @empty
+                                <div class="text-center py-12">
+                                    <x-heroicon-o-gift class="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+                                    <p class="text-lg text-gray-600 dark:text-gray-400">No rewards available</p>
+                                    @if($customer)
+                                        <p class="text-sm text-gray-500 dark:text-gray-500 mt-2">
+                                            Keep shopping to earn more points and unlock rewards!
+                                        </p>
+                                    @endif
+                                </div>
+                            @endforelse
+                        </div>
+
+                        <div class="mt-6 flex justify-end">
+                            <button
+                                wire:click="$set('showRewardModal', false)"
+                                class="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                            >
+                                Close
                             </button>
                         </div>
                     </div>

@@ -266,7 +266,7 @@
         <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
             <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Variants & Stock</h3>
         </div>
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto max-h-96 overflow-y-auto">
             <table class="w-full">
                 <thead class="bg-gray-50 dark:bg-gray-900">
                     <tr>
@@ -330,7 +330,7 @@
             <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Product Batches (Recent 20)</h3>
             </div>
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto max-h-96 overflow-y-auto">
                 <table class="w-full">
                     <thead class="bg-gray-50 dark:bg-gray-900">
                         <tr>
@@ -383,7 +383,7 @@
             <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Recent Purchases</h3>
             </div>
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto max-h-96 overflow-y-auto">
                 <table class="w-full">
                     <thead class="bg-gray-50 dark:bg-gray-900">
                         <tr>
@@ -420,7 +420,7 @@
             <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Recent Sales</h3>
             </div>
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto max-h-96 overflow-y-auto">
                 <table class="w-full">
                     <thead class="bg-gray-50 dark:bg-gray-900">
                         <tr>
@@ -457,7 +457,7 @@
             <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Inventory Timeline (Last 10)</h3>
             </div>
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto max-h-96 overflow-y-auto">
                 <table class="w-full">
                     <thead class="bg-gray-50 dark:bg-gray-900">
                         <tr>
@@ -511,7 +511,7 @@
             <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Bill-wise Transactions</h3>
             </div>
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto max-h-96 overflow-y-auto">
                 <table class="w-full">
                     <thead class="bg-gray-50 dark:bg-gray-900">
                         <tr>
@@ -574,7 +574,7 @@
             <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Party Transactions</h3>
             </div>
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto max-h-96 overflow-y-auto">
                 <table class="w-full">
                     <thead class="bg-gray-50 dark:bg-gray-900">
                         <tr>

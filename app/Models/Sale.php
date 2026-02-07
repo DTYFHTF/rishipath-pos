@@ -21,6 +21,7 @@ class Sale extends Model
         'customer_name',
         'customer_phone',
         'customer_email',
+        'reward_id',
         'subtotal',
         'discount_amount',
         'discount_type',
@@ -63,8 +64,8 @@ class Sale extends Model
 
         static::created(function ($sale) {
             if ($sale->customer_id) {
-                // Create customer ledger entry for the sale
-                CustomerLedgerEntry::createSaleEntry($sale);
+                // NOTE: Ledger entry is created in EnhancedPOS::completeSale()
+                // to avoid duplicates and ensure proper context
                 
                 // Ensure customer stats update on creation
                 $sale->customer?->recalculateTotals();
@@ -140,6 +141,11 @@ class Sale extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function reward(): BelongsTo
+    {
+        return $this->belongsTo(Reward::class);
     }
 
     public function items(): HasMany
