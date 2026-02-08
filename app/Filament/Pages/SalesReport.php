@@ -84,8 +84,7 @@ class SalesReport extends Page implements HasForms
                             ->label('Payment Method')
                             ->options([
                                 'cash' => 'Cash',
-                                'upi' => 'UPI',
-                                'card' => 'Card',
+                                'upi' => 'QR',
                                 'esewa' => 'eSewa',
                                 'khalti' => 'Khalti',
                             ])

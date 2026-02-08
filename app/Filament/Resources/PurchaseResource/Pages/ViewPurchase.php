@@ -36,12 +36,12 @@ class ViewPurchase extends ViewRecord
                         ->prefix('₹')
                         ->default(fn () => $this->record->outstanding_amount),
 
-                    \Filament\Forms\Components\Select::make('payment_method')
+                        \Filament\Forms\Components\Select::make('payment_method')
                         ->options([
                             'cash' => 'Cash',
                             'bank_transfer' => 'Bank Transfer',
                             'cheque' => 'Cheque',
-                            'upi' => 'UPI',
+                            'upi' => 'QR',
                         ])
                         ->required(),
 

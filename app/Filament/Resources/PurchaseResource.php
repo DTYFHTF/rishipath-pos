@@ -389,7 +389,7 @@ class PurchaseResource extends Resource
                                 'cash' => 'Cash',
                                 'bank_transfer' => 'Bank Transfer',
                                 'cheque' => 'Cheque',
-                                'upi' => 'UPI',
+                                'upi' => 'QR',
                             ])
                             ->required(),
 

@@ -1,6 +1,5 @@
 <div>
 <x-filament-panels::page>
-    <div class="space-y-4" x-data="posSystem()" x-init="init()" @keydown.window="handleKeyboard($event)">
     {{-- Cache bust: {{ now()->timestamp }} --}}
     {{-- VERSION: 2.0.0 REDESIGNED LAYOUT --}}
     <style>
@@ -11,6 +10,7 @@
             color: rgb(255 255 255 / 1) !important;
         }
     </style>
+    <div class="space-y-4" x-data="posSystem()" x-init="init()" @keydown.window="handleKeyboard($event)">
         
         {{-- Session Tabs --}}
         <div class="flex items-center gap-2 overflow-x-auto pb-2">
@@ -53,9 +53,9 @@
         @endphp
 
         @if($session)
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                {{-- Left: Product Search & Cart --}}
-                <div class="lg:col-span-2 space-y-4">
+            <div class="flex gap-4">
+                {{-- Left: Product Search & Cart (66% width) --}}
+                <div style="width: 66%; min-width: 66%;" class="space-y-4">
                     
                     {{-- Quick Search with Keyboard Shortcut Hint --}}
                     <x-filament::card>
@@ -236,192 +236,159 @@
                     </x-filament::card>
                 </div>
 
-                {{-- Right: Totals, Customer, Payment --}}
-                <div class="space-y-4">
-                    {{-- Totals --}}
-                    <x-filament::card>
-                        <div class="space-y-3">
-                            <div class="flex justify-between text-gray-600 dark:text-gray-400">
-                                <span>Subtotal:</span>
-                                <span class="font-medium">₹{{ number_format($session['subtotal'] ?? 0, 2) }}</span>
+                {{-- Right: Customer & Totals, Payment (33% width) --}}
+                <div style="width: 33%; min-width: 33%;" class="space-y-4">
+                    {{-- Customer (Left) and Totals (Right) - Side by Side --}}
+                    <div class="grid grid-cols-2 gap-4">
+                        {{-- Customer Selection --}}
+                        <x-filament::card>
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Customer</label>
+                                <button
+                                    wire:click="openCustomerModal"
+                                    class="text-xs px-2 py-1 bg-primary-600 text-white rounded hover:bg-primary-700 transition"
+                                    title="Add New Customer"
+                                >
+                                    + New
+                                </button>
                             </div>
                             
-                            @if($session['discount'] > 0)
-                                <div class="flex justify-between text-green-600 dark:text-green-400">
-                                    <span>Discount:</span>
-                                    <span class="font-medium">-₹{{ number_format($session['discount'], 2) }}</span>
-                                </div>
-                            @endif
-                            
-                            @if(!empty($session['applied_reward_id']))
-                                <div class="flex justify-between text-purple-600 dark:text-purple-400 items-center">
-                                    <span>🎁 Reward:</span>
-                                    <div class="flex items-center gap-2">
-                                        <span class="font-medium">-₹{{ number_format($session['reward_discount'] ?? 0, 2) }}</span>
+                            {{-- Show selected customer or search input --}}
+                            @if($session['customer_id'])
+                                <div class="p-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <span class="text-xl">👤</span>
+                                        <div class="flex-1 min-w-0">
+                                            <div class="font-medium text-gray-900 dark:text-gray-100 truncate">{{ $session['customer_name'] ?? 'Customer' }}</div>
+                                            <div class="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                                @if(!empty($session['customer_phone']))
+                                                    {{ $session['customer_phone'] }}
+                                                @endif
+                                            </div>
+                                        </div>
                                         <button 
-                                            wire:click="removeReward"
-                                            class="text-red-500 hover:text-red-700 text-xs"
-                                            title="Remove reward"
+                                            type="button"
+                                            wire:click="clearCustomer"
+                                            class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 flex-shrink-0"
+                                            title="Remove customer"
                                         >
                                             ✕
                                         </button>
                                     </div>
                                 </div>
-                                <div class="text-xs text-purple-600 dark:text-purple-400 -mt-2">
-                                    ({{ $session['reward_points_cost'] ?? 0 }} points will be deducted)
-                                </div>
-                            @endif
-                            
-                            <div class="flex justify-between text-gray-600 dark:text-gray-400">
-                                <span>Tax:</span>
-                                <span class="font-medium">₹{{ number_format($session['tax'] ?? 0, 2) }}</span>
-                            </div>
-                            
-                            <div class="pt-3 border-t-2 border-gray-200 dark:border-gray-700 flex justify-between text-xl font-bold text-gray-900 dark:text-gray-100">
-                                <span>Total:</span>
-                                <span>₹{{ number_format($session['total'] ?? 0, 2) }}</span>
-                            </div>
-                        </div>
-                        
-                        {{-- Redeem Rewards Button --}}
-                        @if($session['customer_id'] && empty($session['applied_reward_id']))
-                            <button
-                                wire:click="openRewardModal"
-                                class="w-full mt-4 px-4 py-2 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-900/50 transition font-medium flex items-center justify-center gap-2"
-                            >
-                                <x-heroicon-o-gift class="w-5 h-5" />
-                                Redeem Rewards
-                            </button>
-                        @endif
-                    </x-filament::card>
-
-                    {{-- Customer Selection --}}
-                    <x-filament::card>
-                        <div class="flex items-center justify-between mb-2">
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Customer (Optional)</label>
-                            <button
-                                wire:click="openCustomerModal"
-                                class="text-xs px-2 py-1 bg-primary-600 text-white rounded hover:bg-primary-700 transition"
-                                title="Add New Customer"
-                            >
-                                + New
-                            </button>
-                        </div>
-                        
-                        {{-- Show selected customer or search input --}}
-                        @if($session['customer_id'])
-                            <div class="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg">
-                                <div class="flex items-center gap-2">
-                                    <span class="text-xl">👤</span>
-                                    <div>
-                                        <div class="font-medium text-gray-900 dark:text-gray-100">{{ $session['customer_name'] ?? 'Customer' }}</div>
-                                        <div class="text-xs text-gray-500 dark:text-gray-400">
-                                            ID: {{ $session['customer_id'] }}
-                                            @if(!empty($session['customer_phone']))
-                                                • {{ $session['customer_phone'] }}
-                                            @endif
-                                            @if(!empty($session['customer_email']))
-                                                • {{ $session['customer_email'] }}
-                                            @endif
-                                        </div>
-                                    </div>
-                                </div>
-                                <button 
-                                    type="button"
-                                    wire:click="clearCustomer"
-                                    class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                                    title="Remove customer"
-                                >
-                                    ✕
-                                </button>
-                            </div>
-                        @else
-                            <div x-data="{ open: false }" class="relative" wire:key="customer-search-{{ $activeSessionKey }}">
-                                <input
-                                    type="text"
-                                    wire:model.live.debounce.300ms="customerSearch"
-                                    @focus="open = true"
-                                    @click.away="open = false"
-                                    @input="open = true"
-                                    placeholder="🔍 Search customers (name, phone)..."
-                                    class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400"
-                                />
-                                
-                                {{-- Loading indicator --}}
-                                <div wire:loading wire:target="customerSearch" class="absolute right-3 top-1/2 -translate-y-1/2">
-                                    <svg class="animate-spin h-4 w-4 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                </div>
-                                
-                                {{-- Dropdown results --}}
-                                <div 
-                                    x-show="open"
-                                    x-transition
-                                    class="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto"
-                                >
-                                    {{-- Walk-in option always first --}}
-                                    <button
-                                        type="button"
-                                        wire:click="selectCustomer(null)"
-                                        @click="open = false"
-                                        class="w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 flex items-center gap-3 transition pos-customer-item"
-                                    >
-                                        <span class="text-xl">🚶</span>
-                                        <div>
-                                            <div class="font-medium text-gray-900 dark:text-gray-100">Walk-in Customer</div>
-                                            <div class="text-xs text-gray-500 dark:text-gray-400">No customer account</div>
-                                        </div>
-                                    </button>
+                            @else
+                                <div x-data="{ open: false }" class="relative" wire:key="customer-search-{{ $activeSessionKey }}">
+                                    <input
+                                        type="text"
+                                        wire:model.live.debounce.300ms="customerSearch"
+                                        @focus="open = true"
+                                        @click.away="open = false"
+                                        @input="open = true"
+                                        placeholder="🔍 Search..."
+                                        class="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                                    />
                                     
-                                    @forelse($this->customers as $customer)
+                                    {{-- Loading indicator --}}
+                                    <div wire:loading wire:target="customerSearch" class="absolute right-3 top-1/2 -translate-y-1/2">
+                                        <svg class="animate-spin h-4 w-4 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                    </div>
+                                    
+                                    {{-- Dropdown results --}}
+                                    <div 
+                                        x-show="open"
+                                        x-transition
+                                        class="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+                                    >
+                                        {{-- Walk-in option --}}
                                         <button
                                             type="button"
-                                            wire:click="selectCustomer({{ $customer->id }})"
+                                            wire:click="selectCustomer(null)"
                                             @click="open = false"
-                                            class="w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 transition pos-customer-item"
+                                            class="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2 pos-customer-item"
                                         >
-                                            <span class="text-xl">👤</span>
-                                            <div class="flex-1">
-                                                <div class="font-medium text-gray-900 dark:text-gray-100">{{ $customer->name }}</div>
-                                                <div class="text-xs text-gray-500 dark:text-gray-400">
-                                                    {{ $customer->phone ?? 'No phone' }}
-                                                    @if($customer->total_purchases > 0)
-                                                        • {{ $customer->total_purchases }} purchases
-                                                    @endif
-                                                </div>
+                                            <span>🚶</span>
+                                            <div class="flex-1 min-w-0">
+                                                <div class="font-medium text-gray-900 dark:text-gray-100">Walk-in</div>
                                             </div>
-                                            @if($customer->loyalty_points > 0)
-                                                <span class="text-xs bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 px-2 py-1 rounded">
-                                                    {{ $customer->loyalty_points }} pts
-                                                </span>
-                                            @endif
                                         </button>
-                                    @empty
-                                        @if($customerSearch)
-                                            <div class="px-4 py-3 text-gray-500 dark:text-gray-400 text-center">
-                                                No customers found for "{{ $customerSearch }}"
-                                            </div>
-                                        @endif
-                                    @endforelse
+                                        
+                                        @forelse($this->customers as $customer)
+                                            <button
+                                                type="button"
+                                                wire:click="selectCustomer({{ $customer->id }})"
+                                                @click="open = false"
+                                                class="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 pos-customer-item"
+                                            >
+                                                <span>👤</span>
+                                                <div class="flex-1 min-w-0">
+                                                    <div class="font-medium text-gray-900 dark:text-gray-100 truncate">{{ $customer->name }}</div>
+                                                    <div class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ $customer->phone ?? 'No phone' }}</div>
+                                                </div>
+                                                @if($customer->loyalty_points > 0)
+                                                    <span class="text-xs bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 px-2 py-1 rounded flex-shrink-0">
+                                                        {{ $customer->loyalty_points }} pts
+                                                    </span>
+                                                @endif
+                                            </button>
+                                        @empty
+                                            @if($customerSearch)
+                                                <div class="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 text-center">
+                                                    No results
+                                                </div>
+                                            @endif
+                                        @endforelse
+                                    </div>
+                                </div>
+                            @endif
+                        </x-filament::card>
+
+                        {{-- Totals --}}
+                        <x-filament::card>
+                            <div class="space-y-2">
+                                <div class="flex justify-between text-sm text-gray-600 dark:text-gray-400">
+                                    <span>Subtotal:</span>
+                                    <span class="font-medium">₹{{ number_format($session['subtotal'] ?? 0, 2) }}</span>
+                                </div>
+                                
+                                @if($session['discount'] > 0)
+                                    <div class="flex justify-between text-sm text-green-600 dark:text-green-400">
+                                        <span>Discount:</span>
+                                        <span class="font-medium">-₹{{ number_format($session['discount'], 2) }}</span>
+                                    </div>
+                                @endif
+                                
+                                @if(!empty($session['applied_reward_id']))
+                                    <div class="flex justify-between text-sm text-purple-600 dark:text-purple-400 items-center">
+                                        <span>🎁 Reward:</span>
+                                        <div class="flex items-center gap-2">
+                                            <span class="font-medium">-₹{{ number_format($session['reward_discount'] ?? 0, 2) }}</span>
+                                            <button 
+                                                wire:click="removeReward"
+                                                class="text-red-500 hover:text-red-700 text-xs"
+                                                title="Remove"
+                                            >
+                                                ✕
+                                            </button>
+                                        </div>
+                                    </div>
+                                @endif
+                                
+                                <div class="flex justify-between text-sm text-gray-600 dark:text-gray-400">
+                                    <span>Tax:</span>
+                                    <span class="font-medium">₹{{ number_format($session['tax'] ?? 0, 2) }}</span>
+                                </div>
+                                
+                                <div class="pt-2 border-t-2 border-gray-200 dark:border-gray-700 flex justify-between text-lg font-bold text-gray-900 dark:text-gray-100">
+                                    <span>Total:</span>
+                                    <span>₹{{ number_format($session['total'] ?? 0, 2) }}</span>
                                 </div>
                             </div>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                @if($customerSearch)
-                                    Showing search results (up to 10)
-                                @else
-                                    Top 5 customers by purchase count shown
-                                @endif
-                            </p>
-                        @endif
-                    </x-filament::card>
-
-                    {{-- Payment Section - Two Column Layout --}}
-                    <x-filament::card>
-                        <div class="flex gap-3">
-                            {{-- Left: Payment Methods (Vertical) --}}
-                            <div class="w-32 flex-shrink-0">
+                            
+                            {{-- Payment Methods --}}
+                            <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
                                 <label class="block text-xs font-medium mb-2 text-gray-700 dark:text-gray-300">Payment</label>
                                 @php
                                     $paymentMethods = [
@@ -430,13 +397,13 @@
                                         'credit' => ['label' => 'Credit', 'icon' => 'credit-card']
                                     ];
                                 @endphp
-                                <div class="space-y-2 mb-2">
+                                <div class="grid grid-cols-2 gap-2 mb-2">
                                     @foreach($paymentMethods as $method => $config)
                                         <button
                                             type="button"
                                             wire:click="selectPaymentMethod('{{ $method }}')"
                                             aria-pressed="{{ $session['payment_method'] === $method ? 'true' : 'false' }}"
-                                            class="w-full px-2 py-2 text-xs rounded-lg border-2 transition font-medium flex items-center gap-1.5
+                                            class="px-2 py-2 text-xs rounded-lg border-2 transition font-medium flex items-center justify-center gap-1.5
                                                 {{ $session['payment_method'] === $method 
                                                     ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400' 
                                                     : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 text-gray-700 dark:text-gray-300' 
@@ -460,11 +427,24 @@
                                     Split
                                 </button>
                             </div>
+                            
+                            {{-- Redeem Rewards Button --}}
+                            @if($session['customer_id'] && empty($session['applied_reward_id']))
+                                <button
+                                    wire:click="openRewardModal"
+                                    class="w-full mt-3 px-3 py-2 text-sm bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-900/50 transition font-medium flex items-center justify-center gap-2"
+                                >
+                                    <x-heroicon-o-gift class="w-4 h-4" />
+                                    Rewards
+                                </button>
+                            @endif
+                        </x-filament::card>
+                    </div>
 
-                            {{-- Right: Payment Details --}}
-                            <div class="flex-1">
-                                {{-- Cash Amount Received --}}
-                                @if($session['payment_method'] === 'cash' && !$showSplitPayment)
+                    {{-- Payment Details - Full Width --}}
+                    <x-filament::card>
+                        {{-- Cash Amount Received --}}
+                        @if($session['payment_method'] === 'cash' && !$showSplitPayment)
                                     <div>
                                         <label class="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">Amount Received</label>
                                         <input
@@ -756,8 +736,8 @@
         @endif
         
         <script>
-        function posSystem() {
-            return {
+            function posSystem() {
+                return {
                 init() {
                     // Focus search on load
                     this.$nextTick(() => {
@@ -810,8 +790,7 @@
                 }
             };
         }
-    </script>
+        </script>
     </div>
-
 </x-filament-panels::page>
 </div>

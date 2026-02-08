@@ -40,7 +40,7 @@ class PaymentSplit extends Model
         return match ($this->payment_method) {
             'cash' => 'Cash',
             'card' => 'Card',
-            'upi' => 'UPI',
+            'upi' => 'QR',
             'bank_transfer' => 'Bank Transfer',
             'cheque' => 'Cheque',
             'credit' => 'Credit',

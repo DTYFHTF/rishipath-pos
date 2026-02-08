@@ -88,8 +88,7 @@ class RecordPayment extends Page implements HasForms
                     ->label('Payment Method')
                     ->options([
                         'cash' => 'Cash',
-                        'card' => 'Card',
-                        'upi' => 'UPI',
+                        'upi' => 'QR',
                         'bank_transfer' => 'Bank Transfer',
                         'cheque' => 'Cheque',
                     ])

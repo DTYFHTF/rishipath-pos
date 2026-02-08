@@ -114,8 +114,7 @@ class SaleResource extends Resource
                             ->required()
                             ->options([
                                 'cash' => 'Cash',
-                                'upi' => 'UPI',
-                                'card' => 'Card',
+                                'upi' => 'QR',
                                 'esewa' => 'eSewa',
                                 'khalti' => 'Khalti',
                                 'split' => 'Split Payment',
@@ -123,7 +122,7 @@ class SaleResource extends Resource
                             ])
                             ->live()
                             ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
-                                if ($state === 'upi' || $state === 'card' || $state === 'esewa' || $state === 'khalti') {
+                                if ($state === 'upi' || $state === 'esewa' || $state === 'khalti') {
                                     $totalAmount = $get('total_amount');
                                     $set('amount_paid', $totalAmount);
                                     $set('amount_change', 0);
@@ -210,7 +209,6 @@ class SaleResource extends Resource
                     ->colors([
                         'success' => 'cash',
                         'warning' => 'upi',
-                        'info' => 'card',
                     ]),
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
@@ -235,8 +233,7 @@ class SaleResource extends Resource
                 Tables\Filters\SelectFilter::make('payment_method')
                     ->options([
                         'cash' => 'Cash',
-                        'upi' => 'UPI',
-                        'card' => 'Card',
+                        'upi' => 'QR',
                     ]),
                 Tables\Filters\SelectFilter::make('status')
                     ->options([

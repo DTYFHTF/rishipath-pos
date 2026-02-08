@@ -30,7 +30,7 @@ class EnhancedPOS extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-shopping-cart';
 
-    protected static string $view = 'filament.pages.enhanced-p-o-s';
+    protected static string $view = 'filament.pages.enhanced-p-o-s-v2';
 
     protected static ?string $navigationLabel = 'POS';
 
@@ -1095,7 +1095,7 @@ class EnhancedPOS extends Page
             $receiptNumber = 'RCPT-'.strtoupper(substr(md5(uniqid()), 0, 8));
 
             // Normalize payment method to match DB enum: ['cash','upi','card','esewa','khalti','other']
-            $allowedPaymentMethods = ['cash', 'upi', 'card', 'esewa', 'khalti'];
+            $allowedPaymentMethods = ['cash', 'upi', 'esewa', 'khalti'];
             $paymentMethod = $session['payment_method'] ?? 'other';
             if ($this->showSplitPayment) {
                 $paymentMethod = 'other';
@@ -1355,7 +1355,44 @@ class EnhancedPOS extends Page
      */
     public function addPaymentMethod(): void
     {
-        $this->splitPayments[] = ['method' => 'card', 'amount' => 0, 'reference' => ''];
+        $this->splitPayments[] = ['method' => 'cash', 'amount' => 0, 'reference' => ''];
+    }
+
+    /**
+     * Select a main payment method (exclusive selection)
+     */
+    public function selectPaymentMethod(string $method): void
+    {
+        if (! $this->activeSessionKey || ! isset($this->sessions[$this->activeSessionKey])) {
+            return;
+        }
+
+        $this->sessions[$this->activeSessionKey]['payment_method'] = $method;
+        $this->showSplitPayment = false;
+    }
+
+    /**
+     * Toggle split payment mode
+     */
+    public function toggleSplitPayment(): void
+    {
+        if (! $this->activeSessionKey || ! isset($this->sessions[$this->activeSessionKey])) {
+            return;
+        }
+
+        $this->showSplitPayment = ! $this->showSplitPayment;
+
+        if ($this->showSplitPayment) {
+            // Clear main payment method when splitting
+            $this->sessions[$this->activeSessionKey]['payment_method'] = null;
+            
+            // Initialize split if empty
+            if (empty($this->splitPayments)) {
+                $this->splitPayments = [
+                    ['method' => 'cash', 'amount' => 0, 'reference' => ''],
+                ];
+            }
+        }
     }
 
     /**

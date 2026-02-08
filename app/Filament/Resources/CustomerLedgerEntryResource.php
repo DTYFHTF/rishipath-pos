@@ -63,8 +63,7 @@ class CustomerLedgerEntryResource extends Resource
                 Forms\Components\Select::make('payment_method')
                     ->options([
                         'cash' => 'Cash',
-                        'card' => 'Card',
-                        'upi' => 'UPI',
+                        'upi' => 'QR',
                         'bank_transfer' => 'Bank Transfer',
                         'cheque' => 'Cheque',
                         'credit' => 'Credit',
