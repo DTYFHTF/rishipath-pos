@@ -33,7 +33,7 @@ class CustomerAnalyticsReport extends Page
     public function mount(): void
     {
         $this->startDate = Carbon::now()->subMonths(6)->format('Y-m-d');
-        $this->endDate = Carbon::now()->format('Y-m-d');
+        $this->endDate = Carbon::now()->addDay()->format('Y-m-d');
         $this->storeId = StoreContext::getCurrentStoreId() ?? '';
     }
 

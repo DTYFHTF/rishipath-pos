@@ -56,8 +56,8 @@ class SupplierLedgerExport implements FromArray, ShouldAutoSize, WithHeadings, W
                 $entry['reference'] ?? '',
                 $entry['description'],
                 $entry['type'],
-                number_format($entry['debit'], 2),
-                number_format($entry['credit'], 2),
+                number_format($entry['paid'] ?? $entry['debit'] ?? 0, 2),
+                number_format($entry['payable'] ?? $entry['credit'] ?? 0, 2),
                 number_format($entry['balance'], 2),
                 ucfirst($entry['status']),
             ];

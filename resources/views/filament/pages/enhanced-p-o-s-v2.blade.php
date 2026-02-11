@@ -1,17 +1,48 @@
-<div>
 <x-filament-panels::page>
-    {{-- Cache bust: {{ now()->timestamp }} --}}
-    {{-- VERSION: 2.0.0 REDESIGNED LAYOUT --}}
-    <style>
-        /* Ensure search dropdown hover uses dark background in dark mode */
-        .dark .pos-search-item:hover,
-        .dark .pos-customer-item:hover {
-            background-color: rgba(55,65,81,1) !important; /* Tailwind gray-700 */
-            color: rgb(255 255 255 / 1) !important;
-        }
-    </style>
     <div class="space-y-4" x-data="posSystem()" x-init="init()" @keydown.window="handleKeyboard($event)">
-        
+        {{-- Cache bust: {{ now()->timestamp }} --}}
+        {{-- VERSION: 2.0.0 REDESIGNED LAYOUT --}}
+        <style>
+            /* Ensure search dropdown hover uses dark background in dark mode */
+            .dark .pos-search-item:hover,
+            .dark .pos-customer-item:hover {
+                background-color: rgba(55,65,81,1) !important; /* Tailwind gray-700 */
+                color: rgb(255 255 255 / 1) !important;
+            }
+            
+            /* Fix sidebar overlap on smaller screens */
+            @media (max-width: 1024px) {
+                /* Hide Filament sidebar on POS page for smaller screens */
+                .fi-sidebar {
+                    display: none !important;
+                }
+                
+                /* Remove left margin/padding that accounts for sidebar */
+                .fi-main {
+                    margin-left: 0 !important;
+                    padding-left: 0 !important;
+                }
+                
+                /* Ensure POS page takes full width */
+                .fi-page {
+                    margin-left: 0 !important;
+                    padding-left: 0 !important;
+                }
+                
+                /* Make sure topbar takes full width too */
+                .fi-topbar {
+                    left: 0 !important;
+                    width: 100% !important;
+                }
+            }
+            
+            /* Force POS interface to use full viewport width on small screens */
+            @media (max-width: 1024px) {
+                body:has(.fi-page) .fi-body {
+                    margin-left: 0 !important;
+                }
+            }
+        </style>
         {{-- Session Tabs --}}
         <div class="flex items-center gap-2 overflow-x-auto pb-2">
             @foreach($sessions as $key => $session)
@@ -180,10 +211,10 @@
                                     <div class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
                                         {{-- Product Image --}}
                                         @if(!empty($item['image']))
-                                            <img src="{{ Storage::url($item['image']) }}" alt="{{ $item['product_name'] }}" class="w-12 h-12 object-cover rounded">
+                                            <img src="{{ Storage::url($item['image']) }}" alt="{{ $item['product_name'] }}" class="w-10 h-10 object-cover rounded">
                                         @else
-                                            <div class="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center">
-                                                <x-heroicon-o-photo class="w-6 h-6 text-gray-400" />
+                                            <div class="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center">
+                                                <x-heroicon-o-photo class="w-5 h-5 text-gray-400" />
                                             </div>
                                         @endif
 
@@ -572,8 +603,6 @@
                                         </button>
                                     </div>
                                 @endif
-                            </div>
-                        </div>
                     </x-filament::card>
 
                     {{-- WhatsApp Receipt Toggle --}}
@@ -793,4 +822,3 @@
         </script>
     </div>
 </x-filament-panels::page>
-</div>

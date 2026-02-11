@@ -23,6 +23,7 @@ use App\Services\StoreContext;
 use App\Services\WhatsAppService;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -1094,14 +1095,21 @@ class EnhancedPOS extends Page
             // Create sale
             $receiptNumber = 'RCPT-'.strtoupper(substr(md5(uniqid()), 0, 8));
 
-            // Normalize payment method to match DB enum: ['cash','upi','card','esewa','khalti','other']
-            $allowedPaymentMethods = ['cash', 'upi', 'esewa', 'khalti'];
+            // Normalize payment method to match DB enum: ['cash','upi','card','esewa','khalti','other','credit']
+            $allowedPaymentMethods = ['cash', 'upi', 'esewa', 'khalti', 'credit'];
             $paymentMethod = $session['payment_method'] ?? 'other';
             if ($this->showSplitPayment) {
                 $paymentMethod = 'other';
             } else {
                 $paymentMethod = in_array($paymentMethod, $allowedPaymentMethods, true) ? $paymentMethod : 'other';
             }
+            
+            // Determine payment status based on payment method
+            // Credit = customer will pay later (unpaid), creates ledger entry
+            // Cash/UPI/Other = paid immediately (paid), no ledger entry
+            $isCredit = $paymentMethod === 'credit';
+            $paymentStatus = $isCredit ? 'unpaid' : 'paid';
+            $amountPaid = $isCredit ? 0 : ($session['amount_received'] ?: $session['total']);
 
             $sale = Sale::create([
                 'organization_id' => OrganizationContext::getCurrentOrganizationId() ?? auth()->user()->organization_id,
@@ -1122,9 +1130,9 @@ class EnhancedPOS extends Page
                 'tax_amount' => $session['tax'],
                 'total_amount' => $session['total'],
                 'payment_method' => $paymentMethod,
-                'payment_status' => 'paid',
-                'amount_paid' => $session['amount_received'] ?: $session['total'],
-                'amount_change' => max(0, ($session['amount_received'] ?: $session['total']) - $session['total']),
+                'payment_status' => $paymentStatus,
+                'amount_paid' => $amountPaid,
+                'amount_change' => max(0, $amountPaid - $session['total']),
                 'notes' => $session['notes'],
                 'status' => 'completed',
             ]);

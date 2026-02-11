@@ -58,14 +58,14 @@ class CustomerLedgerReport extends Page implements HasForms
             'customer_id' => $customerId,
             'show_transactions' => request()->query('show_transactions') ? true : false,
             'start_date' => now()->startOfMonth()->format('Y-m-d'),
-            'end_date' => now()->format('Y-m-d'),
+            'end_date' => now()->addDay()->format('Y-m-d'),
         ]);
         
         // If customer_id is provided, automatically load the ledger
         if ($customerId) {
             $this->customer_id = $customerId;
             $this->start_date = now()->startOfMonth()->format('Y-m-d');
-            $this->end_date = now()->format('Y-m-d');
+            $this->end_date = now()->addDay()->format('Y-m-d');
             $this->generateReport();
         }
     }
@@ -140,14 +140,15 @@ class CustomerLedgerReport extends Page implements HasForms
                             ])
                             ->placeholder('All Types')
                             ->live()
-                                ->columnSpan(1)
-                                ->afterStateUpdated(fn ($state) => $this->handleEntryTypeUpdated($state)),
+                            ->columnSpan(1)
+                            ->afterStateUpdated(fn ($state) => $this->handleEntryTypeUpdated($state)),
 
-                            \Filament\Forms\Components\Toggle::make('show_transactions')
-                                ->label('Show transactions')
-                                ->helperText('Also load all sales/payments/returns for this customer in the selected date range')
-                                ->columnSpan(1)
-                                ->afterStateUpdated(fn ($state) => $this->handleShowTransactionsUpdated($state)),
+                        \Filament\Forms\Components\Toggle::make('show_transactions')
+                            ->label('Show transactions')
+                            ->helperText('Also load all sales/payments/returns for this customer in the selected date range')
+                            ->live()
+                            ->columnSpan(1)
+                            ->afterStateUpdated(fn ($state) => $this->handleShowTransactionsUpdated($state)),
                     ])
                     ->columns(5)
                     ->compact(),
@@ -255,25 +256,25 @@ class CustomerLedgerReport extends Page implements HasForms
         $this->transactions = [];
         if (!empty($this->show_transactions)) {
             $salesQuery = \App\Models\Sale::where('customer_id', $this->customer_id)
-                ->orderBy('date', 'desc')
                 ->orderBy('created_at', 'desc');
 
-            if ($this->start_date) {
-                $salesQuery->where('date', '>=', $this->start_date);
-            }
-            if ($this->end_date) {
-                $salesQuery->where('date', '<=', $this->end_date);
+            if ($this->start_date && $this->end_date) {
+                // Filter by created_at since 'date' column may be null for some sales
+                $salesQuery->whereBetween('created_at', [
+                    $this->start_date . ' 00:00:00',
+                    $this->end_date . ' 23:59:59'
+                ]);
             }
 
             $this->transactions = $salesQuery->get()->map(function ($sale) {
                 return [
                     'id' => $sale->id,
-                    'invoice' => $sale->invoice_number,
-                    'date' => $sale->date?->format('d M Y') ?? $sale->created_at->format('d M Y'),
-                    'payment_method' => $sale->payment_method,
-                    'payment_status' => $sale->payment_status,
+                    'invoice' => $sale->invoice_number ?? $sale->receipt_number,
+                    'date' => $sale->created_at->format('d M Y'),
+                    'payment_method' => ucfirst($sale->payment_method ?? 'N/A'),
+                    'payment_status' => ucfirst($sale->payment_status ?? 'paid'),
                     'total' => $sale->total_amount,
-                    'status' => $sale->status,
+                    'status' => ucfirst($sale->status ?? 'completed'),
                 ];
             })->toArray();
         }

@@ -46,7 +46,7 @@ class SalesReport extends Page implements HasForms
     public function mount(): void
     {
         $this->startDate = now()->startOfMonth()->format('Y-m-d');
-        $this->endDate = now()->format('Y-m-d');
+        $this->endDate = now()->addDay()->format('Y-m-d');
         $this->storeId = StoreContext::getCurrentStoreId();
     }
 

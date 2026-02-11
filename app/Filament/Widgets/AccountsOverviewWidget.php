@@ -5,6 +5,7 @@ namespace App\Filament\Widgets;
 use App\Models\Customer;
 use App\Models\CustomerLedgerEntry;
 use App\Models\Supplier;
+use App\Models\SupplierLedgerEntry;
 use App\Services\OrganizationContext;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -25,17 +26,16 @@ class AccountsOverviewWidget extends BaseWidget
     {
         $organizationId = OrganizationContext::getCurrentOrganizationId();
 
-        // Calculate total receivables (what customers owe us)
+        // Calculate total receivables (what customers owe us) from customer_ledger_entries
         $totalReceivables = CustomerLedgerEntry::where('organization_id', $organizationId)
             ->where('ledgerable_type', Customer::class)
             ->where('status', 'pending')
             ->sum('debit_amount');
 
-        // Calculate total payables (what we owe suppliers)
-        $totalPayables = CustomerLedgerEntry::where('organization_id', $organizationId)
-            ->where('ledgerable_type', Supplier::class)
-            ->where('status', 'pending')
-            ->sum('credit_amount');
+        // Calculate total payables (what we owe suppliers) from supplier_ledger_entries
+        $totalPayables = Supplier::where('organization_id', $organizationId)
+            ->where('active', true)
+            ->sum('current_balance');
 
         // Overdue receivables
         $overdueReceivables = CustomerLedgerEntry::where('organization_id', $organizationId)
@@ -44,12 +44,11 @@ class AccountsOverviewWidget extends BaseWidget
             ->where('due_date', '<', now())
             ->sum('debit_amount');
 
-        // Overdue payables
-        $overduePayables = CustomerLedgerEntry::where('organization_id', $organizationId)
-            ->where('ledgerable_type', Supplier::class)
-            ->where('status', 'pending')
-            ->where('due_date', '<', now())
-            ->sum('credit_amount');
+        // Overdue payables — suppliers with outstanding balance
+        $overduePayables = Supplier::where('organization_id', $organizationId)
+            ->where('active', true)
+            ->where('current_balance', '>', 0)
+            ->sum('current_balance');
 
         // Net position (receivables - payables)
         $netPosition = $totalReceivables - $totalPayables;

@@ -59,12 +59,10 @@ class Purchase extends Model
             }
         });
 
-        static::created(function ($purchase) {
-            // Create supplier ledger entry for the purchase
-            if ($purchase->supplier_id) {
-                CustomerLedgerEntry::createSupplierPurchaseEntry($purchase);
-            }
-        });
+        // NOTE: Supplier ledger entries are created in:
+        // - receive() method: SupplierLedgerEntry::createPurchaseEntry() for payables
+        // - recordPayment() method: SupplierLedgerEntry::createPaymentEntry() for payments
+        // We do NOT create entries on ::created because the purchase may not be received yet
 
         static::updated(function ($purchase) {
             // Auto-receive when status changes to 'received' and no batches exist yet
@@ -74,25 +72,29 @@ class Purchase extends Model
                 $purchase->receive();
             }
             
-            // Update ledger entry if payment status changed
+            // Update ledger entry if payment status changed directly (e.g. from Filament admin)
             if ($purchase->supplier_id && $purchase->wasChanged('payment_status')) {
-                // For now, just create a new entry if status changed from pending to paid
-                if ($purchase->payment_status === 'paid' && $purchase->getOriginal('payment_status') === 'pending') {
-                    CustomerLedgerEntry::createSupplierPaymentEntry(
-                        $purchase->supplier,
-                        [
-                            'organization_id' => $purchase->organization_id,
-                            'store_id' => $purchase->store_id,
-                            'amount' => $purchase->total_amount,
-                            'description' => "Payment for Purchase {$purchase->purchase_number}",
-                            'reference_type' => 'Purchase',
-                            'reference_id' => $purchase->id,
-                            'reference_number' => $purchase->purchase_number,
-                            'payment_method' => 'bank_transfer',
-                            'transaction_date' => now(),
-                            'created_by' => Auth::id(),
-                        ]
-                    );
+                if ($purchase->payment_status === 'paid' && $purchase->getOriginal('payment_status') !== 'paid') {
+                    // Calculate the remaining amount that was just paid
+                    $remainingAmount = (float) $purchase->total - (float) $purchase->getOriginal('amount_paid');
+                    if ($remainingAmount > 0) {
+                        // Prevent duplicate payment entries when payments are recorded via recordPayment()
+                        // Check if a payment ledger entry for this exact amount already exists for this purchase
+                        $existing = \App\Models\SupplierLedgerEntry::where('purchase_id', $purchase->id)
+                            ->where('type', 'payment')
+                            ->where('amount', -$remainingAmount)
+                            ->exists();
+
+                        if (! $existing) {
+                            SupplierLedgerEntry::createPaymentEntry(
+                                $purchase,
+                                $remainingAmount,
+                                'bank_transfer',
+                                null,
+                                "Full payment for {$purchase->purchase_number}"
+                            );
+                        }
+                    }
                 }
             }
         });

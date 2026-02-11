@@ -35,7 +35,7 @@ class CashierPerformanceReport extends Page
     public function mount(): void
     {
         $this->startDate = Carbon::now()->startOfMonth()->format('Y-m-d');
-        $this->endDate = Carbon::now()->format('Y-m-d');
+        $this->endDate = Carbon::now()->addDay()->format('Y-m-d');
         $this->storeId = StoreContext::getCurrentStoreId() ?? '';
     }
 

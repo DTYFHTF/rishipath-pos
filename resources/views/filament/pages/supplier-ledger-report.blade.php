@@ -25,7 +25,7 @@
                             <span class="text-gray-500 dark:text-gray-400">Code:</span>
                             <span class="font-semibold text-gray-900 dark:text-gray-100">{{ $supplierData['supplier_code'] }}</span>
                         </div>
-                        @if($supplierData['contact_person'])
+                        @if($supplierData['contact_person'] ?? false)
                         <div>
                             <span class="text-gray-500 dark:text-gray-400">Contact:</span>
                             <span class="font-semibold text-gray-900 dark:text-gray-100">{{ $supplierData['contact_person'] }}</span>
@@ -35,7 +35,7 @@
                             <span class="text-gray-500 dark:text-gray-400">Phone:</span>
                             <span class="font-semibold text-gray-900 dark:text-gray-100">{{ $supplierData['phone'] }}</span>
                         </div>
-                        @if($supplierData['email'])
+                        @if($supplierData['email'] ?? false)
                         <div>
                             <span class="text-gray-500 dark:text-gray-400">Email:</span>
                             <span class="font-semibold text-gray-900 dark:text-gray-100">{{ $supplierData['email'] }}</span>
@@ -64,6 +64,60 @@
                     </div>
                 </div>
             </x-filament::card>
+
+            {{-- Transactions Table (optional) --}}
+            @if(!empty($transactions) && count($transactions) > 0)
+                <x-filament::card>
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Purchases</h3>
+                    </div>
+
+                    <div class="overflow-x-auto max-h-[400px] overflow-y-auto">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-50 dark:bg-gray-800 sticky top-0 z-10">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-gray-700 dark:text-gray-300">Date</th>
+                                    <th class="px-4 py-3 text-left text-gray-700 dark:text-gray-300">Purchase #</th>
+                                    <th class="px-4 py-3 text-left text-gray-700 dark:text-gray-300">Status</th>
+                                    <th class="px-4 py-3 text-right text-gray-700 dark:text-gray-300">Total (₹)</th>
+                                    <th class="px-4 py-3 text-right text-gray-700 dark:text-gray-300">Paid (₹)</th>
+                                    <th class="px-4 py-3 text-right text-gray-700 dark:text-gray-300">Outstanding (₹)</th>
+                                    <th class="px-4 py-3 text-center text-gray-700 dark:text-gray-300">Payment</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                                @foreach($transactions as $t)
+                                    <tr class="hover:bg-gray-200/30 dark:hover:bg-gray-700/50 transition-colors">
+                                        <td class="px-4 py-3 text-gray-900 dark:text-gray-100">{{ $t['date'] }}</td>
+                                        <td class="px-4 py-3 text-gray-900 dark:text-gray-100">
+                                            <a href="{{ route('filament.admin.resources.purchases.view', ['record' => $t['id']]) }}" class="text-primary-600 dark:text-primary-400 hover:underline">{{ $t['purchase_number'] }}</a>
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            <span class="px-2 py-1 text-xs rounded-full
+                                                {{ $t['status'] === 'received' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400' : '' }}
+                                                {{ $t['status'] === 'draft' ? 'bg-gray-100 dark:bg-gray-900/30 text-gray-800 dark:text-gray-400' : '' }}
+                                                {{ $t['status'] === 'partial' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400' : '' }}">
+                                                {{ ucfirst($t['status']) }}
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-3 text-right font-semibold">{{ number_format($t['total'], 2) }}</td>
+                                        <td class="px-4 py-3 text-right text-green-600">{{ number_format($t['amount_paid'], 2) }}</td>
+                                        <td class="px-4 py-3 text-right {{ $t['outstanding'] > 0 ? 'text-red-600 font-semibold' : 'text-gray-500' }}">{{ number_format($t['outstanding'], 2) }}</td>
+                                        <td class="px-4 py-3 text-center">
+                                            <span class="px-2 py-1 text-xs rounded-full
+                                                {{ $t['payment_status'] === 'paid' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400' : '' }}
+                                                {{ $t['payment_status'] === 'partial' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400' : '' }}
+                                                {{ $t['payment_status'] === 'unpaid' ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400' : '' }}">
+                                                {{ ucfirst($t['payment_status']) }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </x-filament::card>
+            @endif
 
             {{-- Ledger Table --}}
             <x-filament::card>
@@ -101,10 +155,10 @@
                                     <tr class="hover:bg-gray-200/30 dark:hover:bg-gray-700/50 transition-colors">
                                         <td class="px-4 py-3 text-gray-900 dark:text-gray-100">{{ $entry['date'] }}</td>
                                         <td class="px-4 py-3">
-                                            @if($entry['reference'] && $entry['reference_type'] === 'Sale' && $entry['reference_id'])
-                                                <a href="{{ route('filament.admin.resources.sales.view', ['record' => $entry['reference_id']]) }}" 
+                                            @if($entry['reference'] && $entry['reference_id'])
+                                                <a href="{{ route('filament.admin.resources.purchases.view', ['record' => $entry['reference_id']]) }}" 
                                                    class="text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1"
-                                                   title="View Invoice">
+                                                   title="View Purchase">
                                                     {{ $entry['reference'] }}
                                                     <x-heroicon-o-arrow-top-right-on-square class="w-3 h-3" />
                                                 </a>
@@ -114,23 +168,20 @@
                                         </td>
                                         <td class="px-4 py-3 text-gray-900 dark:text-gray-100">
                                             {{ $entry['description'] }}
-                                            @if($entry['store'])
-                                                <span class="text-xs text-gray-500 dark:text-gray-400">({{ $entry['store'] }})</span>
-                                            @endif
                                         </td>
                                         <td class="px-4 py-3">
                                             <span class="px-2 py-1 text-xs rounded-full
-                                                {{ $entry['type'] === 'receivable' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400' : '' }}
-                                                {{ $entry['type'] === 'payment' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400' : '' }}
-                                                {{ $entry['type'] === 'credit_note' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-400' : '' }}">
-                                                {{ $entry['type'] === 'receivable' ? 'Receivable' : ucwords(str_replace('_', ' ', $entry['type'])) }}
+                                                {{ $entry['type'] === 'Purchase' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400' : '' }}
+                                                {{ $entry['type'] === 'Payment' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400' : '' }}
+                                                {{ $entry['type'] === 'Return' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-400' : '' }}">
+                                                {{ $entry['type'] }}
                                             </span>
                                         </td>
-                                        <td class="px-4 py-3 text-right {{ $entry['debit'] > 0 ? 'text-red-600 dark:text-red-400 font-semibold' : 'text-gray-500 dark:text-gray-400' }}">
-                                            {{ $entry['debit'] > 0 ? number_format($entry['debit'], 2) : '-' }}
+                                        <td class="px-4 py-3 text-right {{ ($entry['paid'] ?? 0) > 0 ? 'text-green-600 dark:text-green-400 font-semibold' : 'text-gray-500 dark:text-gray-400' }}">
+                                            {{ ($entry['paid'] ?? 0) > 0 ? number_format($entry['paid'], 2) : '-' }}
                                         </td>
-                                        <td class="px-4 py-3 text-right {{ $entry['credit'] > 0 ? 'text-green-600 dark:text-green-400 font-semibold' : 'text-gray-500 dark:text-gray-400' }}">
-                                            {{ $entry['credit'] > 0 ? number_format($entry['credit'], 2) : '-' }}
+                                        <td class="px-4 py-3 text-right {{ ($entry['payable'] ?? 0) > 0 ? 'text-red-600 dark:text-red-400 font-semibold' : 'text-gray-500 dark:text-gray-400' }}">
+                                            {{ ($entry['payable'] ?? 0) > 0 ? number_format($entry['payable'], 2) : '-' }}
                                         </td>
                                         <td class="px-4 py-3 text-right font-semibold {{ $entry['balance'] > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400' }}">
                                             {{ number_format($entry['balance'], 2) }}
@@ -149,8 +200,8 @@
                             <tfoot class="bg-gray-50 dark:bg-gray-800 font-bold">
                                 <tr>
                                     <td colspan="4" class="px-4 py-3 text-right text-gray-900 dark:text-gray-100">Total:</td>
-                                    <td class="px-4 py-3 text-right text-red-600 dark:text-red-400">{{ number_format($summary['total_debit'], 2) }}</td>
-                                    <td class="px-4 py-3 text-right text-green-600 dark:text-green-400">{{ number_format($summary['total_credit'], 2) }}</td>
+                                    <td class="px-4 py-3 text-right text-green-600 dark:text-green-400">{{ number_format($summary['total_debit'], 2) }}</td>
+                                    <td class="px-4 py-3 text-right text-red-600 dark:text-red-400">{{ number_format($summary['total_credit'], 2) }}</td>
                                     <td class="px-4 py-3 text-right {{ $summary['current_balance'] > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400' }}">
                                         {{ number_format($summary['current_balance'], 2) }}
                                     </td>

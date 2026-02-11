@@ -118,8 +118,8 @@
             ];
         }
         $bills[$key]->qty += $line->quantity;
-        $bills[$key]->total += $line->line_total ?? ($line->quantity * ($line->unit_price ?? 0));
-        $bills[$key]->unit_price = $line->unit_price ?? $bills[$key]->unit_price;
+        $bills[$key]->total += $line->total ?? ($line->quantity * ($line->price_per_unit ?? 0));
+        $bills[$key]->unit_price = $line->price_per_unit ?? $bills[$key]->unit_price;
         $bills[$key]->record_id = $line->sale->id;
     }
 
@@ -441,8 +441,8 @@
                                 <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">{{ $item->sale->customer->name ?? 'Walk-in' }}</td>
                                 <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">{{ $item->productVariant->sku }}</td>
                                 <td class="px-4 py-2 text-sm text-right text-gray-900 dark:text-gray-100">{{ number_format($item->quantity) }}</td>
-                                <td class="px-4 py-2 text-sm text-right text-gray-900 dark:text-gray-100">₹{{ number_format($item->unit_price, 2) }}</td>
-                                <td class="px-4 py-2 text-sm text-right font-semibold text-gray-900 dark:text-gray-100">₹{{ number_format($item->line_total, 2) }}</td>
+                                <td class="px-4 py-2 text-sm text-right text-gray-900 dark:text-gray-100">₹{{ number_format($item->price_per_unit, 2) }}</td>
+                                <td class="px-4 py-2 text-sm text-right font-semibold text-gray-900 dark:text-gray-100">₹{{ number_format($item->total, 2) }}</td>
                             </tr>
                         @endforeach
                     </tbody>
