@@ -157,6 +157,22 @@ class RoleResource extends Resource
                 'edit_terminals' => 'Edit Terminals',
                 'delete_terminals' => 'Delete Terminals',
             ],
+            'Retail Stores' => [
+                'view_retail_stores' => 'View Retail Stores',
+                'create_retail_stores' => 'Create Retail Stores',
+                'edit_retail_stores' => 'Edit Retail Stores',
+                'delete_retail_stores' => 'Delete Retail Stores',
+            ],
+            'Bulk Orders & Invoices' => [
+                'view_bulk_order_inquiries' => 'View Bulk Order Inquiries',
+                'create_bulk_order_inquiries' => 'Create Bulk Order Inquiries',
+                'edit_bulk_order_inquiries' => 'Edit Bulk Order Inquiries',
+                'delete_bulk_order_inquiries' => 'Delete Bulk Order Inquiries',
+                'view_invoices' => 'View Invoices & Quotations',
+                'create_invoices' => 'Create Invoices & Quotations',
+                'edit_invoices' => 'Edit Invoices & Quotations',
+                'delete_invoices' => 'Delete Invoices & Quotations',
+            ],
             'System Administration' => [
                 'access_system_logs' => 'Access System Logs',
                 'manage_backups' => 'Manage Backups',

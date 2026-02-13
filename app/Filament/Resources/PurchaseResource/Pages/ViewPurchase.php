@@ -3,10 +3,12 @@
 namespace App\Filament\Resources\PurchaseResource\Pages;
 
 use App\Filament\Resources\PurchaseResource;
+use App\Models\PurchaseReturn;
 use Filament\Actions;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Infolists;
 use Filament\Infolists\Infolist;
+use Filament\Notifications\Notification;
 
 class ViewPurchase extends ViewRecord
 {
@@ -58,6 +60,117 @@ class ViewPurchase extends ViewRecord
                         $data['reference'] ?? null,
                         $data['notes'] ?? null
                     );
+                }),
+
+            Actions\Action::make('process_return')
+                ->label('Process Return')
+                ->icon('heroicon-o-arrow-uturn-left')
+                ->color('danger')
+                ->visible(fn () => $this->record->status === 'received' && $this->record->items()->where('quantity_received', '>', 0)->exists())
+                ->form(function () {
+                    $items = $this->record->items()
+                        ->where('quantity_received', '>', 0)
+                        ->with('productVariant')
+                        ->get();
+
+                    $itemFields = [];
+                    
+                    foreach ($items as $item) {
+                        $alreadyReturned = PurchaseReturn::where('purchase_item_id', $item->id)
+                            ->sum('quantity_returned');
+                        $availableToReturn = $item->quantity_received - $alreadyReturned;
+
+                        if ($availableToReturn > 0) {
+                            $variant = $item->productVariant;
+                            $packSize = $variant ? $variant->pack_size : 1;
+                            $unit = $item->unit;
+
+                            $itemFields["item_{$item->id}"] = \Filament\Forms\Components\TextInput::make("item_{$item->id}")
+                                ->label("{$item->product_name} ({$item->product_sku}) - {$packSize}{$unit}")
+                                ->helperText("Received: {$item->quantity_received}, Returned: {$alreadyReturned}, Available: {$availableToReturn}")
+                                ->numeric()
+                                ->minValue(0)
+                                ->maxValue($availableToReturn)
+                                ->placeholder('0')
+                                ->suffix('qty')
+                                ->default(0);
+                        }
+                    }
+
+                    if (empty($itemFields)) {
+                        return [
+                            \Filament\Forms\Components\Placeholder::make('no_items')
+                                ->content('All items have been fully returned.'),
+                        ];
+                    }
+
+                    return array_merge(
+                        $itemFields,
+                        [
+                            \Filament\Forms\Components\Select::make('reason')
+                                ->label('Return Reason')
+                                ->options([
+                                    'Defective' => 'Defective',
+                                    'Damaged' => 'Damaged',
+                                    'Wrong Product' => 'Wrong Product',
+                                    'Expired' => 'Expired',
+                                    'Poor Quality' => 'Poor Quality',
+                                    'Overstocked' => 'Overstocked',
+                                    'Other' => 'Other',
+                                ])
+                                ->required(),
+
+                            \Filament\Forms\Components\Textarea::make('notes')
+                                ->label('Additional Notes')
+                                ->rows(3)
+                                ->placeholder('Enter any additional details about this return...'),
+                        ]
+                    );
+                })
+                ->action(function (array $data) {
+                    $returnItems = [];
+                    $reason = $data['reason'] ?? 'Other';
+                    $notes = $data['notes'] ?? null;
+
+                    // Extract return quantities from form data
+                    foreach ($data as $key => $value) {
+                        if (strpos($key, 'item_') === 0 && $value > 0) {
+                            $itemId = str_replace('item_', '', $key);
+                            $returnItems[$itemId] = $value;
+                        }
+                    }
+
+                    if (empty($returnItems)) {
+                        Notification::make()
+                            ->warning()
+                            ->title('No items to return')
+                            ->body('Please enter at least one item quantity to return.')
+                            ->send();
+                        return;
+                    }
+
+                    try {
+                        $returns = $this->record->processReturn($returnItems, $reason, $notes);
+                        
+                        $totalQty = array_sum(array_column($returns, 'quantity_returned'));
+                        $totalAmount = array_sum(array_column($returns, 'return_amount'));
+
+                        Notification::make()
+                            ->success()
+                            ->title('Return Processed Successfully')
+                            ->body("Returned {$totalQty} items worth ₹" . number_format($totalAmount, 2))
+                            ->send();
+
+                        // Refresh the page to show updated data
+                        $this->refreshFormData(['mountedActionsData']);
+                        
+                    } catch (\Exception $e) {
+                        Notification::make()
+                            ->danger()
+                            ->title('Return Failed')
+                            ->body($e->getMessage())
+                            ->send();
+                    }
                 }),
 
             Actions\EditAction::make(),
@@ -144,6 +257,42 @@ class ViewPurchase extends ViewRecord
                             ->columns(4)
                             ->grid(1),
                     ]),
+
+                Infolists\Components\Section::make('Returns')
+                    ->schema([
+                        Infolists\Components\RepeatableEntry::make('returns')
+                            ->schema([
+                                Infolists\Components\TextEntry::make('return_number')
+                                    ->label('Return #'),
+                                Infolists\Components\TextEntry::make('return_date')
+                                    ->label('Date')
+                                    ->date(),
+                                Infolists\Components\TextEntry::make('productVariant.product.name')
+                                    ->label('Product'),
+                                Infolists\Components\TextEntry::make('quantity_returned')
+                                    ->label('Quantity')
+                                    ->suffix(' qty'),
+                                Infolists\Components\TextEntry::make('return_amount')
+                                    ->label('Amount')
+                                    ->money('INR'),
+                                Infolists\Components\TextEntry::make('reason')
+                                    ->badge(),
+                                Infolists\Components\TextEntry::make('status')
+                                    ->badge()
+                                    ->color(fn (string $state): string => match ($state) {
+                                        'pending' => 'warning',
+                                        'approved' => 'success',
+                                        'refunded' => 'info',
+                                    }),
+                                Infolists\Components\TextEntry::make('notes')
+                                    ->placeholder('—')
+                                    ->columnSpanFull(),
+                            ])
+                            ->columns(4)
+                            ->grid(1),
+                    ])
+                    ->visible(fn () => $this->record->returns()->exists())
+                    ->collapsible(),
 
                 Infolists\Components\Section::make('Totals')
                     ->schema([

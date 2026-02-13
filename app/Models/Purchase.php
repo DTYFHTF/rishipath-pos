@@ -323,4 +323,165 @@ class Purchase extends Model
     {
         return $this->items->every(fn ($item) => $item->quantity_received >= $item->quantity_ordered);
     }
+
+    public function returns(): HasMany
+    {
+        return $this->hasMany(PurchaseReturn::class);
+    }
+
+    /**
+     * Process a partial return of purchased items.
+     * 
+     * @param array $returnItems Array of items to return: ['purchase_item_id' => qty_to_return]
+     * @param string $reason Return reason
+     * @param string|null $notes Additional notes
+     * @return array Array of created PurchaseReturn records
+     * @throws \Exception if validation fails
+     */
+    public function processReturn(array $returnItems, string $reason, ?string $notes = null): array
+    {
+        return DB::transaction(function () use ($returnItems, $reason, $notes) {
+            $returns = [];
+            $totalReturnAmount = 0;
+
+            foreach ($returnItems as $purchaseItemId => $quantityToReturn) {
+                if ($quantityToReturn <= 0) {
+                    continue;
+                }
+
+                $purchaseItem = $this->items()->findOrFail($purchaseItemId);
+                
+                // Validation: Cannot return more than received
+                if ($quantityToReturn > $purchaseItem->quantity_received) {
+                    throw new \Exception(
+                        "Cannot return {$quantityToReturn} units of {$purchaseItem->product_name}. " .
+                        "Only {$purchaseItem->quantity_received} units were received."
+                    );
+                }
+
+                // Check existing returns
+                $alreadyReturned = PurchaseReturn::where('purchase_item_id', $purchaseItemId)
+                    ->sum('quantity_returned');
+                
+                $availableToReturn = $purchaseItem->quantity_received - $alreadyReturned;
+                
+                if ($quantityToReturn > $availableToReturn) {
+                    throw new \Exception(
+                        "Cannot return {$quantityToReturn} units of {$purchaseItem->product_name}. " .
+                        "Only {$availableToReturn} units available for return (already returned {$alreadyReturned})."
+                    );
+                }
+
+                $returnAmount = $quantityToReturn * $purchaseItem->unit_cost;
+                $totalReturnAmount += $returnAmount;
+
+                // Find batches to return from (FIFO - oldest first)
+                $batches = ProductBatch::where('purchase_id', $this->id)
+                    ->where('product_variant_id', $purchaseItem->product_variant_id)
+                    ->where('quantity_remaining', '>', 0)
+                    ->orderBy('created_at', 'asc')
+                    ->lockForUpdate()
+                    ->get();
+
+                $remainingToReturn = $quantityToReturn;
+                
+                foreach ($batches as $batch) {
+                    if ($remainingToReturn <= 0) {
+                        break;
+                    }
+
+                    $returnFromBatch = min($remainingToReturn, $batch->quantity_remaining);
+                    
+                    // Update batch quantities
+                    ProductBatch::withoutEvents(function () use ($batch, $returnFromBatch) {
+                        $batch->quantity_remaining -= $returnFromBatch;
+                        $batch->quantity_returned += $returnFromBatch;
+                        $batch->notes = ($batch->notes ? $batch->notes . ' | ' : '') . 
+                            "Returned {$returnFromBatch} units on " . now()->format('Y-m-d');
+                        $batch->save();
+                    });
+
+                    // Create inventory movement for return
+                    InventoryMovement::create([
+                        'organization_id' => $this->organization_id,
+                        'store_id' => $this->store_id,
+                        'product_variant_id' => $purchaseItem->product_variant_id,
+                        'batch_id' => $batch->id,
+                        'type' => 'return',
+                        'quantity' => -$returnFromBatch,
+                        'unit' => $purchaseItem->unit,
+                        'from_quantity' => $batch->quantity_remaining + $returnFromBatch,
+                        'to_quantity' => $batch->quantity_remaining,
+                        'reference_type' => 'PurchaseReturn',
+                        'reference_id' => $this->id,
+                        'cost_price' => $purchaseItem->unit_cost,
+                        'user_id' => Auth::id(),
+                        'notes' => "Purchase return: {$reason}",
+                    ]);
+
+                    // Update stock level
+                    $stockLevel = StockLevel::lockForUpdate()->firstOrCreate(
+                        [
+                            'product_variant_id' => $purchaseItem->product_variant_id,
+                            'store_id' => $this->store_id,
+                        ],
+                        [
+                            'quantity' => 0,
+                            'reserved_quantity' => 0,
+                            'reorder_level' => 10,
+                        ]
+                    );
+                    
+                    $stockLevel->quantity = max(0, $stockLevel->quantity - $returnFromBatch);
+                    $stockLevel->last_movement_at = now();
+                    $stockLevel->save();
+
+                    // Create return record
+                    $returnRecord = PurchaseReturn::create([
+                        'organization_id' => $this->organization_id,
+                        'purchase_id' => $this->id,
+                        'purchase_item_id' => $purchaseItem->id,
+                        'product_variant_id' => $purchaseItem->product_variant_id,
+                        'batch_id' => $batch->id,
+                        'store_id' => $this->store_id,
+                        'return_date' => now(),
+                        'quantity_returned' => $returnFromBatch,
+                        'unit_cost' => $purchaseItem->unit_cost,
+                        'return_amount' => $returnFromBatch * $purchaseItem->unit_cost,
+                        'reason' => $reason,
+                        'notes' => $notes,
+                        'status' => 'approved',
+                        'created_by' => Auth::id(),
+                        'approved_by' => Auth::id(),
+                        'approved_at' => now(),
+                    ]);
+
+                    $returns[] = $returnRecord;
+                    $remainingToReturn -= $returnFromBatch;
+                }
+
+                if ($remainingToReturn > 0) {
+                    throw new \Exception(
+                        "Could not allocate all return quantity for {$purchaseItem->product_name}. " .
+                        "Insufficient batch quantities available."
+                    );
+                }
+            }
+
+            // Create supplier ledger return entry to reduce payable
+            if ($this->supplier_id && $totalReturnAmount > 0) {
+                SupplierLedgerEntry::createReturnEntry(
+                    $this,
+                    $totalReturnAmount,
+                    "Purchase return: {$reason}" . ($notes ? " - {$notes}" : '')
+                );
+            }
+
+            // Recalculate purchase totals if needed
+            // Note: We don't reduce the purchase total since it reflects what was ordered/received
+            // Returns are tracked separately for accounting purposes
+
+            return $returns;
+        });
+    }
 }

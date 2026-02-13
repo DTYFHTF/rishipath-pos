@@ -41,4 +41,8 @@ return [
         'whatsapp_from' => env('TWILIO_WHATSAPP_FROM'), // Format: +14155238886
     ],
 
+    'google_maps' => [
+        'api_key' => env('GOOGLE_MAPS_API_KEY'),
+    ],
+
 ];
