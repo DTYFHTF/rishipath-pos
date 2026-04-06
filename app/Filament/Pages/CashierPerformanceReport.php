@@ -197,8 +197,8 @@ class CashierPerformanceReport extends Page
             ->where('cashier_id', $this->cashierId)
             ->whereBetween('created_at', [$this->startDate, $this->endDate])
             ->when($this->storeId, fn ($q) => $q->where('store_id', $this->storeId))
-            ->groupBy('hour')
-            ->orderBy('hour')
+            ->groupBy(DB::raw($hourExpr))
+            ->orderBy(DB::raw($hourExpr))
             ->get();
 
         $hourlyData = [];
@@ -229,8 +229,8 @@ class CashierPerformanceReport extends Page
             ->whereBetween('created_at', [$this->startDate, $this->endDate])
             ->when($this->storeId, fn ($q) => $q->where('store_id', $this->storeId))
             ->when($this->cashierId, fn ($q) => $q->where('cashier_id', $this->cashierId))
-            ->groupBy('date', 'cashier_id')
-            ->orderBy('date')
+            ->groupBy(DB::raw('DATE(created_at)'), 'cashier_id')
+            ->orderBy(DB::raw('DATE(created_at)'))
             ->get();
 
         $dailyData = [];

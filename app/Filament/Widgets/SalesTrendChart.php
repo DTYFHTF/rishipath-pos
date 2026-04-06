@@ -46,8 +46,8 @@ class SalesTrendChart extends ChartWidget
             ->where('organization_id', $organizationId)
             ->when($storeId, fn($q) => $q->where('store_id', $storeId))
             ->whereBetween('created_at', [$startDate, $endDate])
-            ->groupBy('date')
-            ->orderBy('date')
+            ->groupBy(DB::raw('DATE(created_at)'))
+            ->orderBy(DB::raw('DATE(created_at)'))
             ->get();
 
         // Fill in missing dates with zero values
