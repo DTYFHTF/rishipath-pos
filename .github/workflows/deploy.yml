@@ -1,107 +1,19 @@
-name: Deploy
+name: Deploy to Production
 
 on:
-  workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Environment to deploy'
-        required: true
-        type: choice
-        options:
-          - staging
-          - production
   push:
-    branches:
-      - main
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
   deploy:
-    name: Deploy to ${{ github.event.inputs.environment || 'staging' }}
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment || 'staging' }}
-    
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.4'
-          tools: composer:v2
-
-      - name: Install dependencies
-        run: composer install --prefer-dist --no-dev --optimize-autoloader --no-interaction
-
-      - name: Build assets (if needed)
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-
-      - name: Build assets (if needed)
-        run: |
-          if [ -f "package.json" ]; then
-            if [ -f "package-lock.json" ]; then
-              npm ci || npm install
-            else
-              npm install
-            fi
-
-            if grep -q '"build"' package.json; then
-              npm run build
-            else
-              echo "No build script found in package.json; skipping build"
-            fi
-          fi
-
       - name: Deploy via SSH
-        if: vars.DEPLOY_HOST != ''
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
-          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
-        run: |
-          echo "Deploying to ${{ github.event.inputs.environment || 'staging' }}..."
-          # Setup SSH
-          mkdir -p ~/.ssh
-          echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H $DEPLOY_HOST >> ~/.ssh/known_hosts
-          
-          # Rsync files (exclude .git, node_modules, storage, etc.)
-          rsync -avz --delete \
-            --exclude='.git' \
-            --exclude='node_modules' \
-            --exclude='storage/logs/*' \
-            --exclude='storage/framework/cache/*' \
-            --exclude='storage/framework/sessions/*' \
-            --exclude='storage/framework/views/*' \
-            --exclude='.env' \
-            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
-            ./ $DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH
-          
-          # Run post-deploy commands on server
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $DEPLOY_USER@$DEPLOY_HOST << 'ENDSSH'
-            cd $DEPLOY_PATH
-            php artisan migrate --force
-            php artisan config:cache
-            php artisan route:cache
-            php artisan view:cache
-            php artisan queue:restart
-          ENDSSH
-
-      - name: Deployment summary
-        run: |
-          echo "✅ Deployed to ${{ github.event.inputs.environment || 'staging' }}"
-          echo "📦 Commit: ${{ github.sha }}"
-          echo "👤 Triggered by: ${{ github.actor }}"
-
-      - name: Notify (placeholder)
-        if: failure()
-        run: |
-          echo "❌ Deployment failed!"
-          # Add Slack/Discord/Email notification here if needed
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            GH_PAT=${{ secrets.GH_PAT }} bash ~/rishipath-pos/scripts/deploy.sh

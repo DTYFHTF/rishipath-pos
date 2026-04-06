@@ -43,6 +43,34 @@
         wire:ignore
         class="w-full"
     >
+        <!-- Error Message -->
+        <div x-show="mapError" x-cloak class="mb-3 p-4 bg-danger-50 border border-danger-200 rounded-lg text-danger-700 dark:bg-danger-900/20 dark:border-danger-800 dark:text-danger-400">
+            <div class="flex items-start gap-2">
+                <svg class="h-5 w-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                </svg>
+                <div>
+                    <p class="font-semibold">Google Maps Failed to Load</p>
+                    <p class="text-sm mt-1" x-text="mapError"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="mb-3">
+            <div class="relative">
+                <input
+                    x-ref="searchInput"
+                    type="text"
+                    placeholder="Search for a location..."
+                    class="w-full px-4 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-800 dark:text-white"
+                />
+                <svg class="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+            </div>
+        </div>
+
         <!-- Geolocation Button -->
         <div x-show="showGeolocation" class="mb-3 flex gap-2">
             <button
@@ -117,37 +145,73 @@
                     map: null,
                     marker: null,
                     geocoder: null,
+                    autocomplete: null,
                     isLoadingLocation: false,
+                    mapError: null,
 
                     async initMap() {
-                        if (typeof google === 'undefined') {
-                            await this.loadGoogleMapsAPI();
+                        try {
+                            if (typeof google === 'undefined') {
+                                await this.loadGoogleMapsAPI();
+                            }
+
+                            const location = this.state
+                                ? {
+                                    lat: parseFloat(this.state.split(',')[0]),
+                                    lng: parseFloat(this.state.split(',')[1])
+                                  }
+                                : this.defaultLocation;
+
+                            this.map = new google.maps.Map(this.$refs.map, {
+                                center: location,
+                                zoom: this.defaultZoom,
+                                mapTypeControl: true,
+                                streetViewControl: true,
+                                fullscreenControl: true,
+                            });
+
+                            this.geocoder = new google.maps.Geocoder();
+
+                            // Initialize Places Autocomplete
+                            this.initAutocomplete();
+
+                            if (this.state) {
+                                this.addMarker(location);
+                            }
+
+                            this.map.addListener('click', (event) => {
+                                this.updateLocation(event.latLng);
+                            });
+                        } catch (error) {
+                            console.error('Map initialization error:', error);
+                            this.mapError = 'Failed to initialize map. Please check your Google Maps API key and ensure Maps JavaScript API, Geocoding API, and Places API are enabled in Google Cloud Console.';
                         }
+                    },
 
-                        const location = this.state
-                            ? {
-                                lat: parseFloat(this.state.split(',')[0]),
-                                lng: parseFloat(this.state.split(',')[1])
-                              }
-                            : this.defaultLocation;
+                    initAutocomplete() {
+                        if (!this.$refs.searchInput) return;
 
-                        this.map = new google.maps.Map(this.$refs.map, {
-                            center: location,
-                            zoom: this.defaultZoom,
-                            mapTypeControl: true,
-                            streetViewControl: true,
-                            fullscreenControl: true,
-                        });
+                        try {
+                            this.autocomplete = new google.maps.places.Autocomplete(this.$refs.searchInput, {
+                                fields: ['address_components', 'geometry', 'name', 'formatted_address'],
+                            });
 
-                        this.geocoder = new google.maps.Geocoder();
+                            this.autocomplete.addListener('place_changed', () => {
+                                const place = this.autocomplete.getPlace();
 
-                        if (this.state) {
-                            this.addMarker(location);
+                                if (!place.geometry || !place.geometry.location) {
+                                    this.mapError = 'No details available for: ' + place.name;
+                                    return;
+                                }
+
+                                this.mapError = null;
+                                this.updateLocation(place.geometry.location);
+                                this.map.setCenter(place.geometry.location);
+                                this.map.setZoom(16);
+                            });
+                        } catch (error) {
+                            console.error('Autocomplete initialization error:', error);
                         }
-
-                        this.map.addListener('click', (event) => {
-                            this.updateLocation(event.latLng);
-                        });
                     },
 
                     async loadGoogleMapsAPI() {
@@ -161,8 +225,17 @@
                             script.src = `https://maps.googleapis.com/maps/api/js?key=${this.apiKey}&libraries=places`;
                             script.async = true;
                             script.defer = true;
-                            script.onload = resolve;
-                            script.onerror = reject;
+                            script.onload = () => {
+                                if (typeof google === 'undefined') {
+                                    reject(new Error('Google Maps API failed to load'));
+                                } else {
+                                    resolve();
+                                }
+                            };
+                            script.onerror = (error) => {
+                                this.mapError = 'Failed to load Google Maps. Please verify the API key is correct and has the required APIs enabled (Maps JavaScript API, Geocoding API, Places API).';
+                                reject(error);
+                            };
                             document.head.appendChild(script);
                         });
                     },

@@ -112,6 +112,7 @@ trait HasPermissionCheck
             'retailstore' => 'retail_stores',
             'bulkorderinquiry' => 'bulk_order_inquiries',
             'invoice' => 'invoices',
+            'feedback' => 'feedbacks',
         ];
 
         $permissionResource = $permissionMap[$resourceName] ?? $resourceName;

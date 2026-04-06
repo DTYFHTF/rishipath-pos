@@ -173,6 +173,12 @@ class RoleResource extends Resource
                 'edit_invoices' => 'Edit Invoices & Quotations',
                 'delete_invoices' => 'Delete Invoices & Quotations',
             ],
+            'Notes & Feedback' => [
+                'view_feedbacks' => 'View Feedback & Notes',
+                'create_feedbacks' => 'Create Feedback & Notes',
+                'edit_feedbacks' => 'Edit Feedback & Notes',
+                'delete_feedbacks' => 'Delete Feedback & Notes',
+            ],
             'System Administration' => [
                 'access_system_logs' => 'Access System Logs',
                 'manage_backups' => 'Manage Backups',

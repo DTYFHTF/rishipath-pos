@@ -77,6 +77,18 @@ class BulkOrderInquiry extends Model
             ->latestOfMany();
     }
 
+    public function feedbacks(): MorphMany
+    {
+        return $this->morphMany(Feedback::class, 'feedbackable')->latest();
+    }
+
+    public function unresolvedFeedbacks(): MorphMany
+    {
+        return $this->morphMany(Feedback::class, 'feedbackable')
+            ->whereIn('status', ['new', 'in_progress'])
+            ->latest();
+    }
+
     // ─── Accessors ───────────────────────────────
 
     public function getTotalQuantityAttribute(): int

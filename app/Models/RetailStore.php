@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class RetailStore extends Model
@@ -78,6 +79,18 @@ class RetailStore extends Model
     public function invoices(): HasMany
     {
         return $this->hasMany(Invoice::class);
+    }
+
+    public function feedbacks(): MorphMany
+    {
+        return $this->morphMany(Feedback::class, 'feedbackable')->latest();
+    }
+
+    public function unresolvedFeedbacks(): MorphMany
+    {
+        return $this->morphMany(Feedback::class, 'feedbackable')
+            ->whereIn('status', ['new', 'in_progress'])
+            ->latest();
     }
 
     // ─── Accessors ───────────────────────────────

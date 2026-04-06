@@ -19,8 +19,8 @@ class InitialSetupSeeder extends Seeder
         $org = Organization::updateOrCreate([
             'slug' => 'rishipath',
         ], [
-            'name' => 'Rishipath International Foundation',
-            'legal_name' => 'Rishipath International Foundation',
+            'name' => env('ORG_NAME', 'Rishipath International Foundation'),
+            'legal_name' => env('ORG_LEGAL_NAME', 'Rishipath International Foundation'),
             'country_code' => 'IN',
             'currency' => 'INR',
             'timezone' => 'Asia/Kolkata',
@@ -240,12 +240,12 @@ class InitialSetupSeeder extends Seeder
 
         // Create Admin User (idempotent)
         User::updateOrCreate(
-            ['organization_id' => $org->id, 'email' => 'admin@rishipath.org'],
+            ['organization_id' => $org->id, 'email' => env('ADMIN_EMAIL', 'admin@rishipath.org')],
             [
-                'name' => 'Admin User',
-                'phone' => '+91-9876543210',
-                'password' => Hash::make('password'),
-                'pin' => '1234',
+                'name' => env('ADMIN_NAME', 'Admin User'),
+                'phone' => env('ADMIN_PHONE', '+91-9876543210'),
+                'password' => Hash::make(env('ADMIN_PASSWORD', 'password')),
+                'pin' => env('ADMIN_PIN', '1234'),
                 'role_id' => $adminRole->id,
                 'stores' => [$store->id],
                 'permissions' => null,
