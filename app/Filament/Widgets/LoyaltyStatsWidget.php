@@ -46,13 +46,11 @@ class LoyaltyStatsWidget extends BaseWidget
             ->count();
 
         $pointsThisMonth = LoyaltyPoint::where('organization_id', $orgId)
-            ->when($storeId, fn($q) => $q->where('store_id', $storeId))
             ->where('type', 'earned')
             ->whereMonth('created_at', now()->month)
             ->sum('points');
 
         $redemptionsThisMonth = abs(LoyaltyPoint::where('organization_id', $orgId)
-            ->when($storeId, fn($q) => $q->where('store_id', $storeId))
             ->where('type', 'redeemed')
             ->whereMonth('created_at', now()->month)
             ->sum('points'));
