@@ -29,7 +29,17 @@ class SupplierResource extends Resource
                     ->content(fn ($record) => $record?->supplier_code ?? 'Will be auto-generated')
                     ->visible(fn ($record) => $record !== null),
                 Forms\Components\TextInput::make('name')
-                    ->required(),
+                    ->required()
+                    ->maxLength(255)
+                    ->unique(
+                        table: 'suppliers',
+                        column: 'name',
+                        ignoreRecord: true,
+                        modifyRuleUsing: fn ($rule) => $rule->where(
+                            'organization_id',
+                            OrganizationContext::getCurrentOrganizationId() ?? auth()->user()?->organization_id
+                        )
+                    ),
                 Forms\Components\TextInput::make('contact_person'),
                 Forms\Components\Grid::make(2)
                     ->schema([

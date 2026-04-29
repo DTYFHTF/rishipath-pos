@@ -1,0 +1,1419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RishiPath — Pricing Intelligence Calculator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    body { font-family: 'Inter', system-ui, sans-serif; background: #f8f7f4; }
+
+    .tab-active {
+      border-bottom: 3px solid #ea580c;
+      color: #ea580c;
+      font-weight: 600;
+    }
+    .tab-btn { transition: color 0.15s; }
+    .tab-btn:not(.tab-active):hover { color: #374151; }
+
+    .metric-card { transition: transform 0.15s, box-shadow 0.15s; }
+    .metric-card:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+
+    /* Progress bar fill animation */
+    .bar-fill { transition: width 0.4s ease; }
+
+    /* Highlight the recommended channel */
+    .recommended-badge {
+      background: #fef9c3;
+      border: 1px solid #fde047;
+      color: #713f12;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 99px;
+      letter-spacing: 0.3px;
+    }
+
+    /* Gradient headers */
+    .gradient-header { background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%); }
+
+    /* Tier badge colors */
+    .tier-bronze { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+    .tier-silver { background: #f1f5f9; color: #475569; border: 1px solid #94a3b8; }
+    .tier-gold   { background: #fefce8; color: #713f12; border: 1px solid #fbbf24; }
+
+    /* Print styles */
+    @media print {
+      .no-print { display: none !important; }
+      body { background: white !important; }
+      .print-break { page-break-before: always; }
+      #setup-panel { break-inside: avoid; }
+    }
+
+    /* Smooth number transitions */
+    .num { font-variant-numeric: tabular-nums; }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 99px; }
+
+    /* Input focus */
+    input:focus, select:focus { outline: none; ring: 2px; }
+
+    /* Saved products pill */
+    .product-pill {
+      cursor: pointer;
+      padding: 4px 12px;
+      border-radius: 99px;
+      font-size: 12px;
+      border: 1.5px solid #e5e7eb;
+      background: white;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .product-pill:hover { border-color: #ea580c; color: #ea580c; }
+    .product-pill.active-pill { background: #fff7ed; border-color: #ea580c; color: #ea580c; font-weight: 600; }
+
+    /* Alert colors for margin health */
+    .health-great { color: #16a34a; }
+    .health-ok    { color: #d97706; }
+    .health-warn  { color: #dc2626; }
+  </style>
+</head>
+<body class="min-h-screen">
+
+<!-- ============================================================ HEADER -->
+<header class="gradient-header text-white shadow-md no-print sticky top-0 z-50">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <span class="text-2xl">🌿</span>
+      <div>
+        <div class="font-bold text-lg leading-tight">RishiPath</div>
+        <div class="text-orange-200 text-xs leading-tight">Pricing Intelligence Calculator</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <select id="currency" onchange="updateAll()"
+        class="bg-white/20 text-white border border-white/30 rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-white/50 cursor-pointer">
+        <option value="NPR">रू NPR — Nepal</option>
+        <option value="INR">₹ INR — India</option>
+        <option value="USD">$ USD</option>
+      </select>
+      <button onclick="window.print()"
+        class="bg-white/20 hover:bg-white/30 text-white border border-white/30 rounded-lg px-3 py-1.5 text-sm transition flex items-center gap-1.5">
+        🖨️ Print
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ============================================================ MAIN -->
+<div class="max-w-7xl mx-auto px-4 py-6 space-y-5">
+
+  <!-- ─── SETUP PANEL ─── -->
+  <div id="setup-panel" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+    <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+      <h2 class="font-semibold text-gray-800 text-base">Product Setup</h2>
+      <div class="flex items-center gap-2 flex-wrap no-print">
+        <div id="savedPillsRow" class="flex gap-2 flex-wrap"></div>
+        <button onclick="saveCurrentProduct()"
+          class="text-xs text-orange-600 border border-orange-300 rounded-full px-3 py-1 hover:bg-orange-50 transition">
+          + Save Product
+        </button>
+        <button onclick="resetMarkups()"
+          class="text-xs text-gray-400 hover:text-gray-600 transition ml-1">
+          Reset defaults
+        </button>
+      </div>
+    </div>
+
+    <!-- Row 1: Product Name + CP -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+      <div class="md:col-span-1">
+        <label class="block text-xs font-medium text-gray-500 mb-1">Product Name</label>
+        <input type="text" id="productName" placeholder="e.g., Amla Hair Oil 100ml"
+          class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-300"
+          oninput="updateAll()" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1">Cost Price (CP) <span class="text-gray-400 font-normal">— what it costs you</span></label>
+        <div class="relative">
+          <span id="sym-main" class="absolute left-3 top-2.5 text-gray-400 text-sm">रू</span>
+          <input type="number" id="costPrice" placeholder="0.00" min="0" step="0.01"
+            class="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-300 num"
+            oninput="updateAll()" />
+        </div>
+      </div>
+      <!-- Spacer -->
+      <div class="hidden md:block"></div>
+    </div>
+
+    <!-- Row 2: Markup Configuration -->
+    <div class="border-t border-gray-100 pt-4">
+      <p class="text-xs text-gray-400 font-medium uppercase tracking-wide mb-3">Pricing Formula Configuration</p>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="bg-blue-50 rounded-xl p-3">
+          <label class="block text-xs text-blue-600 font-medium mb-1">Standard Wholesale</label>
+          <div class="flex items-center gap-1">
+            <span class="text-gray-400 text-xs">CP +</span>
+            <input type="number" id="wholesaleMarkup" value="13" min="0" max="999" step="0.5"
+              class="w-16 px-2 py-1 border border-blue-200 rounded text-sm text-center focus:ring-2 focus:ring-blue-300"
+              oninput="updateAll()" />
+            <span class="text-gray-400 text-xs">%</span>
+          </div>
+          <p class="text-xs text-blue-400 mt-1">For distributors / agents</p>
+        </div>
+        <div class="bg-green-50 rounded-xl p-3">
+          <label class="block text-xs text-green-600 font-medium mb-1">Visited Store</label>
+          <div class="flex items-center gap-1">
+            <span class="text-gray-400 text-xs">CP +</span>
+            <input type="number" id="visitedMarkup" value="15" min="0" max="999" step="0.5"
+              class="w-16 px-2 py-1 border border-green-200 rounded text-sm text-center focus:ring-2 focus:ring-green-300"
+              oninput="updateAll()" />
+            <span class="text-gray-400 text-xs">%</span>
+          </div>
+          <p class="text-xs text-green-400 mt-1">Team personally visits store</p>
+        </div>
+        <div class="bg-orange-50 rounded-xl p-3">
+          <label class="block text-xs text-orange-600 font-medium mb-1">MRP / Retail</label>
+          <div class="flex items-center gap-1">
+            <span class="text-gray-400 text-xs">CP +</span>
+            <input type="number" id="mrpMarkup" value="25" min="0" max="999" step="0.5"
+              class="w-16 px-2 py-1 border border-orange-200 rounded text-sm text-center focus:ring-2 focus:ring-orange-300"
+              oninput="updateAll()" />
+            <span class="text-gray-400 text-xs">%</span>
+          </div>
+          <p class="text-xs text-orange-400 mt-1">End consumer / shelf price</p>
+        </div>
+        <div class="bg-purple-50 rounded-xl p-3">
+          <label class="block text-xs text-purple-600 font-medium mb-1">Partner Profit Share</label>
+          <div class="flex items-center gap-1">
+            <input type="number" id="partnerShare" value="30" min="0" max="100" step="1"
+              class="w-16 px-2 py-1 border border-purple-200 rounded text-sm text-center focus:ring-2 focus:ring-purple-300"
+              oninput="updateAll()" />
+            <span class="text-gray-400 text-xs">% of profit</span>
+          </div>
+          <p class="text-xs text-purple-400 mt-1">% of total margin to partner</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── QUICK SUMMARY BAR (always visible) ─── -->
+  <div id="summary-bar" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+    <!-- Generated by JS -->
+  </div>
+
+  <!-- ─── TABS ─── -->
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+
+    <!-- Tab Navigation -->
+    <div class="flex border-b border-gray-100 overflow-x-auto no-print bg-gray-50">
+      <button onclick="switchTab('matrix')"  id="tab-matrix"  class="tab-btn tab-active px-5 py-3.5 text-sm whitespace-nowrap">📊 Price Matrix</button>
+      <button onclick="switchTab('chain')"   id="tab-chain"   class="tab-btn px-5 py-3.5 text-sm text-gray-500 whitespace-nowrap">⛓️ Chain Analysis</button>
+      <button onclick="switchTab('partner')" id="tab-partner" class="tab-btn px-5 py-3.5 text-sm text-gray-500 whitespace-nowrap">🤝 Partner Pitch</button>
+      <button onclick="switchTab('volume')"  id="tab-volume"  class="tab-btn px-5 py-3.5 text-sm text-gray-500 whitespace-nowrap">📦 Volume Calculator</button>
+      <button onclick="switchTab('smart')"   id="tab-smart"   class="tab-btn px-5 py-3.5 text-sm text-gray-500 whitespace-nowrap">🎯 Smart Tools</button>
+    </div>
+
+    <!-- ────────────────────────────────── TAB 1: PRICE MATRIX -->
+    <div id="content-matrix" class="tab-content p-5">
+      <p class="text-xs text-gray-400 mb-5 italic">
+        Shows all pricing tiers for a single unit. Enter Cost Price above to populate.
+      </p>
+
+      <!-- Price Tier Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-6" id="tier-cards">
+        <!-- Generated by JS -->
+      </div>
+
+      <!-- Profit Chain Visual (bar) -->
+      <div class="bg-gray-50 rounded-xl p-4 mb-6" id="profit-bar-visual">
+        <!-- Generated by JS -->
+      </div>
+
+      <!-- Full Detail Table -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm" id="matrix-table">
+          <thead>
+            <tr class="bg-gray-50 text-gray-400 text-xs uppercase tracking-wide">
+              <th class="text-left px-4 py-3 rounded-tl-lg font-medium">Channel / Tier</th>
+              <th class="text-right px-4 py-3 font-medium">Selling Price</th>
+              <th class="text-right px-4 py-3 font-medium">Markup (Amt)</th>
+              <th class="text-right px-4 py-3 font-medium">Markup %</th>
+              <th class="text-right px-4 py-3 font-medium">Your Profit / Unit</th>
+              <th class="text-right px-4 py-3 font-medium">Gross Margin %</th>
+              <th class="text-right px-4 py-3 rounded-tr-lg font-medium">Best For</th>
+            </tr>
+          </thead>
+          <tbody id="matrix-tbody">
+            <tr><td colspan="7" class="px-4 py-8 text-center text-gray-300">Enter cost price to see all pricing tiers</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Margin Health Key -->
+      <div class="flex gap-4 mt-3 text-xs text-gray-400 no-print">
+        <span><span class="health-great font-bold">●</span> ≥ 20% — Healthy</span>
+        <span><span class="health-ok font-bold">●</span> 10–19% — Acceptable</span>
+        <span><span class="health-warn font-bold">●</span> &lt; 10% — Thin margin</span>
+      </div>
+    </div>
+
+    <!-- ────────────────────────────────── TAB 2: CHAIN ANALYSIS -->
+    <div id="content-chain" class="tab-content hidden p-5">
+      <p class="text-xs text-gray-400 mb-5 italic">
+        Understand the full profit chain — who earns what between you, your distributors, and end customers.
+      </p>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <!-- Chart -->
+        <div class="bg-gray-50 rounded-xl p-4">
+          <h3 class="font-semibold text-gray-700 text-sm mb-3">Stacked Profit Distribution per Unit</h3>
+          <canvas id="chainChart" height="260"></canvas>
+          <p class="text-xs text-gray-400 mt-2 text-center">Gray = your cost. Colored = your profit. Light = partner/retailer margin</p>
+        </div>
+
+        <!-- Value Chain Breakdown -->
+        <div>
+          <h3 class="font-semibold text-gray-700 text-sm mb-3">Value Chain per Channel</h3>
+          <div id="value-chain-cards" class="space-y-3">
+            <p class="text-gray-300 text-sm">Enter cost price to see value chain</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Channel ROI Comparison Table -->
+      <h3 class="font-semibold text-gray-700 text-sm mb-3">Channel-by-Channel Profit Capture</h3>
+      <div id="channel-roi-table" class="overflow-x-auto">
+        <p class="text-gray-300 text-sm">Enter cost price above</p>
+      </div>
+
+      <!-- Strategy Insight -->
+      <div id="strategy-insight" class="mt-5 bg-amber-50 border border-amber-200 rounded-xl p-4 hidden">
+        <h4 class="font-semibold text-amber-800 text-sm mb-2">💡 Channel Strategy Insight</h4>
+        <div id="strategy-text" class="text-sm text-amber-700 space-y-1"></div>
+      </div>
+    </div>
+
+    <!-- ────────────────────────────────── TAB 3: PARTNER PITCH -->
+    <div id="content-partner" class="tab-content hidden p-5">
+      <!-- Banner -->
+      <div class="gradient-header text-white rounded-xl p-4 mb-5">
+        <h3 class="font-bold text-base mb-0.5">🤝 Retail Partner Earning Calculator</h3>
+        <p class="text-orange-100 text-xs">Show this screen to retail store partners during sales conversations to demonstrate their earning potential.</p>
+      </div>
+
+      <!-- Partner Config -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-5 no-print">
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">You sell to partner at</label>
+          <select id="partnerBuyMode" onchange="updatePartnerTab()"
+            class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-300">
+            <option value="ws">Standard Wholesale (CP +13%)</option>
+            <option value="vs" selected>Visited Store Price (CP +15%)</option>
+            <option value="ps">Revenue Share Price (30% to partner)</option>
+            <option value="custom">Custom Price</option>
+          </select>
+        </div>
+        <div id="custom-buy-div" class="hidden">
+          <label class="block text-xs font-medium text-gray-500 mb-1">Your custom price to partner</label>
+          <div class="relative">
+            <span class="sym-tag absolute left-3 top-2.5 text-gray-400 text-sm">रू</span>
+            <input type="number" id="customPartnerBuy" min="0" step="0.01" placeholder="0.00"
+              class="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-300 num"
+              oninput="updatePartnerTab()" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">Partner sells to customers at</label>
+          <select id="partnerSellMode" onchange="updatePartnerTab()"
+            class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-300">
+            <option value="mrp" selected>MRP (Recommended Retail)</option>
+            <option value="custom">Custom Selling Price</option>
+          </select>
+        </div>
+        <div id="custom-sell-div" class="hidden">
+          <label class="block text-xs font-medium text-gray-500 mb-1">Partner's custom sell price</label>
+          <div class="relative">
+            <span class="sym-tag absolute left-3 top-2.5 text-gray-400 text-sm">रू</span>
+            <input type="number" id="customPartnerSell" min="0" step="0.01" placeholder="0.00"
+              class="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-300 num"
+              oninput="updatePartnerTab()" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Partner Metrics Row -->
+      <div id="partner-metrics" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
+        <!-- Generated by JS -->
+      </div>
+
+      <!-- Monthly Projection -->
+      <div class="bg-purple-50 rounded-xl p-5 border border-purple-100 mb-5">
+        <h4 class="font-semibold text-purple-800 text-sm mb-4">Monthly Revenue Projection for Partner</h4>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Estimated Daily Sales (units)</label>
+            <input type="number" id="dailyUnits" value="5" min="1"
+              class="w-full px-3 py-2 border border-purple-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-300 num"
+              oninput="updatePartnerTab()" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Operating Days / Month</label>
+            <input type="number" id="opDays" value="26" min="1" max="31"
+              class="w-full px-3 py-2 border border-purple-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-300 num"
+              oninput="updatePartnerTab()" />
+          </div>
+          <div class="flex flex-col justify-center items-center bg-white rounded-xl p-3 border border-purple-200">
+            <div class="text-xs text-purple-400 mb-0.5">Partner Earns Monthly</div>
+            <div class="text-2xl font-bold text-purple-700 num" id="monthly-partner-profit">रू 0</div>
+            <div class="text-xs text-purple-400" id="monthly-formula">0 units × 26 days × रू0 profit</div>
+          </div>
+        </div>
+
+        <!-- Projection tiers table -->
+        <div class="mt-4 overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-xs text-purple-400 uppercase">
+                <th class="text-left py-1 font-medium">Daily Units</th>
+                <th class="text-right py-1 font-medium">Monthly Units</th>
+                <th class="text-right py-1 font-medium">Monthly Revenue</th>
+                <th class="text-right py-1 font-medium">Partner Profit</th>
+                <th class="text-right py-1 font-medium">Our Revenue</th>
+              </tr>
+            </thead>
+            <tbody id="projection-tbody">
+              <!-- Generated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ─── PRINTABLE PARTNER PROPOSAL CARD ─── -->
+      <div class="border-2 border-dashed border-orange-300 rounded-2xl p-6 bg-gradient-to-br from-orange-50 to-amber-50">
+        <div class="text-center mb-4">
+          <div class="text-3xl mb-1">🌿</div>
+          <div class="text-xl font-bold text-orange-700">RishiPath Partner Program</div>
+          <div class="text-gray-500 text-sm">Retail Partnership Opportunity</div>
+          <div id="pitch-product-name" class="mt-1 text-sm font-semibold text-gray-700"></div>
+        </div>
+        <div id="partner-card-content" class="text-center text-gray-400 text-sm py-4">
+          Enter product cost price above to generate the partner pitch card
+        </div>
+      </div>
+    </div>
+
+    <!-- ────────────────────────────────── TAB 4: VOLUME CALCULATOR -->
+    <div id="content-volume" class="tab-content hidden p-5">
+      <p class="text-xs text-gray-400 mb-5 italic">
+        Calculate revenue and profit for any order quantity at any pricing tier.
+      </p>
+
+      <!-- Config Row -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">Pricing Channel</label>
+          <select id="volChannel" onchange="updateVolumeTab()"
+            class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-300">
+            <option value="ws">Standard Wholesale</option>
+            <option value="vs">Visited Store Price</option>
+            <option value="ps">Partner Share Price</option>
+            <option value="mrp">MRP / Retail Price</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">Number of Units</label>
+          <input type="number" id="volUnits" value="100" min="1"
+            class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-300 num"
+            oninput="updateVolumeTab()" />
+        </div>
+        <div class="flex flex-col justify-end">
+          <div id="vol-unit-economics" class="text-sm text-gray-500">
+            — enter cost price above —
+          </div>
+        </div>
+      </div>
+
+      <!-- Big Metrics -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="metric-card bg-blue-50 rounded-xl p-4 border border-blue-100 text-center">
+          <div class="text-xs text-blue-400 font-medium uppercase mb-1">Total Revenue</div>
+          <div class="text-2xl font-bold text-blue-700 num" id="vol-revenue">रू 0</div>
+          <div class="text-xs text-blue-400 num" id="vol-price-tag">at रू 0/unit</div>
+        </div>
+        <div class="metric-card bg-green-50 rounded-xl p-4 border border-green-100 text-center">
+          <div class="text-xs text-green-400 font-medium uppercase mb-1">Your Total Profit</div>
+          <div class="text-2xl font-bold text-green-700 num" id="vol-profit">रू 0</div>
+          <div class="text-xs text-green-400 num" id="vol-ppu">रू 0/unit</div>
+        </div>
+        <div class="metric-card bg-gray-50 rounded-xl p-4 border border-gray-100 text-center">
+          <div class="text-xs text-gray-400 font-medium uppercase mb-1">Total Cost Outlay</div>
+          <div class="text-2xl font-bold text-gray-700 num" id="vol-cost">रू 0</div>
+          <div class="text-xs text-gray-400 num" id="vol-cp-tag">at रू 0/unit CP</div>
+        </div>
+        <div class="metric-card bg-orange-50 rounded-xl p-4 border border-orange-100 text-center">
+          <div class="text-xs text-orange-400 font-medium uppercase mb-1">Gross Margin</div>
+          <div class="text-2xl font-bold text-orange-700 num" id="vol-margin">0%</div>
+          <div class="text-xs text-orange-400">On selling price</div>
+        </div>
+      </div>
+
+      <!-- Bulk Discount Incentive -->
+      <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5">
+        <h4 class="font-semibold text-amber-800 text-sm mb-3">💰 Bulk Order Discount — What Discount Can You Offer?</h4>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Minimum margin you need to maintain (%)</label>
+            <input type="number" id="minMargin" value="10" min="0" max="100" step="0.5"
+              class="w-full px-3 py-2 border border-amber-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-300"
+              oninput="updateVolumeTab()" />
+          </div>
+          <div id="bulk-discount-result" class="flex items-center">
+            <p class="text-xs text-amber-700">Maximum discount you can give: <span id="max-discount-pct" class="font-bold text-amber-900">—</span></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Order Comparison Table -->
+      <h3 class="font-semibold text-gray-700 text-sm mb-3">Order Size Comparison — All Tiers</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-gray-50 text-gray-400 text-xs uppercase tracking-wide">
+              <th class="text-left px-4 py-3 font-medium">Units</th>
+              <th class="text-right px-4 py-3 font-medium">WS Revenue</th>
+              <th class="text-right px-4 py-3 font-medium">Visited Revenue</th>
+              <th class="text-right px-4 py-3 font-medium">MRP Revenue</th>
+              <th class="text-right px-4 py-3 font-medium">WS Profit</th>
+              <th class="text-right px-4 py-3 font-medium">Visited Profit</th>
+              <th class="text-right px-4 py-3 font-medium">MRP Profit</th>
+            </tr>
+          </thead>
+          <tbody id="vol-comparison-tbody">
+            <tr><td colspan="7" class="px-4 py-8 text-center text-gray-300">Enter cost price above</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ────────────────────────────────── TAB 5: SMART TOOLS -->
+    <div id="content-smart" class="tab-content hidden p-5">
+      <p class="text-xs text-gray-400 mb-5 italic">
+        Advanced pricing tools for strategic decisions.
+      </p>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+        <!-- Target Margin Calculator -->
+        <div class="bg-green-50 rounded-xl p-5 border border-green-200">
+          <h3 class="font-semibold text-green-800 text-sm mb-4">🎯 Target Margin → Required Price</h3>
+          <p class="text-xs text-gray-500 mb-3">If you need a specific gross margin %, what price should you charge?</p>
+          <div class="space-y-3">
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">Your Cost Price</label>
+              <div class="font-semibold text-gray-700 text-sm" id="sm-cp-show">Enter CP above ↑</div>
+            </div>
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">Desired Gross Margin (%)</label>
+              <input type="number" id="targetMarginPct" value="20" min="1" max="99" step="0.5"
+                class="w-full px-3 py-2 border border-green-300 rounded-lg text-sm focus:ring-2 focus:ring-green-400"
+                oninput="updateSmartTab()" />
+            </div>
+            <div class="bg-white rounded-lg p-3 border border-green-100">
+              <div class="text-xs text-gray-400 mb-0.5">Required Selling Price:</div>
+              <div class="text-2xl font-bold text-green-700 num" id="sm-target-price">रू 0</div>
+              <div class="flex justify-between text-xs text-gray-400 mt-1">
+                <span>Profit/unit: <span class="text-green-600 font-medium num" id="sm-target-profit">रू 0</span></span>
+                <span>Markup: <span class="font-medium" id="sm-target-markup">0%</span></span>
+              </div>
+            </div>
+            <p class="text-xs text-gray-400">
+              Formula: Price = CP ÷ (1 − margin%)
+            </p>
+          </div>
+        </div>
+
+        <!-- Competitor Price Analysis -->
+        <div class="bg-red-50 rounded-xl p-5 border border-red-200">
+          <h3 class="font-semibold text-red-800 text-sm mb-4">⚔️ Competitor Price Analysis</h3>
+          <p class="text-xs text-gray-500 mb-3">How does your pricing compare to competitors?</p>
+          <div class="space-y-3">
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">Competitor's Selling Price</label>
+              <div class="relative">
+                <span class="sym-tag absolute left-3 top-2.5 text-gray-400 text-sm">रू</span>
+                <input type="number" id="competitorPrice" placeholder="0.00" min="0"
+                  class="w-full pl-8 pr-3 py-2 border border-red-300 rounded-lg text-sm focus:ring-2 focus:ring-red-400 num"
+                  oninput="updateSmartTab()" />
+              </div>
+            </div>
+            <div id="comp-analysis" class="bg-white rounded-lg p-3 border border-red-100 text-xs text-gray-400">
+              Enter competitor's price to analyze positioning
+            </div>
+          </div>
+        </div>
+
+        <!-- Cost Increase Impact -->
+        <div class="bg-blue-50 rounded-xl p-5 border border-blue-200">
+          <h3 class="font-semibold text-blue-800 text-sm mb-4">📈 Raw Material Cost Change Impact</h3>
+          <p class="text-xs text-gray-500 mb-3">If your CP changes, how must you adjust selling prices to maintain margins?</p>
+          <div class="space-y-3">
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">CP change (%)</label>
+              <div class="flex gap-2">
+                <select id="cpChangeDir" onchange="updateSmartTab()"
+                  class="px-3 py-2 border border-blue-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-300">
+                  <option value="up">↑ Increase</option>
+                  <option value="down">↓ Decrease</option>
+                </select>
+                <input type="number" id="cpChangePct" value="10" min="0" max="200" step="1"
+                  class="flex-1 px-3 py-2 border border-blue-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-300 num"
+                  oninput="updateSmartTab()" />
+                <span class="flex items-center text-sm text-gray-400">%</span>
+              </div>
+            </div>
+            <div id="cp-impact-table" class="bg-white rounded-lg p-3 border border-blue-100 text-xs text-gray-400">
+              Enter cost price above
+            </div>
+          </div>
+        </div>
+
+        <!-- Tax-Inclusive Pricing -->
+        <div class="bg-yellow-50 rounded-xl p-5 border border-yellow-200">
+          <h3 class="font-semibold text-yellow-800 text-sm mb-4">🧾 Tax-Inclusive Pricing</h3>
+          <p class="text-xs text-gray-500 mb-3">All prices shown above are pre-tax. See tax-inclusive values here.</p>
+          <div class="space-y-3">
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">Tax Rate</label>
+              <div class="flex gap-2">
+                <select id="taxPreset" onchange="applyTaxPreset()"
+                  class="flex-1 px-3 py-2 border border-yellow-300 rounded-lg text-sm focus:ring-2 focus:ring-yellow-400">
+                  <option value="0">No Tax</option>
+                  <option value="13" selected>VAT 13% (Nepal)</option>
+                  <option value="5">GST 5% (India)</option>
+                  <option value="12">GST 12% (India)</option>
+                  <option value="18">GST 18% (India)</option>
+                  <option value="custom">Custom</option>
+                </select>
+                <input type="number" id="taxRate" value="13" min="0" max="100" step="0.1"
+                  class="w-20 px-3 py-2 border border-yellow-300 rounded-lg text-sm text-center focus:ring-2 focus:ring-yellow-400 num"
+                  oninput="updateSmartTab()" />
+                <span class="flex items-center text-sm text-gray-400">%</span>
+              </div>
+            </div>
+            <div id="tax-price-table" class="bg-white rounded-lg p-3 border border-yellow-100 text-xs text-gray-400">
+              Enter cost price above
+            </div>
+          </div>
+        </div>
+
+        <!-- Break-Even Calculator -->
+        <div class="bg-indigo-50 rounded-xl p-5 border border-indigo-200 md:col-span-2">
+          <h3 class="font-semibold text-indigo-800 text-sm mb-4">📊 Break-Even Analysis</h3>
+          <p class="text-xs text-gray-500 mb-3">How many units do you need to sell to cover your fixed costs?</p>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">Fixed Monthly Costs (Rent, Salaries, etc.)</label>
+              <div class="relative">
+                <span class="sym-tag absolute left-3 top-2.5 text-gray-400 text-sm">रू</span>
+                <input type="number" id="fixedCosts" placeholder="50000" min="0"
+                  class="w-full pl-8 pr-3 py-2 border border-indigo-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-300 num"
+                  oninput="updateSmartTab()" />
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">Selling Channel for Break-Even</label>
+              <select id="beChannel" onchange="updateSmartTab()"
+                class="w-full px-3 py-2 border border-indigo-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-300">
+                <option value="ws">Standard Wholesale</option>
+                <option value="vs">Visited Store</option>
+                <option value="mrp">MRP / Retail</option>
+              </select>
+            </div>
+            <div id="be-result" class="flex flex-col justify-center items-center bg-white rounded-xl p-3 border border-indigo-200 text-center">
+              <div class="text-xs text-indigo-400 mb-0.5">Break-Even Units / Month</div>
+              <div class="text-2xl font-bold text-indigo-700 num" id="be-units">—</div>
+              <div class="text-xs text-indigo-400 num" id="be-revenue">Total Revenue: —</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- end tabs wrapper -->
+
+</div><!-- end main -->
+
+<!-- ============================================================ FOOTER -->
+<footer class="text-center text-xs text-gray-400 py-6 no-print">
+  RishiPath Pricing Calculator — Calculations are for planning purposes only. Actual prices may vary.
+</footer>
+
+<!-- ============================================================ JAVASCRIPT -->
+<script>
+// ─────────────────────────────────────────────────────────
+//  STATE & HELPERS
+// ─────────────────────────────────────────────────────────
+let chainChartInstance = null;
+const SYM = { NPR: 'रू', INR: '₹', USD: '$' };
+const savedProducts = JSON.parse(localStorage.getItem('rp_products') || '[]');
+
+function sym() { return SYM[document.getElementById('currency').value] || 'रू'; }
+
+function fmt(v, decimals = 2) {
+  if (isNaN(v) || v == null) return sym() + ' 0.00';
+  const abs = Math.abs(v);
+  const formatted = abs.toLocaleString('en-IN', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+  return sym() + ' ' + (v < 0 ? '-' : '') + formatted;
+}
+
+function fmtN(v, d = 2) {
+  if (isNaN(v) || v == null) return '0';
+  return parseFloat(v).toFixed(d);
+}
+
+function pct(v) { return fmtN(v) + '%'; }
+
+function cp() { return parseFloat(document.getElementById('costPrice').value) || 0; }
+
+function markups() {
+  return {
+    ws:  parseFloat(document.getElementById('wholesaleMarkup').value) / 100 || 0.13,
+    vs:  parseFloat(document.getElementById('visitedMarkup').value)   / 100 || 0.15,
+    mrp: parseFloat(document.getElementById('mrpMarkup').value)       / 100 || 0.25,
+    ps:  parseFloat(document.getElementById('partnerShare').value)    / 100 || 0.30,
+  };
+}
+
+function compute() {
+  const C = cp();
+  const m = markups();
+  const ws  = C * (1 + m.ws);
+  const vs  = C * (1 + m.vs);
+  const mrp = C * (1 + m.mrp);
+  // Partner share price: price where partner earns `partnerShare` % of total chain profit
+  // totalProfit = mrp - C
+  // partnerEarns = m.ps * totalProfit
+  // we sell to partner at: mrp - partnerEarns
+  const totalProfit  = mrp - C;
+  const partnerEarns = m.ps * totalProfit;
+  const ps           = mrp - partnerEarns;          // our selling price to partner
+  const psOurProfit  = ps - C;
+
+  return { C, ws, vs, mrp, ps, totalProfit, partnerEarns, psOurProfit, m };
+}
+
+function grossMargin(price, cost) {
+  if (price <= 0) return 0;
+  return (price - cost) / price * 100;
+}
+
+function markupPct(price, cost) {
+  if (cost <= 0) return 0;
+  return (price - cost) / cost * 100;
+}
+
+function marginClass(pct) {
+  if (pct >= 20) return 'health-great';
+  if (pct >= 10) return 'health-ok';
+  return 'health-warn';
+}
+
+function marginBg(pct) {
+  if (pct >= 20) return 'bg-green-600';
+  if (pct >= 10) return 'bg-yellow-500';
+  return 'bg-red-500';
+}
+
+// ─────────────────────────────────────────────────────────
+//  MAIN UPDATE DISPATCHER
+// ─────────────────────────────────────────────────────────
+function updateAll() {
+  // Update all currency symbol placeholders
+  document.querySelectorAll('.sym-tag').forEach(el => el.textContent = sym());
+  document.getElementById('sym-main').textContent = sym();
+
+  const p = compute();
+
+  renderSummaryBar(p);
+
+  // Render current visible tab
+  const activeTab = document.querySelector('.tab-content:not(.hidden)').id.replace('content-', '');
+  renderTab(activeTab, p);
+}
+
+function renderTab(tab, p) {
+  p = p || compute();
+  if (tab === 'matrix')  renderMatrix(p);
+  if (tab === 'chain')   renderChain(p);
+  if (tab === 'partner') updatePartnerTab();
+  if (tab === 'volume')  updateVolumeTab();
+  if (tab === 'smart')   updateSmartTab();
+}
+
+// ─────────────────────────────────────────────────────────
+//  SUMMARY BAR
+// ─────────────────────────────────────────────────────────
+function renderSummaryBar(p) {
+  const items = [
+    { label: 'Cost Price',           val: p.C,   sub: 'Your cost',                       color: 'gray'   },
+    { label: 'Wholesale',            val: p.ws,  sub: `+${fmtN(p.m.ws*100)}% markup`,   color: 'blue'   },
+    { label: 'Visited Store',        val: p.vs,  sub: `+${fmtN(p.m.vs*100)}% markup`,   color: 'green'  },
+    { label: 'MRP / Retail',         val: p.mrp, sub: `+${fmtN(p.m.mrp*100)}% markup`,  color: 'orange' },
+  ];
+
+  document.getElementById('summary-bar').innerHTML = items.map(it => `
+    <div class="metric-card bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 flex items-center justify-between">
+      <div>
+        <div class="text-xs font-medium text-${it.color}-500">${it.label}</div>
+        <div class="text-xl font-bold text-${it.color}-700 num">${it.val > 0 ? fmt(it.val) : '—'}</div>
+        <div class="text-xs text-gray-400">${it.sub}</div>
+      </div>
+      ${it.val > 0 ? `<div class="text-${it.color}-100 text-3xl">●</div>` : ''}
+    </div>
+  `).join('');
+}
+
+// ─────────────────────────────────────────────────────────
+//  TAB 1: PRICE MATRIX
+// ─────────────────────────────────────────────────────────
+function renderMatrix(p) {
+  if (p.C <= 0) {
+    document.getElementById('tier-cards').innerHTML = '<div class="sm:col-span-2 xl:col-span-5 text-center text-gray-300 py-6 text-sm">Enter cost price above to see all tiers</div>';
+    document.getElementById('matrix-tbody').innerHTML = '<tr><td colspan="7" class="px-4 py-8 text-center text-gray-300">Enter cost price above to see all pricing tiers</td></tr>';
+    document.getElementById('profit-bar-visual').innerHTML = '<p class="text-gray-300 text-sm text-center">Enter cost price above</p>';
+    return;
+  }
+
+  const tiers = [
+    { key: 'cp',  label: 'Cost Price',          val: p.C,   profitAmt: 0,            bg: 'gray-100',   border: 'gray-200',   text: 'gray-700',   badge: null,            bestFor: 'Internal reference' },
+    { key: 'ws',  label: 'Standard Wholesale',  val: p.ws,  profitAmt: p.ws  - p.C, bg: 'blue-50',    border: 'blue-200',   text: 'blue-700',   badge: null,            bestFor: 'Distributors, agents, resellers' },
+    { key: 'vs',  label: 'Visited Store',        val: p.vs,  profitAmt: p.vs  - p.C, bg: 'green-50',   border: 'green-200',  text: 'green-700',  badge: 'Recommended',   bestFor: 'Field-visited retail stores' },
+    { key: 'ps',  label: 'Partner Share Price',  val: p.ps,  profitAmt: p.psOurProfit, bg: 'purple-50', border: 'purple-200', text: 'purple-700', badge: `${fmtN(p.m.ps*100)}% to partner`, bestFor: 'Revenue-share partnerships' },
+    { key: 'mrp', label: 'MRP / Retail',         val: p.mrp, profitAmt: p.mrp - p.C, bg: 'orange-50',  border: 'orange-200', text: 'orange-700', badge: 'Consumer Price', bestFor: 'Direct retail / shelf price' },
+  ];
+
+  // Cards
+  document.getElementById('tier-cards').innerHTML = tiers.map(t => {
+    const gm = t.key !== 'cp' ? grossMargin(t.val, p.C) : 0;
+    const mkup = t.key !== 'cp' ? markupPct(t.val, p.C) : 0;
+    const barW = p.mrp > 0 ? Math.min(100, t.val / p.mrp * 100) : 0;
+    return `
+      <div class="metric-card bg-${t.bg} rounded-xl border-2 border-${t.border} p-4">
+        <div class="flex items-start justify-between mb-2">
+          <div class="text-xs font-semibold text-${t.text} uppercase tracking-wide leading-tight">${t.label}</div>
+          ${t.badge ? `<span class="recommended-badge ml-1 whitespace-nowrap">${t.badge}</span>` : ''}
+        </div>
+        <div class="text-2xl font-bold text-${t.text} num mb-1">${fmt(t.val)}</div>
+        ${t.key !== 'cp' ? `
+          <div class="flex justify-between text-xs text-gray-500 mt-2">
+            <span>Profit: <span class="font-semibold text-${t.text} num">${fmt(t.profitAmt)}</span></span>
+            <span class="${marginClass(gm)} font-semibold">${pct(gm)} GM</span>
+          </div>
+          <div class="mt-2 bg-${t.border.replace('200','100')} rounded-full h-1.5">
+            <div class="bar-fill ${marginBg(gm)} rounded-full h-1.5" style="width:${barW}%"></div>
+          </div>
+          <div class="text-xs text-gray-400 mt-1">Markup: +${pct(mkup)}</div>
+        ` : `
+          <div class="text-xs text-gray-400 mt-2">${t.bestFor}</div>
+          <div class="mt-3 bg-gray-200 rounded-full h-1.5"><div class="bg-gray-400 rounded-full h-1.5 bar-fill" style="width:100%"></div></div>
+        `}
+      </div>
+    `;
+  }).join('');
+
+  // Visual bar (proportional to MRP)
+  const totalW = p.mrp;
+  const cpW  = (p.C / totalW * 100).toFixed(1);
+  const wsP  = ((p.ws  - p.C) / totalW * 100).toFixed(1);
+  const vsP  = ((p.vs  - p.C) / totalW * 100).toFixed(1);
+  const mrpP = ((p.mrp - p.C) / totalW * 100).toFixed(1);
+
+  document.getElementById('profit-bar-visual').innerHTML = `
+    <h4 class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Proportional Profit Bar (relative to MRP = 100%)</h4>
+    <div class="space-y-2 text-xs">
+      <div>
+        <div class="flex justify-between text-gray-500 mb-0.5"><span>Standard Wholesale</span><span>${fmt(p.ws)}</span></div>
+        <div class="flex h-4 rounded overflow-hidden">
+          <div class="bg-gray-300 bar-fill" style="width:${cpW}%" title="CP: ${fmt(p.C)}"></div>
+          <div class="bg-blue-400 bar-fill" style="width:${wsP}%" title="Your profit: ${fmt(p.ws-p.C)}"></div>
+          <div class="bg-blue-100 flex-1" title="Distributor/reseller margin: ${fmt(p.mrp-p.ws)}"></div>
+        </div>
+        <div class="flex gap-2 mt-0.5 text-gray-400"><span>▪ Cost</span><span class="text-blue-500">▪ Your profit ${fmt(p.ws-p.C)}</span><span class="text-blue-200">▪ Reseller margin ${fmt(p.mrp-p.ws)}</span></div>
+      </div>
+      <div>
+        <div class="flex justify-between text-gray-500 mb-0.5"><span>Visited Store</span><span>${fmt(p.vs)}</span></div>
+        <div class="flex h-4 rounded overflow-hidden">
+          <div class="bg-gray-300 bar-fill" style="width:${cpW}%"></div>
+          <div class="bg-green-400 bar-fill" style="width:${vsP}%"></div>
+          <div class="bg-green-100 flex-1"></div>
+        </div>
+        <div class="flex gap-2 mt-0.5 text-gray-400"><span>▪ Cost</span><span class="text-green-500">▪ Your profit ${fmt(p.vs-p.C)}</span><span class="text-green-200">▪ Store margin ${fmt(p.mrp-p.vs)}</span></div>
+      </div>
+      <div>
+        <div class="flex justify-between text-gray-500 mb-0.5"><span>MRP / Retail (direct)</span><span>${fmt(p.mrp)}</span></div>
+        <div class="flex h-4 rounded overflow-hidden">
+          <div class="bg-gray-300 bar-fill" style="width:${cpW}%"></div>
+          <div class="bg-orange-400 flex-1"></div>
+        </div>
+        <div class="flex gap-2 mt-0.5 text-gray-400"><span>▪ Cost</span><span class="text-orange-500">▪ Full profit ${fmt(p.mrp-p.C)}</span></div>
+      </div>
+    </div>
+  `;
+
+  // Detail table
+  const rows = tiers.filter(t => t.key !== 'cp');
+  document.getElementById('matrix-tbody').innerHTML = rows.map(t => {
+    const gm = grossMargin(t.val, p.C);
+    const mk = markupPct(t.val, p.C);
+    const cls = marginClass(gm);
+    return `
+      <tr class="border-b border-gray-50 hover:bg-${t.bg} transition">
+        <td class="px-4 py-3 font-medium text-${t.text}">
+          ${t.label}
+          ${t.badge ? `<span class="recommended-badge ml-1">${t.badge}</span>` : ''}
+        </td>
+        <td class="px-4 py-3 text-right font-bold text-${t.text} num">${fmt(t.val)}</td>
+        <td class="px-4 py-3 text-right text-gray-600 num">${fmt(t.profitAmt)}</td>
+        <td class="px-4 py-3 text-right text-gray-600">${pct(mk)}</td>
+        <td class="px-4 py-3 text-right font-semibold text-green-600 num">${fmt(t.profitAmt)}</td>
+        <td class="px-4 py-3 text-right font-semibold ${cls}">${pct(gm)}</td>
+        <td class="px-4 py-3 text-right text-xs text-gray-400">${t.bestFor}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// ─────────────────────────────────────────────────────────
+//  TAB 2: CHAIN ANALYSIS
+// ─────────────────────────────────────────────────────────
+function renderChain(p) {
+  if (p.C <= 0) {
+    document.getElementById('value-chain-cards').innerHTML = '<p class="text-gray-300 text-sm">Enter cost price above</p>';
+    document.getElementById('channel-roi-table').innerHTML = '<p class="text-gray-300 text-sm">Enter cost price above</p>';
+    document.getElementById('strategy-insight').classList.add('hidden');
+    if (chainChartInstance) { chainChartInstance.destroy(); chainChartInstance = null; }
+    return;
+  }
+
+  // Chart
+  if (chainChartInstance) chainChartInstance.destroy();
+  const ctx = document.getElementById('chainChart').getContext('2d');
+  chainChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Wholesale\n(CP +' + fmtN(p.m.ws*100) + '%)', 'Visited Store\n(CP +' + fmtN(p.m.vs*100) + '%)', 'Partner Share\n(' + fmtN(p.m.ps*100) + '% to partner)', 'MRP / Retail\n(CP +' + fmtN(p.m.mrp*100) + '%)'],
+      datasets: [
+        {
+          label: 'Cost (CP)',
+          data: [p.C, p.C, p.C, p.C],
+          backgroundColor: '#94a3b8',
+        },
+        {
+          label: 'Your Profit',
+          data: [p.ws - p.C, p.vs - p.C, p.psOurProfit, p.mrp - p.C],
+          backgroundColor: ['#60a5fa', '#4ade80', '#a78bfa', '#fb923c'],
+        },
+        {
+          label: 'Retailer / Partner Margin',
+          data: [p.mrp - p.ws, p.mrp - p.vs, p.partnerEarns, 0],
+          backgroundColor: ['#bfdbfe', '#bbf7d0', '#ede9fe', '#fed7aa'],
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        x: { stacked: true },
+        y: {
+          stacked: true,
+          ticks: { callback: v => sym() + v.toFixed(0) }
+        }
+      },
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: c => c.dataset.label + ': ' + fmt(c.raw)
+          }
+        }
+      }
+    }
+  });
+
+  // Value chain cards
+  const channels = [
+    { name: 'Standard Wholesale Channel', price: p.ws, yourProfit: p.ws - p.C, nextLabel: 'Distributor/Reseller earns (MRP − WS)', nextAmt: p.mrp - p.ws, color: 'blue' },
+    { name: 'Visited Store Channel',      price: p.vs, yourProfit: p.vs - p.C, nextLabel: 'Retail store earns (MRP − VS)',          nextAmt: p.mrp - p.vs, color: 'green' },
+    { name: 'Partner Share Channel',      price: p.ps, yourProfit: p.psOurProfit, nextLabel: `Partner earns (${fmtN(p.m.ps*100)}% of total profit)`, nextAmt: p.partnerEarns, color: 'purple' },
+  ];
+
+  document.getElementById('value-chain-cards').innerHTML = channels.map(c => {
+    const yourSharePct = (c.yourProfit / p.totalProfit * 100);
+    const nextSharePct = (c.nextAmt / p.totalProfit * 100);
+    return `
+      <div class="bg-${c.color}-50 rounded-xl p-4 border border-${c.color}-100">
+        <div class="font-semibold text-${c.color}-800 text-sm mb-2">${c.name}</div>
+        <div class="grid grid-cols-2 gap-2 text-xs mb-2">
+          <div class="text-gray-500">You sell at <span class="font-bold text-${c.color}-700 num">${fmt(c.price)}</span></div>
+          <div class="text-gray-500">Your profit <span class="font-bold text-green-600 num">${fmt(c.yourProfit)}</span> <span class="text-gray-400">(${fmtN(yourSharePct)}% of chain)</span></div>
+        </div>
+        <div class="text-xs text-gray-400 mb-2">${c.nextLabel}: <span class="font-medium text-gray-500 num">${fmt(c.nextAmt)}</span> <span class="text-gray-400">(${fmtN(nextSharePct)}% of chain)</span></div>
+        <div class="flex gap-0.5 h-3 rounded overflow-hidden">
+          <div class="bg-gray-300" style="width:${(p.C/p.mrp*100).toFixed(1)}%" title="Cost"></div>
+          <div class="bg-${c.color}-400" style="width:${(c.yourProfit/p.mrp*100).toFixed(1)}%" title="Your profit"></div>
+          <div class="bg-${c.color}-200 flex-1" title="Partner/retailer"></div>
+        </div>
+        <div class="flex justify-between text-xs text-gray-300 mt-0.5">
+          <span>Cost ${fmt(p.C)}</span>
+          <span>Your profit ${fmt(c.yourProfit)}</span>
+          <span>Next ${fmt(c.nextAmt)}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // ROI Table
+  const roiRows = [
+    { ch: 'Standard Wholesale', price: p.ws,  yourP: p.ws-p.C,  nextP: p.mrp-p.ws,      nextLabel: 'Distributor' },
+    { ch: 'Visited Store',      price: p.vs,  yourP: p.vs-p.C,  nextP: p.mrp-p.vs,      nextLabel: 'Retailer' },
+    { ch: 'Partner Share',      price: p.ps,  yourP: p.psOurProfit, nextP: p.partnerEarns, nextLabel: 'Partner' },
+    { ch: 'MRP / Retail',       price: p.mrp, yourP: p.mrp-p.C, nextP: 0,                nextLabel: '—' },
+  ];
+
+  document.getElementById('channel-roi-table').innerHTML = `
+    <table class="w-full text-sm">
+      <thead><tr class="bg-gray-50 text-gray-400 text-xs uppercase">
+        <th class="text-left px-4 py-2 font-medium">Channel</th>
+        <th class="text-right px-4 py-2 font-medium">Your Selling Price</th>
+        <th class="text-right px-4 py-2 font-medium">Your Profit / Unit</th>
+        <th class="text-right px-4 py-2 font-medium">Your Share of Chain %</th>
+        <th class="text-right px-4 py-2 font-medium">${'Next Party'} Profit</th>
+        <th class="text-right px-4 py-2 font-medium">Their Share %</th>
+        <th class="text-right px-4 py-2 font-medium">Gross Margin</th>
+      </tr></thead>
+      <tbody>${roiRows.map(r => {
+        const yourSharePct = p.totalProfit > 0 ? (r.yourP / p.totalProfit * 100) : 0;
+        const nextSharePct = p.totalProfit > 0 ? (r.nextP / p.totalProfit * 100) : 0;
+        const gm = grossMargin(r.price, p.C);
+        return `<tr class="border-b border-gray-50 hover:bg-gray-50 transition">
+          <td class="px-4 py-3 font-medium text-gray-700">${r.ch}</td>
+          <td class="px-4 py-3 text-right font-bold text-gray-700 num">${fmt(r.price)}</td>
+          <td class="px-4 py-3 text-right font-semibold text-green-600 num">${fmt(r.yourP)}</td>
+          <td class="px-4 py-3 text-right">
+            <div class="flex items-center justify-end gap-2">
+              <div class="w-16 bg-gray-100 rounded h-1.5"><div class="bg-blue-400 h-1.5 rounded bar-fill" style="width:${yourSharePct.toFixed(0)}%"></div></div>
+              <span class="font-medium">${fmtN(yourSharePct)}%</span>
+            </div>
+          </td>
+          <td class="px-4 py-3 text-right text-gray-500 num">${r.nextP > 0 ? fmt(r.nextP) : '—'}</td>
+          <td class="px-4 py-3 text-right text-gray-500">${r.nextP > 0 ? fmtN(nextSharePct) + '%' : '—'}</td>
+          <td class="px-4 py-3 text-right font-semibold ${marginClass(gm)}">${pct(gm)}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>
+  `;
+
+  // Strategy insight
+  const wsDiff = p.vs - p.ws;
+  const insight = document.getElementById('strategy-insight');
+  const text = document.getElementById('strategy-text');
+  insight.classList.remove('hidden');
+  const lines = [];
+  lines.push(`📦 <strong>Standard Wholesale</strong> captures <strong>${fmtN(grossMargin(p.ws,p.C))}% gross margin</strong> — best for volume with minimal field effort.`);
+  lines.push(`🤝 <strong>Visited Store</strong> earns you ${fmt(wsDiff)} more per unit vs standard wholesale. If your team can visit <strong>${Math.round(50 / wsDiff)} stores/month</strong>, that's ${sym()} 50+ extra monthly per store.`);
+  if (p.partnerEarns > (p.mrp - p.vs)) {
+    lines.push(`⚠️ The <strong>Partner Share model</strong> gives partners <strong>${fmt(p.partnerEarns)}/unit</strong> — more than the Visited Store model (${fmt(p.mrp - p.vs)}/unit). Use it for high-volume partners who need extra incentive.`);
+  } else {
+    lines.push(`💎 At <strong>MRP / Direct Retail</strong>, you capture <strong>100% of the chain profit</strong> (${fmt(p.mrp - p.C)}/unit). If you can sell direct, this is your most profitable channel.`);
+  }
+  text.innerHTML = lines.map(l => `<p>${l}</p>`).join('');
+}
+
+// ─────────────────────────────────────────────────────────
+//  TAB 3: PARTNER PITCH
+// ─────────────────────────────────────────────────────────
+function updatePartnerTab() {
+  const p = compute();
+  const buyMode  = document.getElementById('partnerBuyMode').value;
+  const sellMode = document.getElementById('partnerSellMode').value;
+
+  document.getElementById('custom-buy-div').classList.toggle('hidden', buyMode !== 'custom');
+  document.getElementById('custom-sell-div').classList.toggle('hidden', sellMode !== 'custom');
+
+  const buyPriceMap = { ws: p.ws, vs: p.vs, ps: p.ps, custom: parseFloat(document.getElementById('customPartnerBuy').value) || 0 };
+  const buyPrice  = buyPriceMap[buyMode] || 0;
+  const sellPrice = sellMode === 'mrp' ? p.mrp : (parseFloat(document.getElementById('customPartnerSell').value) || 0);
+
+  const partnerProfit = sellPrice - buyPrice;
+  const partnerGM     = grossMargin(sellPrice, buyPrice);
+  const ourProfit     = buyPrice - p.C;
+  const ourGM         = grossMargin(buyPrice, p.C);
+  const partnerShareOfChain = p.totalProfit > 0 ? (partnerProfit / p.totalProfit * 100) : 0;
+
+  const daily = parseInt(document.getElementById('dailyUnits').value) || 5;
+  const days  = parseInt(document.getElementById('opDays').value)    || 26;
+  const monthlyPartner = partnerProfit * daily * days;
+  const monthlyOur     = ourProfit * daily * days;
+
+  // Metrics row
+  const metrics = [
+    { label: 'Partner Buys At',        val: buyPrice,      sub: 'What you charge them',     color: 'purple' },
+    { label: 'Partner Sells At',        val: sellPrice,     sub: 'End-consumer price',       color: 'blue'   },
+    { label: 'Partner Profit / Unit',   val: partnerProfit, sub: pct(partnerGM) + ' margin', color: partnerProfit > 0 ? 'green' : 'red' },
+    { label: 'Your Profit / Unit',      val: ourProfit,     sub: pct(ourGM) + ' margin',     color: 'orange' },
+  ];
+
+  document.getElementById('partner-metrics').innerHTML = metrics.map(m => `
+    <div class="metric-card bg-${m.color}-50 rounded-xl border border-${m.color}-100 p-4 text-center">
+      <div class="text-xs text-${m.color}-400 font-medium uppercase mb-1">${m.label}</div>
+      <div class="text-xl font-bold text-${m.color}-700 num">${m.val > 0 ? fmt(m.val) : '—'}</div>
+      <div class="text-xs text-${m.color}-400">${m.sub}</div>
+    </div>
+  `).join('');
+
+  // Monthly projection
+  document.getElementById('monthly-partner-profit').textContent = partnerProfit > 0 ? fmt(monthlyPartner) : '—';
+  document.getElementById('monthly-formula').textContent = `${daily} units × ${days} days × ${fmt(partnerProfit)} profit`;
+
+  // Projection table
+  const projUnits = [2, 5, 10, 20, 50, 100];
+  document.getElementById('projection-tbody').innerHTML = projUnits.map(u => {
+    const total = u * days;
+    const rev   = sellPrice * total;
+    const pPro  = partnerProfit * total;
+    const oPro  = ourProfit * total;
+    const hi = u === daily ? 'bg-purple-50 font-semibold' : '';
+    return `<tr class="${hi} border-t border-purple-100 text-xs">
+      <td class="py-1.5">${u}/day</td>
+      <td class="text-right num">${total}</td>
+      <td class="text-right num">${fmt(rev)}</td>
+      <td class="text-right num text-green-600">${partnerProfit > 0 ? fmt(pPro) : '—'}</td>
+      <td class="text-right num text-orange-600">${ourProfit > 0 ? fmt(oPro) : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  // Partner card (printable)
+  const pName = document.getElementById('productName').value;
+  document.getElementById('pitch-product-name').textContent = pName ? `Product: ${pName}` : '';
+
+  if (p.C > 0 && buyPrice > 0 && sellPrice > 0 && partnerProfit > 0) {
+    document.getElementById('partner-card-content').innerHTML = `
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5 text-left">
+        <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
+          <div class="text-xs text-gray-400 mb-1">You Purchase From Us At</div>
+          <div class="text-2xl font-bold text-purple-700 num">${fmt(buyPrice)}</div>
+          <div class="text-xs text-gray-400">per unit</div>
+        </div>
+        <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
+          <div class="text-xs text-gray-400 mb-1">Recommended Selling Price</div>
+          <div class="text-2xl font-bold text-blue-700 num">${fmt(sellPrice)}</div>
+          <div class="text-xs text-gray-400">per unit (MRP)</div>
+        </div>
+        <div class="bg-green-100 rounded-xl border border-green-300 p-4 text-center">
+          <div class="text-xs text-green-600 font-semibold mb-1">YOUR PROFIT PER UNIT</div>
+          <div class="text-3xl font-extrabold text-green-700 num">${fmt(partnerProfit)}</div>
+          <div class="text-xs text-green-500">${pct(partnerGM)} margin · ${fmtN(partnerShareOfChain)}% of chain profit</div>
+        </div>
+      </div>
+      <div class="bg-gradient-to-r from-orange-500 to-orange-400 text-white rounded-xl p-5 mb-4">
+        <div class="text-sm font-semibold mb-1 text-orange-100">If you sell just ${daily} units/day (${daily * days}/month):</div>
+        <div class="text-4xl font-extrabold num">${fmt(monthlyPartner)}</div>
+        <div class="text-orange-100 text-sm mt-1">Monthly profit for your store</div>
+      </div>
+      <div class="grid grid-cols-3 gap-3 text-xs text-center mb-3">
+        <div class="bg-white rounded-lg p-2 border border-gray-100">
+          <div class="text-gray-400">Annual Potential</div>
+          <div class="font-bold text-gray-700 num">${fmt(monthlyPartner * 12)}</div>
+        </div>
+        <div class="bg-white rounded-lg p-2 border border-gray-100">
+          <div class="text-gray-400">Per-Unit Margin</div>
+          <div class="font-bold text-green-600">${pct(partnerGM)}</div>
+        </div>
+        <div class="bg-white rounded-lg p-2 border border-gray-100">
+          <div class="text-gray-400">Chain Profit Share</div>
+          <div class="font-bold text-purple-600">${fmtN(partnerShareOfChain)}%</div>
+        </div>
+      </div>
+      <p class="text-xs text-gray-400 text-center">* Projections are based on estimated sales volumes. Actual results may vary.</p>
+    `;
+  } else {
+    document.getElementById('partner-card-content').innerHTML = '<p class="text-gray-300 py-4">Enter cost price and configure partner pricing above</p>';
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+//  TAB 4: VOLUME CALCULATOR
+// ─────────────────────────────────────────────────────────
+function updateVolumeTab() {
+  const p = compute();
+  const ch    = document.getElementById('volChannel').value;
+  const units = parseInt(document.getElementById('volUnits').value) || 0;
+  const mm    = parseFloat(document.getElementById('minMargin').value) || 0;
+
+  const priceMap = { ws: p.ws, vs: p.vs, ps: p.ps, mrp: p.mrp };
+  const price = priceMap[ch] || 0;
+  const profitPU = price - p.C;
+  const gm = grossMargin(price, p.C);
+
+  document.getElementById('vol-revenue').textContent  = p.C > 0 ? fmt(price * units) : '—';
+  document.getElementById('vol-price-tag').textContent = `at ${fmt(price)}/unit`;
+  document.getElementById('vol-profit').textContent    = p.C > 0 ? fmt(profitPU * units) : '—';
+  document.getElementById('vol-ppu').textContent       = `${fmt(profitPU)}/unit`;
+  document.getElementById('vol-cost').textContent      = p.C > 0 ? fmt(p.C * units) : '—';
+  document.getElementById('vol-cp-tag').textContent    = `at ${fmt(p.C)}/unit CP`;
+  document.getElementById('vol-margin').textContent    = p.C > 0 ? pct(gm) : '—';
+
+  document.getElementById('vol-unit-economics').textContent =
+    p.C > 0 ? `Per unit: sell ${fmt(price)} − cost ${fmt(p.C)} = profit ${fmt(profitPU)} (${pct(gm)} margin)` : '— enter cost price above —';
+
+  // Max discount for given min margin
+  if (p.C > 0) {
+    // At min margin M: price = CP / (1 - M/100)
+    const minPrice = p.C / (1 - mm / 100);
+    const maxDiscountAmt = price - minPrice;
+    const maxDiscountPct = price > 0 ? (maxDiscountAmt / price * 100) : 0;
+    document.getElementById('max-discount-pct').textContent =
+      maxDiscountAmt > 0
+        ? `${pct(maxDiscountPct)} (${fmt(maxDiscountAmt)}/unit) — floor price: ${fmt(minPrice)}`
+        : 'No room for discount at this margin floor';
+  }
+
+  if (p.C <= 0) {
+    document.getElementById('vol-comparison-tbody').innerHTML = '<tr><td colspan="7" class="px-4 py-8 text-center text-gray-300">Enter cost price above</td></tr>';
+    return;
+  }
+
+  const qtys = [10, 25, 50, 100, 250, 500, 1000];
+  document.getElementById('vol-comparison-tbody').innerHTML = qtys.map(q => {
+    const hiCls = q === units ? 'bg-orange-50 font-semibold' : 'hover:bg-gray-50';
+    return `<tr class="${hiCls} border-b border-gray-50 transition text-xs">
+      <td class="px-4 py-2.5 font-medium">${q.toLocaleString()} units</td>
+      <td class="px-4 py-2.5 text-right num">${fmt(p.ws  * q)}</td>
+      <td class="px-4 py-2.5 text-right num">${fmt(p.vs  * q)}</td>
+      <td class="px-4 py-2.5 text-right num font-semibold text-orange-600">${fmt(p.mrp * q)}</td>
+      <td class="px-4 py-2.5 text-right num text-green-600">${fmt((p.ws -p.C)*q)}</td>
+      <td class="px-4 py-2.5 text-right num text-green-600">${fmt((p.vs -p.C)*q)}</td>
+      <td class="px-4 py-2.5 text-right num text-green-700 font-semibold">${fmt((p.mrp-p.C)*q)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ─────────────────────────────────────────────────────────
+//  TAB 5: SMART TOOLS
+// ─────────────────────────────────────────────────────────
+function updateSmartTab() {
+  const p = compute();
+  const s = sym();
+
+  // ── Target Margin
+  document.getElementById('sm-cp-show').textContent = p.C > 0 ? fmt(p.C) : 'Enter CP above ↑';
+  const tgtM = parseFloat(document.getElementById('targetMarginPct').value) || 0;
+  const tgtPrice  = p.C > 0 && tgtM < 100 ? p.C / (1 - tgtM / 100) : 0;
+  const tgtProfit = tgtPrice - p.C;
+  const tgtMkup   = markupPct(tgtPrice, p.C);
+  document.getElementById('sm-target-price').textContent  = fmt(tgtPrice);
+  document.getElementById('sm-target-profit').textContent = fmt(tgtProfit);
+  document.getElementById('sm-target-markup').textContent = pct(tgtMkup);
+
+  // ── Competitor
+  const compPrice = parseFloat(document.getElementById('competitorPrice').value) || 0;
+  const compEl = document.getElementById('comp-analysis');
+  if (compPrice > 0 && p.C > 0) {
+    const ourMrpDiff   = ((p.mrp - compPrice) / compPrice * 100);
+    const compGM       = grossMargin(compPrice, p.C);
+    const matchMkup    = markupPct(compPrice, p.C);
+    const above = ourMrpDiff > 0;
+    compEl.innerHTML = `
+      <div class="space-y-2">
+        <div class="flex justify-between items-center">
+          <span class="text-gray-500">Our MRP vs Competitor:</span>
+          <span class="font-bold ${above ? 'text-red-600' : 'text-green-600'}">
+            ${above ? '↑' : '↓'} ${Math.abs(ourMrpDiff).toFixed(1)}% ${above ? 'higher' : 'lower'}
+          </span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-gray-500">If we match their price:</span>
+          <span class="font-medium">Margin = <span class="${marginClass(compGM)}">${pct(compGM)}</span>, Markup = ${pct(matchMkup)}</span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-gray-500">Break-even vs competitor price:</span>
+          <span class="font-medium">${compPrice >= p.ws ? '✅ Above WS' : '❌ Below our WS'}</span>
+        </div>
+        <div class="pt-1 border-t border-gray-100 text-gray-600 ${above ? 'bg-red-50 p-2 rounded' : 'bg-green-50 p-2 rounded'}">
+          ${above
+            ? '⚠️ Our MRP is higher than competitor. Justify with quality, brand trust, or reduce markup.'
+            : '✅ We are priced below competitor — competitive advantage. Consider raising MRP to improve margins.'}
+        </div>
+      </div>
+    `;
+  } else {
+    compEl.innerHTML = '<p class="text-gray-400">Enter competitor\'s price and your cost price to analyze positioning</p>';
+  }
+
+  // ── CP Impact
+  const dir     = document.getElementById('cpChangeDir').value;
+  const cpChg   = parseFloat(document.getElementById('cpChangePct').value) || 0;
+  const cpImpEl = document.getElementById('cp-impact-table');
+  if (p.C > 0) {
+    const newCP  = dir === 'up' ? p.C * (1 + cpChg/100) : p.C * (1 - cpChg/100);
+    const m      = markups();
+    const newWs  = newCP * (1 + m.ws);
+    const newVs  = newCP * (1 + m.vs);
+    const newMrp = newCP * (1 + m.mrp);
+    const diff   = dir === 'up' ? '↑' : '↓';
+    const cls    = dir === 'up' ? 'text-red-600' : 'text-green-600';
+    cpImpEl.innerHTML = `
+      <div class="space-y-1.5">
+        <div class="flex justify-between"><span class="text-gray-500">New CP:</span> <span class="${cls} font-bold num">${fmt(newCP)} <span class="text-gray-400 font-normal text-xs">(was ${fmt(p.C)}, ${diff}${pct(cpChg)})</span></span></div>
+        <div class="flex justify-between"><span class="text-gray-500">New Wholesale:</span>      <span class="font-medium num">${fmt(newWs)}  <span class="text-gray-400 text-xs">(was ${fmt(p.ws)})</span></span></div>
+        <div class="flex justify-between"><span class="text-gray-500">New Visited Store:</span>  <span class="font-medium num">${fmt(newVs)}  <span class="text-gray-400 text-xs">(was ${fmt(p.vs)})</span></span></div>
+        <div class="flex justify-between"><span class="text-gray-500">New MRP:</span>            <span class="font-bold text-orange-700 num">${fmt(newMrp)} <span class="text-gray-400 font-normal text-xs">(was ${fmt(p.mrp)})</span></span></div>
+        <div class="flex justify-between pt-1 border-t border-gray-100">
+          <span class="text-gray-500">MRP change required:</span>
+          <span class="font-semibold ${cls} num">${dir==='up' ? '+' : ''}${fmt(newMrp - p.mrp)}/unit</span>
+        </div>
+      </div>
+    `;
+  } else {
+    cpImpEl.innerHTML = '<p class="text-gray-400">Enter cost price above</p>';
+  }
+
+  // ── Tax
+  const taxPreset = document.getElementById('taxPreset').value;
+  const taxRate   = parseFloat(document.getElementById('taxRate').value) || 0;
+  const taxEl     = document.getElementById('tax-price-table');
+  if (p.C > 0) {
+    const txWs  = p.ws  * (1 + taxRate/100);
+    const txVs  = p.vs  * (1 + taxRate/100);
+    const txMrp = p.mrp * (1 + taxRate/100);
+    taxEl.innerHTML = `
+      <div class="space-y-1.5">
+        <div class="flex justify-between"><span class="text-gray-500">Wholesale + ${taxRate}% tax:</span>     <span class="font-medium num">${fmt(txWs)}</span></div>
+        <div class="flex justify-between"><span class="text-gray-500">Visited Store + ${taxRate}% tax:</span> <span class="font-medium num">${fmt(txVs)}</span></div>
+        <div class="flex justify-between"><span class="text-gray-500">MRP + ${taxRate}% tax:</span>           <span class="font-bold text-orange-600 num">${fmt(txMrp)}</span></div>
+        <div class="flex justify-between pt-1 border-t border-gray-100 text-gray-400">
+          <span>Tax amount on MRP:</span> <span class="num">${fmt(p.mrp * taxRate/100)}</span>
+        </div>
+        <div class="flex justify-between text-gray-400">
+          <span>Your net profit after tax (on MRP):</span> <span class="num">${fmt(p.mrp - p.C - p.mrp * taxRate/100)}</span>
+        </div>
+      </div>
+    `;
+  } else {
+    taxEl.innerHTML = '<p class="text-gray-400">Enter cost price above</p>';
+  }
+
+  // ── Break-Even
+  const fixedCosts = parseFloat(document.getElementById('fixedCosts').value) || 0;
+  const beCh       = document.getElementById('beChannel').value;
+  const bePriceMap = { ws: p.ws, vs: p.vs, mrp: p.mrp };
+  const bePrice    = bePriceMap[beCh] || 0;
+  const beProfitPU = bePrice - p.C;
+
+  if (fixedCosts > 0 && beProfitPU > 0) {
+    const beUnits = Math.ceil(fixedCosts / beProfitPU);
+    const beRev   = beUnits * bePrice;
+    document.getElementById('be-units').textContent   = beUnits.toLocaleString();
+    document.getElementById('be-revenue').textContent = 'Revenue: ' + fmt(beRev);
+  } else {
+    document.getElementById('be-units').textContent   = '—';
+    document.getElementById('be-revenue').textContent = 'Enter fixed costs above';
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+//  TAX PRESET HANDLER
+// ─────────────────────────────────────────────────────────
+function applyTaxPreset() {
+  const v = document.getElementById('taxPreset').value;
+  if (v !== 'custom') {
+    document.getElementById('taxRate').value = v;
+    updateSmartTab();
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+//  TAB SWITCHING
+// ─────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('tab-active'));
+  document.getElementById('content-' + tab).classList.remove('hidden');
+  document.getElementById('tab-' + tab).classList.add('tab-active');
+  renderTab(tab);
+}
+
+// ─────────────────────────────────────────────────────────
+//  RESET MARKUPS
+// ─────────────────────────────────────────────────────────
+function resetMarkups() {
+  document.getElementById('wholesaleMarkup').value = 13;
+  document.getElementById('visitedMarkup').value   = 15;
+  document.getElementById('mrpMarkup').value       = 25;
+  document.getElementById('partnerShare').value    = 30;
+  updateAll();
+}
+
+// ─────────────────────────────────────────────────────────
+//  SAVED PRODUCTS (localStorage)
+// ─────────────────────────────────────────────────────────
+function saveCurrentProduct() {
+  const name = document.getElementById('productName').value.trim();
+  const cost = parseFloat(document.getElementById('costPrice').value) || 0;
+  if (!name || cost <= 0) { alert('Enter product name and cost price before saving.'); return; }
+
+  const product = {
+    name, cost,
+    currency: document.getElementById('currency').value,
+    wsM: document.getElementById('wholesaleMarkup').value,
+    vsM: document.getElementById('visitedMarkup').value,
+    mrpM: document.getElementById('mrpMarkup').value,
+    psM: document.getElementById('partnerShare').value,
+    id: Date.now(),
+  };
+
+  const existing = savedProducts.findIndex(p => p.name === name);
+  if (existing >= 0) savedProducts[existing] = product;
+  else savedProducts.push(product);
+  if (savedProducts.length > 8) savedProducts.shift();
+
+  localStorage.setItem('rp_products', JSON.stringify(savedProducts));
+  renderSavedPills();
+}
+
+function loadProduct(id) {
+  const p = savedProducts.find(p => p.id === id);
+  if (!p) return;
+  document.getElementById('productName').value    = p.name;
+  document.getElementById('costPrice').value      = p.cost;
+  document.getElementById('currency').value       = p.currency || 'NPR';
+  document.getElementById('wholesaleMarkup').value = p.wsM;
+  document.getElementById('visitedMarkup').value   = p.vsM;
+  document.getElementById('mrpMarkup').value       = p.mrpM;
+  document.getElementById('partnerShare').value    = p.psM;
+  renderSavedPills(id);
+  updateAll();
+}
+
+function renderSavedPills(activeId) {
+  document.getElementById('savedPillsRow').innerHTML = savedProducts.map(p => `
+    <span class="product-pill ${p.id === activeId ? 'active-pill' : ''}" onclick="loadProduct(${p.id})">
+      ${p.name}
+    </span>
+  `).join('');
+}
+
+// ─────────────────────────────────────────────────────────
+//  INIT
+// ─────────────────────────────────────────────────────────
+renderSavedPills();
+updateAll();
+</script>
+</body>
+</html>

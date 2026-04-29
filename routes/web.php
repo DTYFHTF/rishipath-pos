@@ -18,3 +18,8 @@ Route::get('/admin/sales/{record}/invoice', function ($recordId) {
         ->header('Content-Type', 'application/pdf')
         ->header('Content-Disposition', 'inline; filename="invoice-' . $sale->invoice_number . '.pdf"');
 })->middleware(['auth'])->name('filament.admin.resources.sales.invoice');
+
+// Pricing calculator - public standalone tool
+Route::get('/price-calculator', function () {
+    return response()->file(public_path('price-calculator.html'));
+})->name('price-calculator');

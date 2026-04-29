@@ -32,13 +32,21 @@ class FeedbackResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        $orgId = OrganizationContext::getCurrentOrganizationId()
-            ?? auth()->user()?->organization_id;
+        try {
+            $orgId = OrganizationContext::getCurrentOrganizationId()
+                ?? auth()->user()?->organization_id;
 
-        return (string) Feedback::where('organization_id', $orgId)
-            ->topLevel()
-            ->whereIn('status', ['new', 'in_progress'])
-            ->count();
+            if (! $orgId) {
+                return null;
+            }
+
+            return (string) Feedback::where('organization_id', $orgId)
+                ->topLevel()
+                ->whereIn('status', ['new', 'in_progress'])
+                ->count();
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
     public static function form(Form $form): Form

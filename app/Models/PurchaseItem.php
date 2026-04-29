@@ -38,6 +38,14 @@ class PurchaseItem extends Model
         'expiry_date' => 'date',
     ];
 
+    protected $attributes = [
+        'quantity_received' => 0,
+        'tax_rate'          => 0,
+        'tax_amount'        => 0,
+        'discount_amount'   => 0,
+        'line_total'        => 0,
+    ];
+
     protected static function booted(): void
     {
         static::creating(function ($item) {
