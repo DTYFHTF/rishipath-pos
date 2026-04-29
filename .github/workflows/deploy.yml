@@ -22,19 +22,17 @@ jobs:
           if [ -f package-lock.json ]; then npm ci; else npm install; fi
           npm run build
 
-      - name: Add host key to known_hosts
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
-
       - name: Git pull + composer + migrate on server
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          envs: GH_PAT
           script_stop: true
-          script: GH_PAT=${{ secrets.GH_PAT }} bash ~/rishipath-pos/scripts/deploy.sh
+          script: bash ~/rishipath-pos/scripts/deploy.sh
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
 
       - name: Upload built assets to server
         uses: appleboy/scp-action@v0.1.7
