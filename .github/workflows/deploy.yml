@@ -28,6 +28,7 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          passphrase: ${{ secrets.SSH_PASSPHRASE }}
           script: GH_PAT=${{ secrets.GH_PAT }} bash ~/rishipath-pos/scripts/deploy.sh
 
       - name: Upload built assets to server
@@ -36,6 +37,7 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          passphrase: ${{ secrets.SSH_PASSPHRASE }}
           source: "public/build"
           target: "~/rishipath-pos/public/"
           strip_components: 1
