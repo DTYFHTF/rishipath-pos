@@ -163,6 +163,11 @@ class Purchase extends Model
         return $this->belongsTo(User::class, 'received_by');
     }
 
+    public function returns(): HasMany
+    {
+        return $this->hasMany(PurchaseReturn::class);
+    }
+
     /**
      * Recalculate totals from items.
      */
@@ -322,5 +327,64 @@ class Purchase extends Model
     public function getIsFullyReceivedAttribute(): bool
     {
         return $this->items->every(fn ($item) => $item->quantity_received >= $item->quantity_ordered);
+    }
+
+    /**
+     * Process a return for this purchase.
+     *
+     * @param  array<int, int>  $returnItems  Map of purchase_item_id => quantity_to_return
+     * @param  string  $reason
+     * @param  string|null  $notes
+     * @return array<int, array{quantity_returned: int, return_amount: float}>
+     */
+    public function processReturn(array $returnItems, string $reason, ?string $notes): array
+    {
+        $processed = [];
+
+        DB::transaction(function () use ($returnItems, $reason, $notes, &$processed) {
+            foreach ($returnItems as $itemId => $qty) {
+                $qty = (int) $qty;
+                if ($qty <= 0) {
+                    continue;
+                }
+
+                $item = $this->items()->find($itemId);
+                if (! $item) {
+                    throw new \InvalidArgumentException("Purchase item #{$itemId} not found.");
+                }
+
+                $maxReturnable = $item->quantity_received ?? $item->quantity_ordered;
+                if ($qty > $maxReturnable) {
+                    throw new \InvalidArgumentException(
+                        "Cannot return {$qty} units of {$item->product_name}. Only {$maxReturnable} received."
+                    );
+                }
+
+                $unitCost = (float) $item->unit_cost;
+                $returnAmount = round($unitCost * $qty, 2);
+
+                $return = PurchaseReturn::create([
+                    'organization_id'   => $this->organization_id,
+                    'purchase_id'       => $this->id,
+                    'purchase_item_id'  => $item->id,
+                    'product_variant_id' => $item->product_variant_id,
+                    'batch_id'          => $item->batch_id,
+                    'store_id'          => $this->store_id,
+                    'quantity_returned' => $qty,
+                    'unit_cost'         => $unitCost,
+                    'return_amount'     => $returnAmount,
+                    'reason'            => $reason,
+                    'notes'             => $notes,
+                    'status'            => 'pending',
+                ]);
+
+                $processed[] = [
+                    'quantity_returned' => $return->quantity_returned,
+                    'return_amount'     => $return->return_amount,
+                ];
+            }
+        });
+
+        return $processed;
     }
 }

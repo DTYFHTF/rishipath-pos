@@ -257,7 +257,7 @@ class ProductVariantResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
-            ->defaultSort('product.name');
+            ->defaultSort('id', 'desc');
     }
 
     public static function getPages(): array

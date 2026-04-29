@@ -43,6 +43,11 @@ class AppServiceProvider extends ServiceProvider
             }
         });
 
+        // Shorten global Filament notification display to 4 seconds
+        \Filament\Notifications\Notification::configureUsing(function (\Filament\Notifications\Notification $notification): void {
+            $notification->duration(4000);
+        });
+
         // Register Blade directives for pricing
         \Illuminate\Support\Facades\Blade::directive('price', function ($expression) {
             return "<?php echo \\App\\Services\\PricingService::formatPrice({$expression}, auth()->user()?->organization); ?>";
