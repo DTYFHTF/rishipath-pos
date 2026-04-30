@@ -122,7 +122,7 @@
         <input type="text" id="productSearch" placeholder="Search product name or SKU…"
           autocomplete="off"
           class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-300"
-          oninput="onProductSearch()" onfocus="onProductSearch()" />
+          oninput="onProductSearch()" onfocus="showSearchIfReady()" />
         <div id="productSearchResults" class="hidden"></div>
       </div>
 
@@ -613,9 +613,18 @@ function marginBg(p) { return p >= 20 ? 'bg-green-600' : p >= 10 ? 'bg-yellow-50
 function marginBadge(p) { const cls = p >= 20 ? 'mb-great' : p >= 10 ? 'mb-ok' : 'mb-warn'; return `<span class="margin-badge ${cls}">${fmtN(p)}%</span>`; }
 
 // Unit normalization to grams for cross-pack comparison
-const UNIT_TO_GRAMS = { 'g': 1, 'gm': 1, 'gms': 1, 'gram': 1, 'grams': 1, 'kg': 1000, 'ml': 1, 'l': 1000, 'ltr': 1000, 'pcs': 1, 'piece': 1, 'pieces': 1, 'nos': 1 };
+// Handles both lowercase (from API) and uppercase (legacy)
+const UNIT_TO_GRAMS = {
+  'g': 1, 'gm': 1, 'gms': 1, 'gram': 1, 'grams': 1,
+  'kg': 1000, 'kgs': 1000, 'kilogram': 1000, 'kilograms': 1000,
+  'ml': 1, 'milliliter': 1, 'milliliters': 1,
+  'l': 1000, 'ltr': 1000, 'litre': 1000, 'litres': 1000, 'liter': 1000,
+  'pcs': 1, 'piece': 1, 'pieces': 1, 'nos': 1, 'no': 1,
+  'capsules': 1, 'capsule': 1, 'caps': 1, 'tab': 1, 'tablets': 1,
+};
 function toBaseUnit(size, unit) {
-  const factor = UNIT_TO_GRAMS[(unit || 'g').toLowerCase()] || 1;
+  const key = (unit || 'g').toLowerCase().trim();
+  const factor = UNIT_TO_GRAMS[key] ?? 1;
   return size * factor;
 }
 
@@ -625,37 +634,68 @@ function toBaseUnit(size, unit) {
 function onProductSearch() {
   clearTimeout(searchTimeout);
   const q = document.getElementById('productSearch').value.trim();
-  if (q.length < 2) { hideSearchResults(); return; }
-  searchTimeout = setTimeout(() => fetchProducts(q), 250);
+  if (q.length < 1) { hideSearchResults(); return; }
+  searchTimeout = setTimeout(() => fetchProducts(q), 300);
+}
+
+function showSearchIfReady() {
+  const q = document.getElementById('productSearch').value.trim();
+  if (q.length >= 1) fetchProducts(q);
 }
 
 async function fetchProducts(q) {
+  const el = document.getElementById('productSearchResults');
+  el.innerHTML = '<div class="search-item text-gray-400 text-xs">Searching…</div>';
+  el.classList.remove('hidden');
+
   try {
     const res = await fetch(`/api/price-calculator/products?q=${encodeURIComponent(q)}`, {
-      headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'Accept': 'application/json' }
+      credentials: 'same-origin',
+      headers: { 'Accept': 'application/json' }
     });
-    if (!res.ok) { hideSearchResults(); return; }
-    const data = await res.json();
+
+    let data;
+    try { data = await res.json(); } catch(e) {
+      el.innerHTML = '<div class="search-item text-red-400 text-xs">⚠️ Server error — try refreshing</div>';
+      return;
+    }
+
+    if (data.auth_required) {
+      el.innerHTML = '<div class="search-item text-amber-600 text-xs">🔒 <a href="/admin/login" target="_blank" class="underline font-medium">Log in to Admin</a> to search POS products</div>';
+      return;
+    }
+
+    if (data.error) {
+      el.innerHTML = `<div class="search-item text-red-400 text-xs">⚠️ ${data.error}</div>`;
+      return;
+    }
+
     renderSearchResults(data.products || []);
-    document.getElementById('dbBadge').classList.remove('hidden');
+    if ((data.products || []).length > 0) {
+      document.getElementById('dbBadge').classList.remove('hidden');
+    }
   } catch(e) {
-    hideSearchResults();
+    el.innerHTML = '<div class="search-item text-red-400 text-xs">⚠️ Network error — check connection</div>';
   }
 }
 
 function renderSearchResults(products) {
   const el = document.getElementById('productSearchResults');
   if (!products.length) {
-    el.innerHTML = '<div class="search-item text-gray-400 text-xs">No products found</div>';
+    el.innerHTML = '<div class="search-item text-gray-400 text-xs">No products found. Try a different search term.</div>';
     el.classList.remove('hidden');
     return;
   }
-  el.innerHTML = products.map(p => `
-    <div class="search-item" onclick="selectProduct(${JSON.stringify(p).replace(/"/g, '&quot;')})">
-      <div class="si-name">${p.name}${p.name_hindi ? ' <span class="text-gray-400 font-normal text-xs">— ' + p.name_hindi + '</span>' : ''}</div>
-      <div class="si-variants">${p.sku ? 'SKU: ' + p.sku + ' · ' : ''}${p.variants.length} variant${p.variants.length !== 1 ? 's' : ''}: ${p.variants.map(v => v.pack_size + v.unit).join(', ')}</div>
-    </div>
-  `).join('');
+  el.innerHTML = products.map(p => {
+    const varLabel = p.variants.length
+      ? p.variants.map(v => v.pack_size + v.unit.toUpperCase()).join(', ')
+      : 'No variants';
+    const skuPart = p.sku ? ` · ${p.sku}` : '';
+    return `<div class="search-item" onclick="selectProduct(${JSON.stringify(p).replace(/"/g, '&quot;')})">
+      <div class="si-name">${p.name}</div>
+      <div class="si-variants">${skuPart}${skuPart ? ' · ' : ''}${p.variants.length} variant${p.variants.length !== 1 ? 's' : ''}: ${varLabel}</div>
+    </div>`;
+  }).join('');
   el.classList.remove('hidden');
 }
 
@@ -675,12 +715,15 @@ function selectProduct(p) {
 }
 
 function renderVariantPills(variants) {
-  document.getElementById('variantPills').innerHTML = variants.map(v => `
-    <span class="variant-pill ${selectedVariant && selectedVariant.id === v.id ? 'active-variant' : ''}"
-          onclick='selectVariant(${JSON.stringify(v).replace(/'/g, "&#39;")})'>
-      ${v.pack_size}${v.unit}${v.sku ? ' <span class="text-gray-400 text-[10px]">·' + v.sku + '</span>' : ''}
-    </span>
-  `).join('');
+  document.getElementById('variantPills').innerHTML = variants.map(v => {
+    const isActive = selectedVariant && selectedVariant.id === v.id;
+    const label = `${v.pack_size}${v.unit.toUpperCase()}`;
+    const skuTag = v.sku ? ` <span class="text-gray-400 text-[10px]">· ${v.sku}</span>` : '';
+    return `<span class="variant-pill ${isActive ? 'active-variant' : ''}"
+      onclick='selectVariant(${JSON.stringify(v).replace(/'/g, "&#39;")})'>
+      ${label}${skuTag}
+    </span>`;
+  }).join('');
 }
 
 function selectVariant(v) {
