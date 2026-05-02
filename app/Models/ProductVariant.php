@@ -19,6 +19,7 @@ class ProductVariant extends Model
         'base_price',
         'mrp_india',
         'selling_price_nepal',
+        'manual_price_locked',
         'cost_price',
         'barcode',
         'hsn_code',
@@ -34,6 +35,7 @@ class ProductVariant extends Model
         'base_price' => 'decimal:2',
         'mrp_india' => 'decimal:2',
         'selling_price_nepal' => 'decimal:2',
+        'manual_price_locked' => 'boolean',
         'cost_price' => 'decimal:2',
         'weight' => 'decimal:3',
         'active' => 'boolean',
@@ -145,6 +147,10 @@ class ProductVariant extends Model
 
     protected static function fillSuggestedPrices(ProductVariant $variant): void
     {
+        if ($variant->manual_price_locked) {
+            return;
+        }
+
         if ($variant->cost_price === null || $variant->pack_size === null || blank($variant->unit)) {
             return;
         }

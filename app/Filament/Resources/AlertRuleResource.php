@@ -16,9 +16,14 @@ class AlertRuleResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-bell-alert';
 
-    protected static ?string $navigationGroup = 'Reports & Alerts';
+    protected static ?string $navigationGroup = 'Advanced Automation';
 
     protected static ?int $navigationSort = 2;
+
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->isSuperAdmin() ?? false;
+    }
 
     protected static ?string $navigationLabel = 'Alert Rules';
 

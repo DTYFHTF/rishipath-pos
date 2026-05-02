@@ -103,6 +103,11 @@ class ProductVariantResource extends Resource
                             ->prefix('NPR ')
                             ->helperText('Suggested using the same pack-size pricing rule. Override only when needed.')
                             ->minValue(0),
+                        Forms\Components\Toggle::make('manual_price_locked')
+                            ->label('Lock Manual Price')
+                            ->helperText('When enabled, cost-price changes will not auto-suggest or overwrite prices for this variant.')
+                            ->default(false)
+                            ->inline(false),
                     ])
                     ->columns(2),
 
@@ -290,6 +295,10 @@ class ProductVariantResource extends Resource
         $unit = $get('unit');
 
         if ($costPrice === null || $costPrice === '' || $packSize === null || $packSize === '' || blank($unit)) {
+            return;
+        }
+
+        if ($get('manual_price_locked')) {
             return;
         }
 

@@ -15,6 +15,7 @@ class SyncWeightVariantPricingSeeder extends Seeder
                 ->where('active', true)
                 ->where('unit_type', 'weight'))
             ->where('active', true)
+            ->where('manual_price_locked', false)
             ->whereNotNull('cost_price')
             ->get();
 

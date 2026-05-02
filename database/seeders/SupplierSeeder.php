@@ -67,7 +67,13 @@ class SupplierSeeder extends Seeder
         ];
 
         foreach ($suppliers as $supplierData) {
-            Supplier::create($supplierData);
+            Supplier::updateOrCreate(
+                [
+                    'organization_id' => $supplierData['organization_id'],
+                    'supplier_code' => $supplierData['supplier_code'],
+                ],
+                $supplierData,
+            );
         }
 
         $this->command->info('✅ '.count($suppliers).' suppliers seeded successfully!');

@@ -218,10 +218,6 @@ class RolePermissionSeeder extends Seeder
                 'name' => 'Cashier',
                 'slug' => 'cashier',
                 'permissions' => [
-                    // Dashboard (limited)
-                    'view_dashboard',
-                    'view_pos_stats',
-
                     // POS (main function)
                     'access_pos_billing',
                     'create_sales',
@@ -231,7 +227,7 @@ class RolePermissionSeeder extends Seeder
                     'view_products',
                     'view_product_variants',
 
-                    // Inventory (view only)
+                    // Inventory (stock lookup only)
                     'view_inventory',
                     'view_stock_levels',
 
@@ -243,20 +239,31 @@ class RolePermissionSeeder extends Seeder
                 'is_system_role' => true,
             ],
             [
-                'name' => 'Inventory Clerk',
-                'slug' => 'inventory-clerk',
+                'name' => 'Marketing',
+                'slug' => 'marketing',
                 'permissions' => [
-                    // Dashboard
                     'view_dashboard',
-                    'view_inventory_overview',
-                    'view_low_stock_alerts',
-
-                    // Products
                     'view_products',
                     'view_product_variants',
                     'view_categories',
-
-                    // Inventory (full access)
+                    'view_customers',
+                    'create_customers',
+                    'edit_customers',
+                    'view_customer_purchase_history',
+                    'view_sales_reports',
+                ],
+                'is_system_role' => true,
+            ],
+            [
+                'name' => 'Inventory Clerk',
+                'slug' => 'inventory-clerk',
+                'permissions' => [
+                    'view_dashboard',
+                    'view_inventory_overview',
+                    'view_low_stock_alerts',
+                    'view_products',
+                    'view_product_variants',
+                    'view_categories',
                     'view_inventory',
                     'view_stock_levels',
                     'view_product_batches',
@@ -268,10 +275,9 @@ class RolePermissionSeeder extends Seeder
                     'view_suppliers',
                     'create_suppliers',
                     'edit_suppliers',
-
-                    // Reporting (inventory only)
-                    'view_inventory_reports',
-                    'export_reports',
+                    'view_purchases',
+                    'create_purchases',
+                    'receive_purchases',
                 ],
                 'is_system_role' => true,
             ],
