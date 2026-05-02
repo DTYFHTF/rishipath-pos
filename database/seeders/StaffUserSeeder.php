@@ -68,7 +68,7 @@ class StaffUserSeeder extends Seeder
 
             if ($isNew) {
                 $user->password = Hash::make('password');
-                $user->pin = Hash::make('1234');
+                $user->pin = '1234';
             }
 
             $user->save();
