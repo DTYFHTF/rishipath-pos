@@ -32,12 +32,16 @@ class PriceListPage extends Page
 
     public bool $isStale = false;
 
+    public bool $showInactive = false;
+
+    public bool $showCost = false;
+
     // Cache file lives in storage/app/price-lists/latest.json
     private const CACHE_FILE = 'price-lists/latest.json';
 
     // Increment this whenever the item schema gains new required keys.
     // Any cached file without a matching version is discarded automatically.
-    private const CACHE_VERSION = 7;
+    private const CACHE_VERSION = 8;
 
     // Re-generate only after this many hours (unless forced)
     private const CACHE_TTL_HOURS = 24;
@@ -98,10 +102,16 @@ class PriceListPage extends Page
             ->where('active', true)
             ->orderBy('name')
             ->with(['products' => function ($q) {
-                $q->where('active', true)->orderBy('name')
-                    ->with(['variants' => function ($q2) {
-                        $q2->where('active', true)->orderBy('pack_size');
-                    }]);
+                $q->orderBy('name');
+                if (! $this->showInactive) {
+                    $q->where('active', true);
+                }
+                $q->with(['variants' => function ($q2) {
+                    $q2->orderBy('pack_size');
+                    if (! $this->showInactive) {
+                        $q2->where('active', true);
+                    }
+                }]);
             }])
             ->get();
 
@@ -187,6 +197,7 @@ class PriceListPage extends Page
                         'pack_color_class' => $this->packColorClass($packCode),
                         'wholesale' => $wholesale,
                         'mrp' => $mrp,
+                        'cost_price' => $cost,
                         'price_changed' => $priceChanged,
                         'one_gram_mrp' => $oneGramMrp ? $this->roundUpToInteger($oneGramMrp) : null,
                         'missing_mandatory_packs' => $missingMandatoryPacks,
@@ -235,21 +246,25 @@ class PriceListPage extends Page
 
         foreach ($this->priceList as $group) {
             foreach ($group['items'] as $item) {
-                $rows[] = [
+                $row = [
                     $sn++,
                     $group['category'],
                     $item['product_name'],
                     $item['pack_size'],
-                    $item['wholesale'],
-                    $item['mrp'],
                 ];
+                if ($this->showCost) {
+                    $row[] = $item['cost_price'] ?? 0;
+                }
+                $row[] = $item['wholesale'];
+                $row[] = $item['mrp'];
+                $rows[] = $row;
             }
         }
 
         $filename = 'price-list-' . date('Y-m-d') . '.xlsx';
         $storagePath = 'price-lists/' . $filename;
 
-        Excel::store(new PriceListExport($rows, $this->generatedAt ?? now()->toDateTimeString()), $storagePath);
+        Excel::store(new PriceListExport($rows, $this->generatedAt ?? now()->toDateTimeString(), $this->showCost), $storagePath);
 
         $this->dispatch('download-price-list', url: Storage::url($storagePath));
     }

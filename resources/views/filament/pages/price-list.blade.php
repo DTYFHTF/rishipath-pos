@@ -29,6 +29,20 @@
         {{-- Spacer --}}
         <div class="flex-1"></div>
 
+        {{-- Toggles --}}
+        @if(!empty($priceList))
+            <div class="flex items-center gap-4 text-sm">
+                <label class="flex items-center gap-2 cursor-pointer text-gray-700 dark:text-gray-300">
+                    <input type="checkbox" wire:model.live="showInactive" class="rounded border-gray-300">
+                    <span>Show Inactive</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer text-gray-700 dark:text-gray-300">
+                    <input type="checkbox" wire:model.live="showCost" class="rounded border-gray-300">
+                    <span>Show Cost</span>
+                </label>
+            </div>
+        @endif
+
         {{-- Buttons --}}
         <div class="flex gap-2">
             @if($generatedAt && !$isStale)
@@ -118,6 +132,9 @@
                                 <tr class="bg-gray-50 dark:bg-gray-900 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                     <th class="px-4 py-2 w-8">#</th>
                                     <th class="px-4 py-2 text-center">Pack Size</th>
+                                    @if($showCost)
+                                        <th class="px-4 py-2 text-right">Cost</th>
+                                    @endif
                                     <th class="px-4 py-2 text-right">Wholesale</th>
                                     <th class="px-4 py-2 text-right">MRP</th>
                                 </tr>
@@ -201,13 +218,18 @@
                                         @endphp
                                         <tr class="{{ $priceChanged ? 'bg-orange-50 dark:bg-orange-900/20' : ($vi % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900/50') }} hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
                                             <td class="px-4 py-2"></td>
-                                            <td class="px-4 py-2 text-center text-gray-600 dark:text-gray-300">
+                                            <td class="px-4 py-2 text-center text-gray-800 dark:text-gray-200">
                                                 <span class="inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold {{ $packColorClass }}">{{ $packSize }}</span>
                                             </td>
-                                            <td class="px-4 py-2 text-right text-blue-700 dark:text-blue-400 font-medium">
+                                            @if($showCost)
+                                                <td class="px-4 py-2 text-right text-gray-700 dark:text-gray-300">
+                                                    NPR {{ number_format($item['cost_price'] ?? 0, 0) }}
+                                                </td>
+                                            @endif
+                                            <td class="px-4 py-2 text-right text-blue-700 dark:text-blue-200 font-medium">
                                                 NPR {{ number_format($wholesale, 0) }}
                                             </td>
-                                            <td class="px-4 py-2 text-right font-semibold {{ $priceChanged ? 'text-orange-700 dark:text-orange-300' : 'text-green-700 dark:text-green-400' }}">
+                                            <td class="px-4 py-2 text-right font-semibold {{ $priceChanged ? 'text-orange-700 dark:text-orange-200' : 'text-green-700 dark:text-green-300' }}">
                                                 NPR {{ number_format($mrp, 0) }}
                                             </td>
                                         </tr>
