@@ -85,8 +85,8 @@
             </div>
             <div class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-900 dark:bg-blue-900/20">
                 <p class="text-xs text-blue-700 dark:text-blue-300 uppercase tracking-wide">MRP Rule</p>
-                <p class="text-sm font-semibold text-blue-800 dark:text-blue-200">1g MRP valid up to 15g</p>
-                <p class="text-xs text-blue-700/80 dark:text-blue-300/80">20g shown as optional where available</p>
+                <p class="text-sm font-semibold text-blue-800 dark:text-blue-200">1g guide shown as ceiling value</p>
+                <p class="text-xs text-blue-700/80 dark:text-blue-300/80">Example: 1.6 becomes 2</p>
             </div>
         </div>
     @endif
@@ -126,11 +126,8 @@
                                         $imageSrc = $imageUrl ?: ($imageSlug ? '/images/products/' . $imageSlug . '.jpg' : null);
 
                                         $sortedVariants = $variants->sortBy(fn ($v) => $v['pack_size_grams'] ?? PHP_INT_MAX)->values();
-                                        $ruleSource = $sortedVariants->first(fn ($v) => !empty($v['one_gram_mrp']) || !empty($v['fifteen_gram_mrp']) || !empty($v['optional_20g_mrp']) || !empty($v['rule_note']));
+                                        $ruleSource = $sortedVariants->first(fn ($v) => !empty($v['one_gram_mrp']));
                                         $oneGramMrp = $ruleSource['one_gram_mrp'] ?? null;
-                                        $fifteenGramMrp = $ruleSource['fifteen_gram_mrp'] ?? null;
-                                        $optionalTwentyGram = $ruleSource['optional_20g_mrp'] ?? null;
-                                        $ruleNote = $ruleSource['rule_note'] ?? null;
                                     @endphp
                                     {{-- Product header row --}}
                                     <tr class="bg-gray-100 dark:bg-gray-700/60 border-t-2 border-gray-200 dark:border-gray-600">
@@ -175,21 +172,10 @@
                                                         @endforeach
                                                     </div>
 
-                                                    @if($oneGramMrp || $fifteenGramMrp || $optionalTwentyGram || $ruleNote)
+                                                    @if($oneGramMrp)
                                                         <div class="inline-flex flex-wrap items-center gap-2 text-xs rounded-lg px-2.5 py-1.5 bg-blue-50 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200">
                                                             <span class="font-semibold">Guide:</span>
-                                                            @if($ruleNote)
-                                                                <span>{{ $ruleNote }}</span>
-                                                            @endif
-                                                            @if($oneGramMrp)
-                                                                <span>1g: NPR {{ number_format($oneGramMrp, 2) }}</span>
-                                                            @endif
-                                                            @if($fifteenGramMrp)
-                                                                <span>15g cap: NPR {{ number_format($fifteenGramMrp, 2) }}</span>
-                                                            @endif
-                                                            @if($optionalTwentyGram)
-                                                                <span>20g ref: NPR {{ number_format($optionalTwentyGram, 2) }}</span>
-                                                            @endif
+                                                            <span>1g: NPR {{ number_format($oneGramMrp, 0) }}</span>
                                                         </div>
                                                     @endif
                                                 </div>
