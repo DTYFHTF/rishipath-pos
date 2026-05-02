@@ -28,7 +28,7 @@ class PriceListExport implements FromArray, ShouldAutoSize, WithHeadings, WithSt
 
     public function headings(): array
     {
-        return ['S.N.', 'Category', 'Product', 'Pack Size', 'Cost Price (NPR)', 'Wholesale Price (NPR)', 'MRP (NPR)'];
+        return ['S.N.', 'Category', 'Product', 'Pack Size', 'Wholesale Price (NPR)', 'MRP (NPR)'];
     }
 
     public function array(): array

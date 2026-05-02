@@ -36,7 +36,7 @@ class PriceListPage extends Page
 
     // Increment this whenever the item schema gains new required keys.
     // Any cached file without a matching version is discarded automatically.
-    private const CACHE_VERSION = 4;
+    private const CACHE_VERSION = 5;
 
     // Re-generate only after this many hours (unless forced)
     private const CACHE_TTL_HOURS = 24;
@@ -124,7 +124,8 @@ class PriceListPage extends Page
                 $variantMeta = collect($product->variants)
                     ->map(function ($variant) {
                         $grams = $this->toGrams((float) $variant->pack_size, (string) $variant->unit);
-                        $mrp = (float) ($variant->mrp_india ?? $variant->base_price ?? 0);
+                        $mrpRaw = (float) ($variant->mrp_india ?? $variant->base_price ?? 0);
+                        $mrp = $this->roundUpToNearestFive($mrpRaw);
 
                         return [
                             'id' => $variant->id,
@@ -156,9 +157,10 @@ class PriceListPage extends Page
                 }
 
                 foreach ($product->variants as $variant) {
-                    $mrp = (float) ($variant->mrp_india ?? $variant->base_price ?? 0);
+                    $mrpRaw = (float) ($variant->mrp_india ?? $variant->base_price ?? 0);
+                    $mrp = $this->roundUpToNearestFive($mrpRaw);
                     $cost = (float) ($variant->cost_price ?? 0);
-                    $wholesale = round($cost * 1.20, 2);
+                    $wholesale = $this->roundUpToNearestFive($cost * 1.20);
                     $packGrams = $this->toGrams((float) $variant->pack_size, (string) $variant->unit);
                     $packCode = $this->packCode($packGrams);
 
@@ -173,8 +175,7 @@ class PriceListPage extends Page
                     $previous = $previousIndex[$rowKey] ?? null;
                     $priceChanged = $previous
                         && ((float) $previous['mrp'] !== $mrp
-                        || (float) $previous['wholesale'] !== $wholesale
-                        || (float) $previous['cost_price'] !== $cost);
+                        || (float) $previous['wholesale'] !== $wholesale);
 
                     $items[] = [
                         'row_key' => $rowKey,
@@ -187,7 +188,6 @@ class PriceListPage extends Page
                         'pack_size_grams' => $packGrams,
                         'pack_code' => $packCode,
                         'pack_color_class' => $this->packColorClass($packCode),
-                        'cost_price' => $cost,
                         'wholesale' => $wholesale,
                         'mrp' => $mrp,
                         'price_changed' => $priceChanged,
@@ -246,7 +246,6 @@ class PriceListPage extends Page
                     $group['category'],
                     $item['product_name'],
                     $item['pack_size'],
-                    $item['cost_price'],
                     $item['wholesale'],
                     $item['mrp'],
                 ];
@@ -324,6 +323,15 @@ class PriceListPage extends Page
         }
 
         return null;
+    }
+
+    private function roundUpToNearestFive(float $value): float
+    {
+        if ($value <= 0) {
+            return 0;
+        }
+
+        return (float) (ceil($value / 5) * 5);
     }
 
     private function packCode(?float $grams): string
