@@ -123,6 +123,8 @@
                                         $anyChanged = $variants->contains(fn($v) => !empty($v['price_changed']));
                                         $missingPacks = $variants->first()['missing_mandatory_packs'] ?? [];
                                         $imageSlug = $variants->first()['image_slug'] ?? '';
+                                        $imageUrl = $variants->first()['image_url'] ?? null;
+                                        $imageSrc = $imageUrl ?: ($imageSlug ? '/images/products/' . $imageSlug . '.jpg' : null);
 
                                         $sortedVariants = $variants->sortBy(fn ($v) => $v['pack_size_grams'] ?? PHP_INT_MAX)->values();
                                         $ruleSource = $sortedVariants->first(fn ($v) => !empty($v['one_gram_mrp']) || !empty($v['fifteen_gram_mrp']) || !empty($v['optional_20g_mrp']) || !empty($v['rule_note']));
@@ -136,9 +138,9 @@
                                         <td class="px-4 py-2.5 text-gray-500 dark:text-gray-400 text-xs font-medium align-middle">{{ $productIndex }}</td>
                                         <td colspan="4" class="px-4 py-3 align-middle">
                                             <div class="flex flex-col md:flex-row md:items-center gap-3">
-                                                @if($imageSlug)
+                                                @if($imageSrc)
                                                     <img
-                                                        src="/images/products/{{ $imageSlug }}.jpg"
+                                                        src="{{ $imageSrc }}"
                                                         alt="{{ $productName }}"
                                                         class="rounded-xl object-cover flex-shrink-0 border border-gray-200 dark:border-gray-600"
                                                         style="width:120px;height:120px"
