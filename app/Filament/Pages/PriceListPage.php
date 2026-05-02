@@ -8,6 +8,7 @@ use App\Services\OrganizationContext;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 
 class PriceListPage extends Page
@@ -35,7 +36,7 @@ class PriceListPage extends Page
 
     // Increment this whenever the item schema gains new required keys.
     // Any cached file without a matching version is discarded automatically.
-    private const CACHE_VERSION = 2;
+    private const CACHE_VERSION = 3;
 
     // Re-generate only after this many hours (unless forced)
     private const CACHE_TTL_HOURS = 24;
@@ -180,6 +181,7 @@ class PriceListPage extends Page
                         'product_id' => $product->id,
                         'variant_id' => $variant->id,
                         'product_name' => $displayName,
+                        'image_slug' => Str::slug($product->name),
                         'pack_size' => $variant->pack_size . ' ' . $variant->unit,
                         'pack_size_grams' => $packGrams,
                         'pack_code' => $packCode,
