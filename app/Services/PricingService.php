@@ -7,6 +7,101 @@ use App\Models\ProductVariant;
 
 class PricingService
 {
+    public static function suggestVariantPrices(?float $costPrice, ?float $packSize, ?string $unit): array
+    {
+        if ($costPrice === null || $packSize === null || blank($unit)) {
+            return [
+                'markup_percent' => null,
+                'base_price' => null,
+                'mrp_india' => null,
+                'selling_price_nepal' => null,
+            ];
+        }
+
+        $markupPercent = self::suggestMarkupPercent($packSize, $unit);
+        $retailPrice = round($costPrice * (1 + ($markupPercent / 100)), 2);
+
+        return [
+            'markup_percent' => $markupPercent,
+            'base_price' => $retailPrice,
+            'mrp_india' => $retailPrice,
+            'selling_price_nepal' => $retailPrice,
+        ];
+    }
+
+    public static function suggestMarkupPercent(?float $packSize, ?string $unit): float
+    {
+        $normalizedSize = self::normalizeComparableSize($packSize, $unit);
+
+        if ($normalizedSize === null) {
+            return 35.0;
+        }
+
+        if ($normalizedSize < 50) {
+            return 90.0;
+        }
+
+        if (abs($normalizedSize - 50.0) < 0.001) {
+            return 65.0;
+        }
+
+        if (abs($normalizedSize - 100.0) < 0.001 || abs($normalizedSize - 200.0) < 0.001) {
+            return 50.0;
+        }
+
+        if (abs($normalizedSize - 500.0) < 0.001) {
+            return 30.0;
+        }
+
+        if (abs($normalizedSize - 1000.0) < 0.001) {
+            return 25.0;
+        }
+
+        if ($normalizedSize < 100) {
+            return 70.0;
+        }
+
+        if ($normalizedSize < 500) {
+            return 40.0;
+        }
+
+        if ($normalizedSize < 1000) {
+            return 28.0;
+        }
+
+        return 20.0;
+    }
+
+    public static function getPricingRuleSummary(?float $packSize, ?string $unit): string
+    {
+        if ($packSize === null || blank($unit)) {
+            return 'Enter pack size, unit, and cost price to auto-suggest MRP and selling price.';
+        }
+
+        $markupPercent = self::suggestMarkupPercent($packSize, $unit);
+        $unitLabel = strtoupper((string) $unit);
+        $displaySize = floor((float) $packSize) == (float) $packSize
+            ? (string) (int) $packSize
+            : number_format((float) $packSize, 3);
+
+        return "Auto-pricing rule: {$markupPercent}% markup for {$displaySize} {$unitLabel}. You can still override the suggested values.";
+    }
+
+    protected static function normalizeComparableSize(?float $packSize, ?string $unit): ?float
+    {
+        if ($packSize === null || blank($unit)) {
+            return null;
+        }
+
+        $normalizedUnit = strtoupper(trim((string) $unit));
+
+        return match ($normalizedUnit) {
+            'G', 'GM', 'GMS', 'GRAM', 'GRAMS', 'ML' => $packSize,
+            'KG', 'KGS', 'KILOGRAM', 'KILOGRAMS', 'L' => $packSize * 1000,
+            default => null,
+        };
+    }
+
     /**
      * Get the selling price for a product variant based on organization country
      */

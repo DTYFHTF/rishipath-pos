@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Organization;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Services\PricingService;
 use App\Models\StockLevel;
 use App\Models\Store;
 use Illuminate\Database\Seeder;
@@ -697,14 +698,20 @@ class SpiceProductSeeder extends Seeder
             foreach ($productData['variants'] as $variantData) {
                 $unit = $category->config['default_unit'] ?? 'GMS';
                 $variantSku = $sku . '-' . $variantData['pack_size'] . $unit;
+                $suggestedPrices = PricingService::suggestVariantPrices(
+                    (float) $variantData['cost'],
+                    (float) $variantData['pack_size'],
+                    $unit,
+                );
 
                 $variant = ProductVariant::create([
                     'product_id'    => $product->id,
                     'sku'           => $variantSku,
                     'pack_size'     => $variantData['pack_size'],
                     'unit'          => $unit,
-                    'mrp_india'     => $variantData['mrp'],
-                    'base_price'    => $variantData['mrp'],
+                    'mrp_india'     => $suggestedPrices['mrp_india'],
+                    'base_price'    => $suggestedPrices['base_price'],
+                    'selling_price_nepal' => $suggestedPrices['selling_price_nepal'],
                     'cost_price'    => $variantData['cost'],
                     'hsn_code'      => '09109900', // Spices HSN code
                     'active'        => true,

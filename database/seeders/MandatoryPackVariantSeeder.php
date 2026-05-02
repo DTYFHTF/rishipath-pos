@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Services\PricingService;
 use Illuminate\Database\Seeder;
 
 class MandatoryPackVariantSeeder extends Seeder
@@ -82,9 +83,13 @@ class MandatoryPackVariantSeeder extends Seeder
             return 0;
         }
 
-        $mrp = $this->scalePrice($reference->mrp_india, $referenceGrams, $targetGrams);
-        $basePrice = $this->scalePrice($reference->base_price, $referenceGrams, $targetGrams);
         $costPrice = $this->scalePrice($reference->cost_price, $referenceGrams, $targetGrams);
+
+        if ($costPrice === null) {
+            return 0;
+        }
+
+        $suggestedPrices = PricingService::suggestVariantPrices($costPrice, $packSize, $unit);
 
         $sku = $this->generateUniqueSku($product, $packSize, $unit);
 
@@ -93,9 +98,9 @@ class MandatoryPackVariantSeeder extends Seeder
             'sku' => $sku,
             'pack_size' => $packSize,
             'unit' => $unit,
-            'base_price' => $basePrice,
-            'mrp_india' => $mrp,
-            'selling_price_nepal' => $mrp,
+            'base_price' => $suggestedPrices['base_price'],
+            'mrp_india' => $suggestedPrices['mrp_india'],
+            'selling_price_nepal' => $suggestedPrices['selling_price_nepal'],
             'cost_price' => $costPrice,
             'hsn_code' => $reference->hsn_code,
             'weight' => round($targetGrams / 1000, 3),

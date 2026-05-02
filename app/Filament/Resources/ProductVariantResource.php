@@ -5,8 +5,11 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\ProductVariantResource\Pages;
 use App\Models\ProductVariant;
 use App\Services\BarcodeService;
+use App\Services\PricingService;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
+use Filament\Forms\Set;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -42,11 +45,14 @@ class ProductVariantResource extends Resource
                         Forms\Components\TextInput::make('pack_size')
                             ->label('Pack Size')
                             ->required()
+                            ->live()
                             ->numeric()
                             ->minValue(0.001)
+                            ->afterStateUpdated(fn (Get $get, Set $set) => static::syncSuggestedPricing($get, $set))
                             ->helperText('Enter the quantity/size of the variant (e.g., 100 for 100g, 500 for 500ml)'),
                         Forms\Components\Select::make('unit')
                             ->required()
+                            ->live()
                             ->options([
                                 'GMS' => '⚖️ Grams (GMS)',
                                 'KG' => '⚖️ Kilograms (KG)',
@@ -54,31 +60,48 @@ class ProductVariantResource extends Resource
                                 'L' => '🧪 Liters (L)',
                                 'PCS' => '📦 Pieces (PCS)',
                             ])
+                            ->afterStateUpdated(fn (Get $get, Set $set) => static::syncSuggestedPricing($get, $set))
                             ->helperText('Select the unit of measurement for this variant'),
                     ])
                     ->columns(2),
 
                 Forms\Components\Section::make('Pricing')
                     ->schema([
+                        Forms\Components\Placeholder::make('pricing_rule_preview')
+                            ->label('Pricing Rule')
+                            ->content(fn (Get $get) => PricingService::getPricingRuleSummary(
+                                $get('pack_size') !== null && $get('pack_size') !== '' ? (float) $get('pack_size') : null,
+                                $get('unit'),
+                            ))
+                            ->columnSpanFull(),
                         Forms\Components\TextInput::make('base_price')
                             ->label('Base Price')
                             ->numeric()
                             ->prefix('₹')
+                            ->helperText('Auto-filled from cost price and pack size. You can override if needed.')
                             ->minValue(0),
                         Forms\Components\TextInput::make('cost_price')
                             ->label('Cost Price')
+                            ->live()
                             ->numeric()
                             ->prefix('₹')
+                            ->afterStateUpdated(fn (Get $get, Set $set) => static::syncSuggestedPricing($get, $set))
+                            ->helperText('Enter your buy cost. MRP and selling price will be suggested automatically.')
                             ->minValue(0),
                         Forms\Components\TextInput::make('mrp_india')
                             ->label('MRP (India)')
                             ->numeric()
                             ->prefix('₹')
+                            ->helperText(fn (Get $get) => PricingService::getPricingRuleSummary(
+                                $get('pack_size') !== null && $get('pack_size') !== '' ? (float) $get('pack_size') : null,
+                                $get('unit'),
+                            ))
                             ->minValue(0),
                         Forms\Components\TextInput::make('selling_price_nepal')
                             ->label('Selling Price (Nepal)')
                             ->numeric()
                             ->prefix('NPR ')
+                            ->helperText('Suggested using the same pack-size pricing rule. Override only when needed.')
                             ->minValue(0),
                     ])
                     ->columns(2),
@@ -258,6 +281,23 @@ class ProductVariantResource extends Resource
                 ]),
             ])
             ->defaultSort('id', 'desc');
+    }
+
+    protected static function syncSuggestedPricing(Get $get, Set $set): void
+    {
+        $costPrice = $get('cost_price');
+        $packSize = $get('pack_size');
+        $unit = $get('unit');
+
+        if ($costPrice === null || $costPrice === '' || $packSize === null || $packSize === '' || blank($unit)) {
+            return;
+        }
+
+        $suggested = PricingService::suggestVariantPrices((float) $costPrice, (float) $packSize, (string) $unit);
+
+        $set('base_price', $suggested['base_price']);
+        $set('mrp_india', $suggested['mrp_india']);
+        $set('selling_price_nepal', $suggested['selling_price_nepal']);
     }
 
     public static function getPages(): array
