@@ -110,7 +110,6 @@
                                 <tr class="bg-gray-50 dark:bg-gray-900 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                     <th class="px-4 py-2 w-8">#</th>
                                     <th class="px-4 py-2 text-center">Pack Size</th>
-                                    <th class="px-4 py-2 text-right">Cost</th>
                                     <th class="px-4 py-2 text-right">Wholesale</th>
                                     <th class="px-4 py-2 text-right">MRP</th>
                                 </tr>
@@ -136,7 +135,7 @@
                                     {{-- Product header row --}}
                                     <tr class="bg-gray-100 dark:bg-gray-700/60 border-t-2 border-gray-200 dark:border-gray-600">
                                         <td class="px-4 py-2.5 text-gray-500 dark:text-gray-400 text-xs font-medium align-middle">{{ $productIndex }}</td>
-                                        <td colspan="4" class="px-4 py-3 align-middle">
+                                        <td colspan="3" class="px-4 py-3 align-middle">
                                             <div class="flex flex-col md:flex-row md:items-center gap-3">
                                                 @if($imageSrc)
                                                     <img
@@ -203,7 +202,6 @@
                                             $packColorClass = $item['pack_color_class'] ?? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200';
                                             $packCode       = $item['pack_code'] ?? '?';
                                             $packSize       = $item['pack_size'] ?? '';
-                                            $costPrice      = $item['cost_price'] ?? 0;
                                             $wholesale      = $item['wholesale'] ?? 0;
                                             $mrp            = $item['mrp'] ?? 0;
                                             $packGrams      = $item['pack_size_grams'] ?? 0;
@@ -215,14 +213,11 @@
                                                 <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold {{ $packColorClass }}">{{ strtoupper($packCode) }}</span>
                                                 <div class="mt-1 text-xs">{{ $packSize }}</div>
                                             </td>
-                                            <td class="px-4 py-2 text-right text-gray-600 dark:text-gray-300">
-                                                NPR {{ number_format($costPrice, 2) }}
-                                            </td>
                                             <td class="px-4 py-2 text-right text-blue-700 dark:text-blue-400 font-medium">
-                                                NPR {{ number_format($wholesale, 2) }}
+                                                NPR {{ number_format($wholesale, 0) }}
                                             </td>
                                             <td class="px-4 py-2 text-right font-semibold {{ $priceChanged ? 'text-orange-700 dark:text-orange-300' : 'text-green-700 dark:text-green-400' }}">
-                                                NPR {{ number_format($mrp, 2) }}
+                                                NPR {{ number_format($mrp, 0) }}
                                             </td>
                                         </tr>
                                     @endforeach
