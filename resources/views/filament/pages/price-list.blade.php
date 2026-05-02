@@ -64,10 +64,30 @@
         </div>
     </div>
 
-    {{-- Stale warning banner --}}
+    {{-- Value banners --}}
     @if($isStale && !empty($priceList))
         <div class="mb-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-300">
             <strong>Note:</strong> This price list is more than 24 hours old. Prices may have changed. Click <em>Regenerate</em> to get the latest list.
+        </div>
+    @endif
+
+    @if(!empty($priceList))
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
+            <div class="rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 dark:border-orange-900 dark:bg-orange-900/20">
+                <p class="text-xs text-orange-700 dark:text-orange-300 uppercase tracking-wide">Changed Prices</p>
+                <p class="text-2xl font-semibold text-orange-800 dark:text-orange-200">{{ $this->getChangedPriceCount() }}</p>
+                <p class="text-xs text-orange-700/80 dark:text-orange-300/80">Highlighted in orange</p>
+            </div>
+            <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 dark:border-red-900 dark:bg-red-900/20">
+                <p class="text-xs text-red-700 dark:text-red-300 uppercase tracking-wide">Missing 500g/1kg</p>
+                <p class="text-2xl font-semibold text-red-800 dark:text-red-200">{{ $this->getMandatoryPackIssueCount() }}</p>
+                <p class="text-xs text-red-700/80 dark:text-red-300/80">Weight products with missing compulsory packs</p>
+            </div>
+            <div class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-900 dark:bg-blue-900/20">
+                <p class="text-xs text-blue-700 dark:text-blue-300 uppercase tracking-wide">MRP Rule</p>
+                <p class="text-sm font-semibold text-blue-800 dark:text-blue-200">1g MRP valid up to 15g</p>
+                <p class="text-xs text-blue-700/80 dark:text-blue-300/80">20g shown as optional where available</p>
+            </div>
         </div>
     @endif
 
@@ -90,6 +110,7 @@
                                     <th class="px-4 py-2 w-8">#</th>
                                     <th class="px-4 py-2">Product</th>
                                     <th class="px-4 py-2 text-center">Pack Size</th>
+                                    <th class="px-4 py-2 text-center">Rule</th>
                                     <th class="px-4 py-2 text-right">Cost</th>
                                     <th class="px-4 py-2 text-right">Wholesale</th>
                                     <th class="px-4 py-2 text-right">MRP</th>
@@ -97,17 +118,46 @@
                             </thead>
                             <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                                 @foreach($group['items'] as $i => $item)
-                                    <tr class="{{ $i % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900/50' }} hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
+                                    <tr class="{{ $item['price_changed'] ? 'bg-orange-50 dark:bg-orange-900/20' : ($i % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900/50') }} hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
                                         <td class="px-4 py-2 text-gray-400 text-xs">{{ $i + 1 }}</td>
-                                        <td class="px-4 py-2 font-medium text-gray-900 dark:text-gray-100">{{ $item['product_name'] }}</td>
-                                        <td class="px-4 py-2 text-center text-gray-600 dark:text-gray-300">{{ $item['pack_size'] }}</td>
+                                        <td class="px-4 py-2 font-medium text-gray-900 dark:text-gray-100">
+                                            <div class="flex items-center gap-2">
+                                                <span>{{ $item['product_name'] }}</span>
+                                                @if($item['price_changed'])
+                                                    <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-200">Changed</span>
+                                                @endif
+                                                @if(!empty($item['missing_mandatory_packs']))
+                                                    <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200" title="Missing compulsory packs">
+                                                        Missing: {{ implode(', ', $item['missing_mandatory_packs']) }}
+                                                    </span>
+                                                @endif
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-2 text-center text-gray-600 dark:text-gray-300">
+                                            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold {{ $item['pack_color_class'] }}">{{ strtoupper($item['pack_code']) }}</span>
+                                            <div class="mt-1">{{ $item['pack_size'] }}</div>
+                                        </td>
+                                        <td class="px-4 py-2 text-center text-xs text-gray-600 dark:text-gray-300">
+                                            @if($item['rule_note'])
+                                                <div class="font-medium">{{ $item['rule_note'] }}</div>
+                                            @endif
+                                            @if($item['one_gram_mrp'])
+                                                <div>1g: NPR {{ number_format($item['one_gram_mrp'], 2) }}</div>
+                                            @endif
+                                            @if($item['fifteen_gram_mrp'])
+                                                <div>15g cap: NPR {{ number_format($item['fifteen_gram_mrp'], 2) }}</div>
+                                            @endif
+                                            @if($item['pack_size_grams'] == 20 && $item['optional_20g_mrp'])
+                                                <div>20g ref: NPR {{ number_format($item['optional_20g_mrp'], 2) }}</div>
+                                            @endif
+                                        </td>
                                         <td class="px-4 py-2 text-right text-gray-600 dark:text-gray-300">
                                             NPR {{ number_format($item['cost_price'], 2) }}
                                         </td>
                                         <td class="px-4 py-2 text-right text-blue-700 dark:text-blue-400 font-medium">
                                             NPR {{ number_format($item['wholesale'], 2) }}
                                         </td>
-                                        <td class="px-4 py-2 text-right text-green-700 dark:text-green-400 font-semibold">
+                                        <td class="px-4 py-2 text-right font-semibold {{ $item['price_changed'] ? 'text-orange-700 dark:text-orange-300' : 'text-green-700 dark:text-green-400' }}">
                                             NPR {{ number_format($item['mrp'], 2) }}
                                         </td>
                                     </tr>

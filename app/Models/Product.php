@@ -18,6 +18,7 @@ class Product extends Model
         'sku',
         'name',
         'name_nepali',
+        'name_romanized',
         'name_hindi',
         'name_sanskrit',
         'description',

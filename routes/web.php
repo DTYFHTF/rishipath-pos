@@ -46,16 +46,24 @@ Route::get('/api/price-calculator/products', function (\Illuminate\Http\Request 
         ->when(strlen($q) >= 1, function ($query) use ($q) {
             $query->where(function ($sub) use ($q) {
                 $sub->where('name', 'like', "%{$q}%")
+                    ->orWhere('name_nepali', 'like', "%{$q}%")
+                    ->orWhere('name_hindi', 'like', "%{$q}%")
+                    ->orWhere('name_romanized', 'like', "%{$q}%")
                     ->orWhere('sku', 'like', "%{$q}%");
             });
         })
         ->with(['variants' => fn($vq) => $vq->where('active', true)->orderBy('pack_size')])
         ->orderBy('name')
         ->limit(20)
-        ->get(['id', 'name', 'sku'])
+        ->get(['id', 'name', 'name_nepali', 'name_hindi', 'name_romanized', 'sku'])
         ->map(fn($p) => [
             'id'       => $p->id,
             'name'     => $p->name,
+            'display_name' => trim($p->name . ' (' . implode(' / ', array_filter([
+                $p->name_nepali,
+                $p->name_romanized,
+                $p->name_hindi,
+            ])) . ')', ' ()'),
             'sku'      => $p->sku,
             'variants' => $p->variants->map(fn($v) => [
                 'id'                  => $v->id,

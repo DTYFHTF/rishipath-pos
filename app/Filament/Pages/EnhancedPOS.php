@@ -118,6 +118,7 @@ class EnhancedPOS extends Page
                         $q->where('name', 'like', "%{$search}%")
                             ->orWhere('name_hindi', 'like', "%{$search}%")
                             ->orWhere('name_nepali', 'like', "%{$search}%")
+                            ->orWhere('name_romanized', 'like', "%{$search}%")
                             ->orWhere('name_sanskrit', 'like', "%{$search}%")
                             ->orWhere('description', 'like', "%{$search}%");
                     })
@@ -163,6 +164,7 @@ class EnhancedPOS extends Page
                     'other_names' => collect([
                         $variant->product->name_hindi,
                         $variant->product->name_nepali,
+                        $variant->product->name_romanized,
                         $variant->product->name_sanskrit,
                     ])->filter()->implode(' / '),
                 ];

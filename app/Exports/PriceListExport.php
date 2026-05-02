@@ -40,9 +40,8 @@ class PriceListExport implements FromArray, ShouldAutoSize, WithHeadings, WithSt
     {
         return [
             1 => [
-                'font'      => ['bold' => true, 'size' => 11],
+                'font'      => ['bold' => true, 'size' => 11, 'color' => ['rgb' => 'FFFFFF']],
                 'fill'      => ['fillType' => 'solid', 'startColor' => ['rgb' => '2C6E49']],
-                'font'      => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true],
                 'alignment' => ['horizontal' => 'center'],
             ],
         ];
