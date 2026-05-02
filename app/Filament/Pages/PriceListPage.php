@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Exports\PriceListExport;
 use App\Models\Category;
 use App\Services\OrganizationContext;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\Storage;
@@ -36,7 +37,7 @@ class PriceListPage extends Page
 
     // Increment this whenever the item schema gains new required keys.
     // Any cached file without a matching version is discarded automatically.
-    private const CACHE_VERSION = 6;
+    private const CACHE_VERSION = 7;
 
     // Re-generate only after this many hours (unless forced)
     private const CACHE_TTL_HOURS = 24;
@@ -253,6 +254,32 @@ class PriceListPage extends Page
         $this->dispatch('download-price-list', url: Storage::url($storagePath));
     }
 
+    public function downloadPdf()
+    {
+        if (empty($this->priceList)) {
+            Notification::make()
+                ->title('No price list available. Please generate first.')
+                ->warning()
+                ->send();
+
+            return null;
+        }
+
+        $pdf = Pdf::loadView('exports.price-list-pdf', [
+            'priceList' => $this->priceList,
+            'generatedAt' => $this->generatedAt ?? now()->toDateTimeString(),
+            'changedCount' => $this->getChangedPriceCount(),
+            'uniqueProductCount' => $this->getUniqueProductCount(),
+            'variantCount' => $this->getTotalProducts(),
+        ])->setPaper('a4', 'portrait');
+
+        $filename = 'price-list-' . now()->format('Y-m-d') . '.pdf';
+
+        return response()->streamDownload(function () use ($pdf) {
+            echo $pdf->output();
+        }, $filename);
+    }
+
     public function getGeneratedAtForHumans(): string
     {
         if (! $this->generatedAt) {
@@ -265,6 +292,33 @@ class PriceListPage extends Page
     public function getTotalProducts(): int
     {
         return array_sum(array_map(fn ($g) => count($g['items']), $this->priceList));
+    }
+
+    public function getUniqueProductCount(): int
+    {
+        return collect($this->priceList)
+            ->flatMap(fn ($group) => $group['items'])
+            ->groupBy('product_id')
+            ->count();
+    }
+
+    public function getProductsWithImageCount(): int
+    {
+        return collect($this->priceList)
+            ->flatMap(fn ($group) => $group['items'])
+            ->groupBy('product_id')
+            ->filter(fn ($rows) => ! empty($rows->first()['image_url'] ?? null))
+            ->count();
+    }
+
+    public function getImageCoveragePercent(): int
+    {
+        $totalProducts = $this->getUniqueProductCount();
+        if ($totalProducts === 0) {
+            return 0;
+        }
+
+        return (int) round(($this->getProductsWithImageCount() / $totalProducts) * 100);
     }
 
     public function getChangedPriceCount(): int
@@ -374,6 +428,14 @@ class PriceListPage extends Page
         }
 
         $key = (int) round($grams);
+
+        if ($key > 0 && $key < 1000) {
+            return $key . 'g';
+        }
+
+        if ($key > 1000) {
+            return rtrim(rtrim(number_format($key / 1000, 2, '.', ''), '0'), '.') . 'kg';
+        }
 
         return match ($key) {
             1 => '1g',
