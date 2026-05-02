@@ -8,8 +8,10 @@ use App\Models\Purchase;
 use App\Models\Store;
 use App\Models\Supplier;
 use App\Services\OrganizationContext;
+use App\Services\PricingService;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -139,6 +141,37 @@ class PurchaseResource extends Resource
                                     ->prefix('₹')
                                     ->reactive()
                                     ->columnSpan(2),
+
+                                Forms\Components\Placeholder::make('suggested_variant_prices')
+                                    ->label('Suggested Variant Prices')
+                                    ->content(function (Get $get) {
+                                        $variantId = $get('product_variant_id');
+                                        $unitCost = $get('unit_cost');
+
+                                        if (! $variantId || $unitCost === null || $unitCost === '') {
+                                            return 'Select a product and enter supplier cost to preview suggested MRP and selling price.';
+                                        }
+
+                                        $variant = ProductVariant::find($variantId);
+                                        if (! $variant) {
+                                            return 'Variant not found.';
+                                        }
+
+                                        $suggested = PricingService::suggestVariantPrices(
+                                            (float) $unitCost,
+                                            (float) $variant->pack_size,
+                                            (string) $variant->unit,
+                                        );
+
+                                        if ($variant->manual_price_locked) {
+                                            return 'This variant is manually locked. Receipt will update cost only, not selling prices.';
+                                        }
+
+                                        return 'MRP: ₹' . number_format((float) $suggested['mrp_india'], 2)
+                                            . ' | Nepal: NPR ' . number_format((float) $suggested['selling_price_nepal'], 2)
+                                            . ' | Rule: ' . PricingService::getPricingRuleSummary((float) $variant->pack_size, (string) $variant->unit);
+                                    })
+                                    ->columnSpan(4),
 
                                 Forms\Components\TextInput::make('tax_rate')
                                     ->label('Tax %')

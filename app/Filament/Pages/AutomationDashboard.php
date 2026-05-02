@@ -14,9 +14,14 @@ class AutomationDashboard extends Page
 
     protected static ?string $navigationLabel = 'Automation';
 
-    protected static ?string $navigationGroup = 'Reports & Alerts';
+    protected static ?string $navigationGroup = 'Advanced Automation';
 
     protected static ?int $navigationSort = 1;
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->isSuperAdmin() ?? false;
+    }
 
     protected static string $view = 'filament.pages.automation-dashboard';
 

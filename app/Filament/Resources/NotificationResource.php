@@ -16,9 +16,14 @@ class NotificationResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-bell';
 
-    protected static ?string $navigationGroup = 'Reports & Alerts';
+    protected static ?string $navigationGroup = 'Advanced Automation';
 
     protected static ?int $navigationSort = 3;
+
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->isSuperAdmin() ?? false;
+    }
 
     public static function form(Form $form): Form
     {
