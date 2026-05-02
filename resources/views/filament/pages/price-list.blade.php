@@ -110,7 +110,6 @@
                                 <tr class="bg-gray-50 dark:bg-gray-900 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                     <th class="px-4 py-2 w-8">#</th>
                                     <th class="px-4 py-2 text-center">Pack Size</th>
-                                    <th class="px-4 py-2 text-center">Rule</th>
                                     <th class="px-4 py-2 text-right">Cost</th>
                                     <th class="px-4 py-2 text-right">Wholesale</th>
                                     <th class="px-4 py-2 text-right">MRP</th>
@@ -123,30 +122,76 @@
                                         $productIndex++;
                                         $anyChanged = $variants->contains(fn($v) => !empty($v['price_changed']));
                                         $missingPacks = $variants->first()['missing_mandatory_packs'] ?? [];
-                                            $imageSlug = $variants->first()['image_slug'] ?? '';
+                                        $imageSlug = $variants->first()['image_slug'] ?? '';
+
+                                        $sortedVariants = $variants->sortBy(fn ($v) => $v['pack_size_grams'] ?? PHP_INT_MAX)->values();
+                                        $ruleSource = $sortedVariants->first(fn ($v) => !empty($v['one_gram_mrp']) || !empty($v['fifteen_gram_mrp']) || !empty($v['optional_20g_mrp']) || !empty($v['rule_note']));
+                                        $oneGramMrp = $ruleSource['one_gram_mrp'] ?? null;
+                                        $fifteenGramMrp = $ruleSource['fifteen_gram_mrp'] ?? null;
+                                        $optionalTwentyGram = $ruleSource['optional_20g_mrp'] ?? null;
+                                        $ruleNote = $ruleSource['rule_note'] ?? null;
                                     @endphp
                                     {{-- Product header row --}}
                                     <tr class="bg-gray-100 dark:bg-gray-700/60 border-t-2 border-gray-200 dark:border-gray-600">
                                         <td class="px-4 py-2.5 text-gray-500 dark:text-gray-400 text-xs font-medium align-middle">{{ $productIndex }}</td>
-                                        <td colspan="5" class="px-4 py-2.5 align-middle">
-                                            <div class="flex items-center gap-2 flex-wrap">
-                                                    @if($imageSlug)
-                                                        <img
-                                                            src="/images/products/{{ $imageSlug }}.jpg"
-                                                            alt="{{ $productName }}"
-                                                            class="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-gray-200 dark:border-gray-600"
-                                                            onerror="this.style.display='none'"
-                                                        >
+                                        <td colspan="4" class="px-4 py-3 align-middle">
+                                            <div class="flex flex-col md:flex-row md:items-center gap-3">
+                                                @if($imageSlug)
+                                                    <img
+                                                        src="/images/products/{{ $imageSlug }}.jpg"
+                                                        alt="{{ $productName }}"
+                                                        class="rounded-xl object-cover flex-shrink-0 border border-gray-200 dark:border-gray-600"
+                                                        style="width:120px;height:120px"
+                                                        onerror="this.style.display='none'"
+                                                    >
+                                                @endif
+
+                                                <div class="flex-1 min-w-0">
+                                                    <div class="flex items-center gap-2 flex-wrap mb-1">
+                                                        <span class="text-lg font-bold text-gray-900 dark:text-gray-100">{{ $productName }}</span>
+                                                        @if($anyChanged)
+                                                            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-200">Price Changed</span>
+                                                        @endif
+                                                        @if(!empty($missingPacks))
+                                                            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200">
+                                                                Missing: {{ implode(', ', $missingPacks) }}
+                                                            </span>
+                                                        @endif
+                                                    </div>
+
+                                                    <div class="flex flex-wrap items-center gap-1.5 mb-2">
+                                                        <span class="text-xs font-semibold text-gray-500 dark:text-gray-400">Available Weights:</span>
+                                                        @foreach($sortedVariants as $weightItem)
+                                                            @php
+                                                                $weightCode = strtoupper($weightItem['pack_code'] ?? '?');
+                                                                $weightClass = $weightItem['pack_color_class'] ?? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200';
+                                                                $weightLabel = $weightItem['pack_size'] ?? '';
+                                                            @endphp
+                                                            <span class="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold {{ $weightClass }}">
+                                                                <span class="opacity-80">{{ $weightCode }}</span>
+                                                                <span>{{ $weightLabel }}</span>
+                                                            </span>
+                                                        @endforeach
+                                                    </div>
+
+                                                    @if($oneGramMrp || $fifteenGramMrp || $optionalTwentyGram || $ruleNote)
+                                                        <div class="inline-flex flex-wrap items-center gap-2 text-xs rounded-lg px-2.5 py-1.5 bg-blue-50 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200">
+                                                            <span class="font-semibold">Guide:</span>
+                                                            @if($ruleNote)
+                                                                <span>{{ $ruleNote }}</span>
+                                                            @endif
+                                                            @if($oneGramMrp)
+                                                                <span>1g: NPR {{ number_format($oneGramMrp, 2) }}</span>
+                                                            @endif
+                                                            @if($fifteenGramMrp)
+                                                                <span>15g cap: NPR {{ number_format($fifteenGramMrp, 2) }}</span>
+                                                            @endif
+                                                            @if($optionalTwentyGram)
+                                                                <span>20g ref: NPR {{ number_format($optionalTwentyGram, 2) }}</span>
+                                                            @endif
+                                                        </div>
                                                     @endif
-                                                    <span class="text-base font-bold text-gray-900 dark:text-gray-100">{{ $productName }}</span>
-                                                @if($anyChanged)
-                                                    <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-200">Price Changed</span>
-                                                @endif
-                                                @if(!empty($missingPacks))
-                                                    <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200">
-                                                        Missing: {{ implode(', ', $missingPacks) }}
-                                                    </span>
-                                                @endif
+                                                </div>
                                             </div>
                                         </td>
                                     </tr>
@@ -167,20 +212,6 @@
                                             <td class="px-4 py-2 text-center text-gray-600 dark:text-gray-300">
                                                 <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold {{ $packColorClass }}">{{ strtoupper($packCode) }}</span>
                                                 <div class="mt-1 text-xs">{{ $packSize }}</div>
-                                            </td>
-                                            <td class="px-4 py-2 text-center text-xs text-gray-600 dark:text-gray-300">
-                                                @if(!empty($item['rule_note']))
-                                                    <div class="font-medium">{{ $item['rule_note'] }}</div>
-                                                @endif
-                                                @if(!empty($item['one_gram_mrp']))
-                                                    <div>1g: NPR {{ number_format($item['one_gram_mrp'], 2) }}</div>
-                                                @endif
-                                                @if(!empty($item['fifteen_gram_mrp']))
-                                                    <div>15g cap: NPR {{ number_format($item['fifteen_gram_mrp'], 2) }}</div>
-                                                @endif
-                                                @if($packGrams == 20 && !empty($item['optional_20g_mrp']))
-                                                    <div>20g ref: NPR {{ number_format($item['optional_20g_mrp'], 2) }}</div>
-                                                @endif
                                             </td>
                                             <td class="px-4 py-2 text-right text-gray-600 dark:text-gray-300">
                                                 NPR {{ number_format($costPrice, 2) }}
