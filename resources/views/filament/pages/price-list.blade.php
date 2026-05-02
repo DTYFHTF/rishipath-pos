@@ -121,7 +121,7 @@
                                 @foreach($grouped as $productName => $variants)
                                     @php
                                         $productIndex++;
-                                        $anyChanged = $variants->contains('price_changed', true);
+                                        $anyChanged = $variants->contains(fn($v) => !empty($v['price_changed']));
                                         $missingPacks = $variants->first()['missing_mandatory_packs'] ?? [];
                                     @endphp
                                     {{-- Product header row --}}
@@ -143,23 +143,23 @@
                                     </tr>
                                     {{-- Variant rows --}}
                                     @foreach($variants as $vi => $item)
-                                        <tr class="{{ $item['price_changed'] ? 'bg-orange-50 dark:bg-orange-900/20' : ($vi % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900/50') }} hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
+                                        <tr class="{{ !empty($item['price_changed']) ? 'bg-orange-50 dark:bg-orange-900/20' : ($vi % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900/50') }} hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
                                             <td class="px-4 py-2"></td>
                                             <td class="px-4 py-2 text-center text-gray-600 dark:text-gray-300">
                                                 <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold {{ $item['pack_color_class'] }}">{{ strtoupper($item['pack_code']) }}</span>
                                                 <div class="mt-1 text-xs">{{ $item['pack_size'] }}</div>
                                             </td>
                                             <td class="px-4 py-2 text-center text-xs text-gray-600 dark:text-gray-300">
-                                                @if($item['rule_note'])
+                                                @if(!empty($item['rule_note']))
                                                     <div class="font-medium">{{ $item['rule_note'] }}</div>
                                                 @endif
-                                                @if($item['one_gram_mrp'])
+                                                @if(!empty($item['one_gram_mrp']))
                                                     <div>1g: NPR {{ number_format($item['one_gram_mrp'], 2) }}</div>
                                                 @endif
-                                                @if($item['fifteen_gram_mrp'])
+                                                @if(!empty($item['fifteen_gram_mrp']))
                                                     <div>15g cap: NPR {{ number_format($item['fifteen_gram_mrp'], 2) }}</div>
                                                 @endif
-                                                @if($item['pack_size_grams'] == 20 && $item['optional_20g_mrp'])
+                                                @if(($item['pack_size_grams'] ?? 0) == 20 && !empty($item['optional_20g_mrp']))
                                                     <div>20g ref: NPR {{ number_format($item['optional_20g_mrp'], 2) }}</div>
                                                 @endif
                                             </td>
@@ -169,7 +169,7 @@
                                             <td class="px-4 py-2 text-right text-blue-700 dark:text-blue-400 font-medium">
                                                 NPR {{ number_format($item['wholesale'], 2) }}
                                             </td>
-                                            <td class="px-4 py-2 text-right font-semibold {{ $item['price_changed'] ? 'text-orange-700 dark:text-orange-300' : 'text-green-700 dark:text-green-400' }}">
+                                            <td class="px-4 py-2 text-right font-semibold {{ !empty($item['price_changed']) ? 'text-orange-700 dark:text-orange-300' : 'text-green-700 dark:text-green-400' }}">
                                                 NPR {{ number_format($item['mrp'], 2) }}
                                             </td>
                                         </tr>
