@@ -36,7 +36,7 @@ class PriceListPage extends Page
 
     // Increment this whenever the item schema gains new required keys.
     // Any cached file without a matching version is discarded automatically.
-    private const CACHE_VERSION = 5;
+    private const CACHE_VERSION = 6;
 
     // Re-generate only after this many hours (unless forced)
     private const CACHE_TTL_HOURS = 24;
@@ -110,6 +110,10 @@ class PriceListPage extends Page
             $items = [];
 
             foreach ($category->products as $product) {
+                $displayVariants = collect($product->variants)
+                    ->unique(fn ($variant) => $this->variantSizeKey($variant))
+                    ->values();
+
                 $nameParts = array_values(array_unique(array_filter([
                     $product->name_nepali,
                     $product->name_romanized,
@@ -121,7 +125,7 @@ class PriceListPage extends Page
                     $displayName .= ' (' . implode(' / ', $nameParts) . ')';
                 }
 
-                $variantMeta = collect($product->variants)
+                $variantMeta = $displayVariants
                     ->map(function ($variant) {
                         $grams = $this->toGrams((float) $variant->pack_size, (string) $variant->unit);
                         $mrpRaw = (float) ($variant->mrp_india ?? $variant->base_price ?? 0);
@@ -141,7 +145,6 @@ class PriceListPage extends Page
                     ->map(fn ($v) => $v['mrp'] / $v['grams'])
                     ->first();
 
-                $has20gVariant = $variantMeta->contains(fn ($v) => $v['grams'] === 20.0);
                 $has500g = $variantMeta->contains(fn ($v) => $v['grams'] === 500.0);
                 $has1kg = $variantMeta->contains(fn ($v) => $v['grams'] === 1000.0);
                 $isWeightProduct = ($product->unit_type ?? 'weight') === 'weight';
@@ -156,20 +159,13 @@ class PriceListPage extends Page
                     }
                 }
 
-                foreach ($product->variants as $variant) {
+                foreach ($displayVariants as $variant) {
                     $mrpRaw = (float) ($variant->mrp_india ?? $variant->base_price ?? 0);
                     $mrp = $this->roundUpToNearestFive($mrpRaw);
                     $cost = (float) ($variant->cost_price ?? 0);
-                    $wholesale = $this->roundUpToNearestFive($cost * 1.20);
+                    $wholesale = $this->roundUpToInteger($cost * 1.13);
                     $packGrams = $this->toGrams((float) $variant->pack_size, (string) $variant->unit);
                     $packCode = $this->packCode($packGrams);
-
-                    $ruleNote = null;
-                    if ($packGrams !== null && $packGrams <= 15.0 && $oneGramMrp) {
-                        $ruleNote = 'Uses 1g MRP rule (valid up to 15g)';
-                    } elseif ($packGrams === 20.0) {
-                        $ruleNote = 'Optional 20g variant';
-                    }
 
                     $rowKey = $product->id . ':' . $variant->id;
                     $previous = $previousIndex[$rowKey] ?? null;
@@ -184,17 +180,14 @@ class PriceListPage extends Page
                         'product_name' => $displayName,
                         'image_slug' => Str::slug($product->name),
                         'image_url' => $product->image_url,
-                        'pack_size' => $variant->pack_size . ' ' . $variant->unit,
+                        'pack_size' => $this->formatPackSize((float) $variant->pack_size, (string) $variant->unit),
                         'pack_size_grams' => $packGrams,
                         'pack_code' => $packCode,
                         'pack_color_class' => $this->packColorClass($packCode),
                         'wholesale' => $wholesale,
                         'mrp' => $mrp,
                         'price_changed' => $priceChanged,
-                        'one_gram_mrp' => $oneGramMrp ? round($oneGramMrp, 2) : null,
-                        'fifteen_gram_mrp' => $oneGramMrp ? round($oneGramMrp * 15, 2) : null,
-                        'optional_20g_mrp' => $has20gVariant && $oneGramMrp ? round($oneGramMrp * 20, 2) : null,
-                        'rule_note' => $ruleNote,
+                        'one_gram_mrp' => $oneGramMrp ? $this->roundUpToInteger($oneGramMrp) : null,
                         'missing_mandatory_packs' => $missingMandatoryPacks,
                         'is_weight_product' => $isWeightProduct,
                     ];
@@ -332,6 +325,46 @@ class PriceListPage extends Page
         }
 
         return (float) (ceil($value / 5) * 5);
+    }
+
+    private function roundUpToInteger(float $value): float
+    {
+        if ($value <= 0) {
+            return 0;
+        }
+
+        return (float) ceil($value);
+    }
+
+    private function formatPackSize(float $size, string $unit): string
+    {
+        $normalizedUnit = strtoupper(trim($unit));
+
+        $displaySize = floor($size) == $size
+            ? (string) (int) $size
+            : number_format($size, 3, '.', '');
+
+        $displayUnit = match ($normalizedUnit) {
+            'GMS', 'GM', 'GRAM', 'GRAMS' => 'G',
+            'KGS', 'KILOGRAM', 'KILOGRAMS' => 'KG',
+            default => $normalizedUnit,
+        };
+
+        return $displaySize . ' ' . $displayUnit;
+    }
+
+    private function variantSizeKey($variant): string
+    {
+        $grams = $this->toGrams((float) $variant->pack_size, (string) $variant->unit);
+
+        if ($grams !== null) {
+            return 'GRAMS:' . number_format($grams, 3, '.', '');
+        }
+
+        $normalizedUnit = strtoupper(trim((string) $variant->unit));
+        $size = number_format((float) $variant->pack_size, 3, '.', '');
+
+        return $normalizedUnit . ':' . $size;
     }
 
     private function packCode(?float $grams): string
