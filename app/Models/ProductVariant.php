@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\PricingService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -110,12 +111,16 @@ class ProductVariant extends Model
         parent::booted();
 
         static::creating(function ($variant) {
+            static::fillSuggestedPrices($variant);
+
             if (empty($variant->sku)) {
                 $variant->sku = static::generateSkuFromVariant($variant);
             }
         });
 
         static::updating(function ($variant) {
+            static::fillSuggestedPrices($variant);
+
             // Regenerate SKU if key fields changed
             if ($variant->isDirty(['product_id', 'pack_size', 'unit'])) {
                 $variant->sku = static::generateSkuFromVariant($variant);
@@ -136,6 +141,31 @@ class ProductVariant extends Model
             $variant->pack_size,
             $variant->unit
         );
+    }
+
+    protected static function fillSuggestedPrices(ProductVariant $variant): void
+    {
+        if ($variant->cost_price === null || $variant->pack_size === null || blank($variant->unit)) {
+            return;
+        }
+
+        $suggested = PricingService::suggestVariantPrices(
+            (float) $variant->cost_price,
+            (float) $variant->pack_size,
+            (string) $variant->unit,
+        );
+
+        if ($variant->base_price === null) {
+            $variant->base_price = $suggested['base_price'];
+        }
+
+        if ($variant->mrp_india === null) {
+            $variant->mrp_india = $suggested['mrp_india'];
+        }
+
+        if ($variant->selling_price_nepal === null) {
+            $variant->selling_price_nepal = $suggested['selling_price_nepal'];
+        }
     }
 
     /**
