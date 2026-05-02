@@ -33,6 +33,10 @@ class PriceListPage extends Page
     // Cache file lives in storage/app/price-lists/latest.json
     private const CACHE_FILE = 'price-lists/latest.json';
 
+    // Increment this whenever the item schema gains new required keys.
+    // Any cached file without a matching version is discarded automatically.
+    private const CACHE_VERSION = 2;
+
     // Re-generate only after this many hours (unless forced)
     private const CACHE_TTL_HOURS = 24;
 
@@ -62,15 +66,24 @@ class PriceListPage extends Page
 
     private function loadFromCache(): void
     {
-        if (Storage::exists(self::CACHE_FILE)) {
-            $data = json_decode(Storage::get(self::CACHE_FILE), true);
-            $this->generatedAt = $data['generated_at'] ?? null;
-            $this->priceList = $data['price_list'] ?? [];
+        if (! Storage::exists(self::CACHE_FILE)) {
+            return;
+        }
 
-            if ($this->generatedAt) {
-                $age = now()->diffInHours($this->generatedAt);
-                $this->isStale = $age >= self::CACHE_TTL_HOURS;
-            }
+        $data = json_decode(Storage::get(self::CACHE_FILE), true);
+
+        // Discard any cache written by an older code version (missing keys).
+        if (($data['version'] ?? 0) !== self::CACHE_VERSION) {
+            Storage::delete(self::CACHE_FILE);
+            return;
+        }
+
+        $this->generatedAt = $data['generated_at'] ?? null;
+        $this->priceList   = $data['price_list'] ?? [];
+
+        if ($this->generatedAt) {
+            $age = now()->diffInHours($this->generatedAt);
+            $this->isStale = $age >= self::CACHE_TTL_HOURS;
         }
     }
 
@@ -198,8 +211,7 @@ class PriceListPage extends Page
         $this->isStale = false;
 
         Storage::makeDirectory('price-lists');
-        Storage::put(self::CACHE_FILE, json_encode([
-            'generated_at' => $this->generatedAt,
+        Storage::put(self::CACHE_FILE, json_encode([            'version'      => self::CACHE_VERSION,            'generated_at' => $this->generatedAt,
             'price_list' => $priceList,
         ]));
 
