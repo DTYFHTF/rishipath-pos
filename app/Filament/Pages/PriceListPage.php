@@ -36,7 +36,7 @@ class PriceListPage extends Page
 
     // Increment this whenever the item schema gains new required keys.
     // Any cached file without a matching version is discarded automatically.
-    private const CACHE_VERSION = 3;
+    private const CACHE_VERSION = 4;
 
     // Re-generate only after this many hours (unless forced)
     private const CACHE_TTL_HOURS = 24;
