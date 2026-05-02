@@ -41,7 +41,19 @@ class PriceListPage extends Page
     {
         $user = auth()->user();
 
-        return $user?->hasPermission('view_reports') || $user?->hasPermission('manage_products') || false;
+        if (! $user) {
+            return false;
+        }
+
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
+        return $user->hasAnyPermission([
+            'view_inventory_reports',
+            'export_reports',
+            'view_products',
+        ]);
     }
 
     public function mount(): void
