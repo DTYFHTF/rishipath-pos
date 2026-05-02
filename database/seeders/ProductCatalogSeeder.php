@@ -260,6 +260,7 @@ class ProductCatalogSeeder extends Seeder
                 'sku' => $sku,
                 'name' => $productData['name'],
                 'name_sanskrit' => $productData['name_sanskrit'] ?? null,
+                'name_romanized' => $productData['name_romanized'] ?? null,
                 'name_hindi' => $productData['name_hindi'] ?? null,
                 'description' => $productData['description'] ?? null,
                 'product_type' => $productData['product_type'],

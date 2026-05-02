@@ -681,6 +681,7 @@ class SpiceProductSeeder extends Seeder
                 'sku'             => $sku,
                 'name'            => $productData['name'],
                 'name_nepali'     => $productData['name_nepali'] ?? null,
+                'name_romanized'  => $productData['name_romanized'] ?? null,
                 'name_hindi'      => $productData['name_hindi'] ?? null,
                 'description'     => $productData['description'] ?? null,
                 'product_type'    => $category->product_type,

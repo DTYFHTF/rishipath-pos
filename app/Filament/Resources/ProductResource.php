@@ -66,6 +66,10 @@ class ProductResource extends Resource
                         Forms\Components\TextInput::make('name_hindi')
                             ->label('Hindi Name')
                             ->maxLength(255),
+                        Forms\Components\TextInput::make('name_romanized')
+                            ->label('Transliteration (Romanized)')
+                            ->helperText('Example: Nariwal for नरिवल')
+                            ->maxLength(255),
                         Forms\Components\Select::make('product_type')
                             ->required()
                             ->options([
@@ -189,7 +193,7 @@ class ProductResource extends Resource
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('name')
-                    ->searchable()
+                    ->searchable(['name', 'name_nepali', 'name_hindi', 'name_romanized'])
                     ->sortable(),
                 Tables\Columns\TextColumn::make('category.name')
                     ->sortable()

@@ -600,6 +600,7 @@ class DryFruitsSeeder extends Seeder
                     'category_id'       => $category->id,
                     'name'              => $productData['name'],
                     'name_nepali'       => $productData['name_nepali'] ?? null,
+                    'name_romanized'    => $productData['name_romanized'] ?? ($productData['name_hindi'] ?? null),
                     'name_hindi'        => $productData['name_hindi'] ?? null,
                     'sku'               => $sku,
                     'product_type'      => $category->product_type,

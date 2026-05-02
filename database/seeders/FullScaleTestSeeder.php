@@ -330,6 +330,7 @@ class FullScaleTestSeeder extends Seeder
                 ],
                 [
                     'name' => $data['name'],
+                    'name_romanized' => $data['name_romanized'] ?? null,
                     'description' => $data['desc'],
                     'category_id' => $category->id,
                     'product_type' => $data['type'],
