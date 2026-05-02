@@ -54,6 +54,14 @@
 
             @if(!empty($priceList))
                 <button
+                    wire:click="downloadPdf"
+                    class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition"
+                >
+                    <x-heroicon-o-document-arrow-down class="w-4 h-4"/>
+                    Save as PDF
+                </button>
+
+                <button
                     wire:click="downloadExcel"
                     class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
                 >
@@ -84,9 +92,9 @@
                 <p class="text-xs text-red-700/80 dark:text-red-300/80">Weight products with missing compulsory packs</p>
             </div>
             <div class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-900 dark:bg-blue-900/20">
-                <p class="text-xs text-blue-700 dark:text-blue-300 uppercase tracking-wide">MRP Rule</p>
-                <p class="text-sm font-semibold text-blue-800 dark:text-blue-200">1g guide shown as ceiling value</p>
-                <p class="text-xs text-blue-700/80 dark:text-blue-300/80">Example: 1.6 becomes 2</p>
+                <p class="text-xs text-blue-700 dark:text-blue-300 uppercase tracking-wide">Photo Coverage</p>
+                <p class="text-2xl font-semibold text-blue-800 dark:text-blue-200">{{ $this->getProductsWithImageCount() }}/{{ $this->getUniqueProductCount() }}</p>
+                <p class="text-xs text-blue-700/80 dark:text-blue-300/80">{{ $this->getImageCoveragePercent() }}% products have photos</p>
             </div>
         </div>
     @endif
@@ -161,13 +169,11 @@
                                                         <span class="text-xs font-semibold text-gray-500 dark:text-gray-400">Available Weights:</span>
                                                         @foreach($sortedVariants as $weightItem)
                                                             @php
-                                                                $weightCode = strtoupper($weightItem['pack_code'] ?? '?');
                                                                 $weightClass = $weightItem['pack_color_class'] ?? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200';
                                                                 $weightLabel = $weightItem['pack_size'] ?? '';
                                                             @endphp
-                                                            <span class="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold {{ $weightClass }}">
-                                                                <span class="opacity-80">{{ $weightCode }}</span>
-                                                                <span>{{ $weightLabel }}</span>
+                                                            <span class="inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold {{ $weightClass }}">
+                                                                {{ $weightLabel }}
                                                             </span>
                                                         @endforeach
                                                     </div>
@@ -196,8 +202,7 @@
                                         <tr class="{{ $priceChanged ? 'bg-orange-50 dark:bg-orange-900/20' : ($vi % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900/50') }} hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
                                             <td class="px-4 py-2"></td>
                                             <td class="px-4 py-2 text-center text-gray-600 dark:text-gray-300">
-                                                <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold {{ $packColorClass }}">{{ strtoupper($packCode) }}</span>
-                                                <div class="mt-1 text-xs">{{ $packSize }}</div>
+                                                <span class="inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold {{ $packColorClass }}">{{ $packSize }}</span>
                                             </td>
                                             <td class="px-4 py-2 text-right text-blue-700 dark:text-blue-400 font-medium">
                                                 NPR {{ number_format($wholesale, 0) }}
