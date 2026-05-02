@@ -182,6 +182,7 @@ class PriceListPage extends Page
                         'variant_id' => $variant->id,
                         'product_name' => $displayName,
                         'image_slug' => Str::slug($product->name),
+                        'image_url' => $product->image_url,
                         'pack_size' => $variant->pack_size . ' ' . $variant->unit,
                         'pack_size_grams' => $packGrams,
                         'pack_code' => $packCode,

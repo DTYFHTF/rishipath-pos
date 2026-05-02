@@ -19,7 +19,8 @@ class PricingService
         }
 
         $markupPercent = self::suggestMarkupPercent($packSize, $unit);
-        $retailPrice = round($costPrice * (1 + ($markupPercent / 100)), 2);
+        $rawPrice = $costPrice * (1 + ($markupPercent / 100));
+        $retailPrice = (float) (ceil($rawPrice / 5) * 5);
 
         return [
             'markup_percent' => $markupPercent,
