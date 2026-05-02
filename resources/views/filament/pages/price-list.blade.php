@@ -123,13 +123,22 @@
                                         $productIndex++;
                                         $anyChanged = $variants->contains(fn($v) => !empty($v['price_changed']));
                                         $missingPacks = $variants->first()['missing_mandatory_packs'] ?? [];
+                                            $imageSlug = $variants->first()['image_slug'] ?? '';
                                     @endphp
                                     {{-- Product header row --}}
                                     <tr class="bg-gray-100 dark:bg-gray-700/60 border-t-2 border-gray-200 dark:border-gray-600">
                                         <td class="px-4 py-2.5 text-gray-500 dark:text-gray-400 text-xs font-medium align-middle">{{ $productIndex }}</td>
                                         <td colspan="5" class="px-4 py-2.5 align-middle">
                                             <div class="flex items-center gap-2 flex-wrap">
-                                                <span class="text-base font-bold text-gray-900 dark:text-gray-100">{{ $productName }}</span>
+                                                    @if($imageSlug)
+                                                        <img
+                                                            src="/images/products/{{ $imageSlug }}.jpg"
+                                                            alt="{{ $productName }}"
+                                                            class="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-gray-200 dark:border-gray-600"
+                                                            onerror="this.style.display='none'"
+                                                        >
+                                                    @endif
+                                                    <span class="text-base font-bold text-gray-900 dark:text-gray-100">{{ $productName }}</span>
                                                 @if($anyChanged)
                                                     <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-200">Price Changed</span>
                                                 @endif
