@@ -7,9 +7,11 @@ use App\Models\Product;
 use App\Services\OrganizationContext;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Collection;
 
 class ProductResource extends Resource
 {
@@ -246,6 +248,52 @@ class ProductResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\BulkAction::make('mark_inactive')
+                        ->label('Mark Inactive')
+                        ->icon('heroicon-o-eye-slash')
+                        ->color('warning')
+                        ->requiresConfirmation()
+                        ->visible(fn (Collection $records): bool => $records->isNotEmpty() && $records->every(fn (Product $record): bool => (bool) $record->active))
+                        ->action(function (Collection $records): void {
+                            $updated = 0;
+                            $records->each(function (Product $record) use (&$updated): void {
+                                if ($record->active) {
+                                    $record->update(['active' => false]);
+                                    $updated++;
+                                }
+                            });
+
+                            Notification::make()
+                                ->success()
+                                ->title('Products marked inactive')
+                                ->body("{$updated} product(s) updated.")
+                                ->send();
+                        })
+                        ->deselectRecordsAfterCompletion(),
+
+                    Tables\Actions\BulkAction::make('mark_active')
+                        ->label('Mark Active')
+                        ->icon('heroicon-o-eye')
+                        ->color('success')
+                        ->requiresConfirmation()
+                        ->visible(fn (Collection $records): bool => $records->isNotEmpty() && $records->every(fn (Product $record): bool => ! $record->active))
+                        ->action(function (Collection $records): void {
+                            $updated = 0;
+                            $records->each(function (Product $record) use (&$updated): void {
+                                if (! $record->active) {
+                                    $record->update(['active' => true]);
+                                    $updated++;
+                                }
+                            });
+
+                            Notification::make()
+                                ->success()
+                                ->title('Products marked active')
+                                ->body("{$updated} product(s) updated.")
+                                ->send();
+                        })
+                        ->deselectRecordsAfterCompletion(),
+
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
