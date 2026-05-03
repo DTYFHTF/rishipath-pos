@@ -245,27 +245,37 @@ class PricingService
     public static function getTaxRate(?Organization $organization = null): float
     {
         $organization = $organization ?? self::getCurrentOrganization();
-        
-        if (!$organization) {
-            return 13.0; // Default VAT for Nepal
+
+        if (! $organization) {
+            return 0.0;
+        }
+
+        $salesBillType = data_get($organization->config, 'tax.sales_bill_type');
+        if ($salesBillType === 'PAN') {
+            return 0.0;
         }
 
         return match ($organization->country_code) {
-            'IN' => 12.0, // GST
-            'NP' => 13.0, // VAT
+            'IN' => 12.0,
+            'NP' => 13.0,
             default => 0.0,
         };
     }
 
     /**
-     * Get tax label based on organization country
+     * Get tax label based on organization config/country.
      */
     public static function getTaxLabel(?Organization $organization = null): string
     {
         $organization = $organization ?? self::getCurrentOrganization();
-        
-        if (!$organization) {
-            return 'VAT';
+
+        if (! $organization) {
+            return 'Tax';
+        }
+
+        $configured = data_get($organization->config, 'tax.sales_bill_type');
+        if (is_string($configured) && $configured !== '') {
+            return strtoupper($configured);
         }
 
         return match ($organization->country_code) {

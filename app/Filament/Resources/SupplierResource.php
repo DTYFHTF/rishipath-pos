@@ -45,13 +45,13 @@ class SupplierResource extends Resource
                     ->schema([
                         Forms\Components\Select::make('country_code')
                             ->options([
+                                'NP' => '🇳🇵 +977 Nepal',
                                 'IN' => '🇮🇳 +91 India',
                                 'US' => '🇺🇸 +1 United States',
                                 'GB' => '🇬🇧 +44 United Kingdom',
                                 'CN' => '🇨🇳 +86 China',
-                                'NP' => '🇳🇵 +977 Nepal',
                             ])
-                            ->default('IN')
+                            ->default('NP')
                             ->searchable()
                             ->columnSpan(1),
                         Forms\Components\TextInput::make('phone')
@@ -68,19 +68,18 @@ class SupplierResource extends Resource
                     ]),
                 Forms\Components\Select::make('state')
                     ->options([
-                        'Maharashtra' => 'Maharashtra',
-                        'Delhi' => 'Delhi',
-                        'Karnataka' => 'Karnataka',
-                        'Tamil Nadu' => 'Tamil Nadu',
-                        'West Bengal' => 'West Bengal',
-                        'Gujarat' => 'Gujarat',
-                        'Rajasthan' => 'Rajasthan',
-                        'Uttar Pradesh' => 'Uttar Pradesh',
+                        'Bagmati' => 'Bagmati',
+                        'Madhesh' => 'Madhesh',
+                        'Gandaki' => 'Gandaki',
+                        'Lumbini' => 'Lumbini',
+                        'Koshi' => 'Koshi',
+                        'Karnali' => 'Karnali',
+                        'Sudurpashchim' => 'Sudurpashchim',
                     ])
                     ->searchable()
-                    ->helperText('State for GST compliance'),
+                    ->helperText('Province / state for supplier address'),
                 Forms\Components\TextInput::make('tax_number')
-                    ->helperText('GST Number for Indian suppliers'),
+                    ->helperText('VAT or PAN number (if available)'),
                 Forms\Components\RichEditor::make('notes')
                     ->toolbarButtons(['bold', 'italic', 'bulletList', 'link'])
                     ->helperText('Payment terms, delivery notes, etc.')

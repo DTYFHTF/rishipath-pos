@@ -19,11 +19,11 @@ class InitialSetupSeeder extends Seeder
         $org = Organization::updateOrCreate([
             'slug' => 'rishipath',
         ], [
-            'name' => env('ORG_NAME', 'Rishipath International Foundation'),
-            'legal_name' => env('ORG_LEGAL_NAME', 'Rishipath International Foundation'),
-            'country_code' => 'IN',
-            'currency' => 'INR',
-            'timezone' => 'Asia/Kolkata',
+            'name' => env('ORG_NAME', 'Shuddhidham Ayurveda & Yoga-Wellness Suppliers'),
+            'legal_name' => env('ORG_LEGAL_NAME', 'Shuddhidham Ayurveda & Yoga-Wellness Suppliers'),
+            'country_code' => 'NP',
+            'currency' => 'NPR',
+            'timezone' => 'Asia/Kathmandu',
             'locale' => 'en',
             'config' => [
                 'branding' => [
@@ -36,11 +36,15 @@ class InitialSetupSeeder extends Seeder
                     'loyalty_program' => false,
                 ],
                 'tax' => [
-                    'type' => 'GST',
+                    'type' => 'PAN',
+                    'business_tax_number' => '622513573',
+                    'sales_bill_type' => 'PAN',
+                    'purchase_bill_type' => 'VAT',
                     'rates' => [
-                        'essential' => 5,
-                        'standard' => 12,
-                        'luxury' => 18,
+                        // PAN billing: no VAT added on normal sales bills.
+                        'essential' => 0,
+                        'standard' => 0,
+                        'luxury' => 0,
                     ],
                 ],
                 'receipt' => [
@@ -200,14 +204,14 @@ class InitialSetupSeeder extends Seeder
             ['organization_id' => $org->id, 'code' => 'MAIN'],
             [
                 'name' => 'Main Store',
-                'address' => '123 Ayurvedic Street',
-                'city' => 'Mumbai',
-                'state' => 'Maharashtra',
-                'country_code' => 'IN',
-                'postal_code' => '400001',
-                'phone' => '+91-9876543210',
-                'email' => 'store@rishipath.org',
-                'tax_number' => 'GSTIN123456789',
+                'address' => 'Kalimati, Kathmandu',
+                'city' => 'Kathmandu',
+                'state' => 'Bagmati',
+                'country_code' => 'NP',
+                'postal_code' => '44614',
+                'phone' => '+977-9808450422',
+                'email' => 'store@shuddhidham.com',
+                'tax_number' => '622513573',
                 'config' => [
                     'hours' => [
                         'monday' => ['open' => '09:00', 'close' => '18:00'],
@@ -243,7 +247,7 @@ class InitialSetupSeeder extends Seeder
             ['organization_id' => $org->id, 'email' => env('ADMIN_EMAIL', 'admin@rishipath.org')],
             [
                 'name' => env('ADMIN_NAME', 'Admin User'),
-                'phone' => env('ADMIN_PHONE', '+91-9876543210'),
+                'phone' => env('ADMIN_PHONE', '+977-9808450422'),
                 'password' => Hash::make(env('ADMIN_PASSWORD', 'password')),
                 'pin' => env('ADMIN_PIN', '1234'),
                 'role_id' => $adminRole->id,
@@ -317,6 +321,7 @@ class InitialSetupSeeder extends Seeder
         $this->command->info('📧 Email: admin@rishipath.org');
         $this->command->info('🔑 Password: password');
         $this->command->info('📍 Organization: '.$org->name);
+        $this->command->info('🧾 PAN: 622513573');
         $this->command->info('🏪 Store: '.$store->name);
     }
 }
