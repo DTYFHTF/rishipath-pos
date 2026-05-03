@@ -253,7 +253,6 @@ class ProductResource extends Resource
                         ->icon('heroicon-o-eye-slash')
                         ->color('warning')
                         ->requiresConfirmation()
-                        ->visible(fn (Collection $records): bool => $records->isNotEmpty() && $records->every(fn (Product $record): bool => (bool) $record->active))
                         ->action(function (Collection $records): void {
                             $updated = 0;
                             $records->each(function (Product $record) use (&$updated): void {
@@ -276,7 +275,6 @@ class ProductResource extends Resource
                         ->icon('heroicon-o-eye')
                         ->color('success')
                         ->requiresConfirmation()
-                        ->visible(fn (Collection $records): bool => $records->isNotEmpty() && $records->every(fn (Product $record): bool => ! $record->active))
                         ->action(function (Collection $records): void {
                             $updated = 0;
                             $records->each(function (Product $record) use (&$updated): void {
