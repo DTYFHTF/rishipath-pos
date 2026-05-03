@@ -19,8 +19,8 @@ class InitialSetupSeeder extends Seeder
         $org = Organization::updateOrCreate([
             'slug' => 'rishipath',
         ], [
-            'name' => env('ORG_NAME', 'Shuddhidham Ayurveda & Yoga-Wellness Suppliers'),
-            'legal_name' => env('ORG_LEGAL_NAME', 'Shuddhidham Ayurveda & Yoga-Wellness Suppliers'),
+            'name' => 'Shuddhidham Ayurveda & Yoga-Wellness Suppliers',
+            'legal_name' => 'Shuddhidham Ayurveda & Yoga-Wellness Suppliers',
             'country_code' => 'NP',
             'currency' => 'NPR',
             'timezone' => 'Asia/Kathmandu',
