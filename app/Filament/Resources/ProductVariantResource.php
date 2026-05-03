@@ -215,6 +215,55 @@ class ProductVariantResource extends Resource
                     ->boolean(),
             ])
             ->filters([
+                Tables\Filters\Filter::make('size')
+                    ->label('Size')
+                    ->form([
+                        Forms\Components\TextInput::make('size_min')
+                            ->label('Min Size')
+                            ->numeric()
+                            ->minValue(0),
+                        Forms\Components\TextInput::make('size_max')
+                            ->label('Max Size')
+                            ->numeric()
+                            ->minValue(0),
+                        Forms\Components\Select::make('unit')
+                            ->label('Unit')
+                            ->options([
+                                'GMS' => 'GMS',
+                                'KG' => 'KG',
+                                'ML' => 'ML',
+                                'L' => 'L',
+                                'PCS' => 'PCS',
+                            ]),
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query
+                            ->when($data['size_min'] ?? null, fn ($q, $value) => $q->where('pack_size', '>=', (float) $value))
+                            ->when($data['size_max'] ?? null, fn ($q, $value) => $q->where('pack_size', '<=', (float) $value))
+                            ->when($data['unit'] ?? null, fn ($q, $value) => $q->where('unit', $value));
+                    }),
+
+                Tables\Filters\Filter::make('mrp_range')
+                    ->label('MRP Range')
+                    ->form([
+                        Forms\Components\TextInput::make('mrp_min')
+                            ->label('Min MRP')
+                            ->numeric()
+                            ->minValue(0),
+                        Forms\Components\TextInput::make('mrp_max')
+                            ->label('Max MRP')
+                            ->numeric()
+                            ->minValue(0),
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query
+                            ->when($data['mrp_min'] ?? null, fn ($q, $value) => $q->where('mrp_india', '>=', (float) $value))
+                            ->when($data['mrp_max'] ?? null, fn ($q, $value) => $q->where('mrp_india', '<=', (float) $value));
+                    }),
+
+                Tables\Filters\TernaryFilter::make('active')
+                    ->label('Active'),
+
                 Tables\Filters\TernaryFilter::make('has_barcode')
                     ->label('Barcode Status')
                     ->placeholder('All Variants')
