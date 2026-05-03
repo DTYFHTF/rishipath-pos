@@ -107,9 +107,9 @@ class ProductResource extends Resource
                         Forms\Components\Select::make('tax_category')
                             ->required()
                             ->options([
-                                'essential' => 'Essential (5% GST)',
-                                'standard' => 'Standard (12% GST)',
-                                'luxury' => 'Luxury (18% GST)',
+                                'essential' => 'Essential',
+                                'standard' => 'Standard',
+                                'luxury' => 'Luxury',
                             ])
                             ->default('standard'),
                         Forms\Components\Toggle::make('has_variants')

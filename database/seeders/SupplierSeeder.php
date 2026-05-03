@@ -18,6 +18,9 @@ class SupplierSeeder extends Seeder
             return;
         }
 
+        // Keep historical suppliers but mark them inactive unless listed below.
+        Supplier::where('organization_id', $org->id)->update(['active' => false]);
+
         $suppliers = [
             [
                 'organization_id' => $org->id,
