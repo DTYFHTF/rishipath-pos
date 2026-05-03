@@ -11,12 +11,12 @@ class ReceiptService
     public function generateReceipt(Sale $sale): string
     {
         $sale->load(['store', 'items.productVariant.product', 'customer', 'cashier']);
-        $org = Organization::find($sale->organization_id);
+        $org = Organization::query()->find($sale->organization_id) ?? Organization::query()->where('active', true)->first();
 
         $receipt = $this->getHeader($org, $sale->store);
         $receipt .= $this->getSaleInfo($sale);
-        $receipt .= $this->getItems($sale);
-        $receipt .= $this->getTotals($sale);
+        $receipt .= $this->getItems($sale, $org);
+        $receipt .= $this->getTotals($sale, $org);
         $receipt .= $this->getFooter($org);
 
         return $receipt;
@@ -29,7 +29,7 @@ class ReceiptService
     public function generateWhatsAppReceipt(Sale $sale): string
     {
         $sale->load(['store', 'items.productVariant.product', 'customer', 'cashier']);
-        $org = \App\Models\Organization::find($sale->organization_id);
+        $org = Organization::query()->find($sale->organization_id) ?? Organization::query()->where('active', true)->first();
 
         $lines = [];
 
@@ -43,7 +43,7 @@ class ReceiptService
             $lines[] = "Phone: {$sale->store->phone}";
         }
         if ($sale->store->tax_number) {
-            $lines[] = "GSTIN: {$sale->store->tax_number}";
+            $lines[] = $this->getTaxNumberLabel($org) . ": {$sale->store->tax_number}";
         }
         $lines[] = "";
 
@@ -76,7 +76,7 @@ class ReceiptService
         if ($sale->discount_amount > 0) {
             $lines[] = "*Discount:* -₹" . number_format($sale->discount_amount, 2);
         }
-        $lines[] = "*Tax (GST):* ₹" . number_format($sale->tax_amount, 2);
+        $lines[] = "*Tax (" . PricingService::getTaxLabel($org) . "):* ₹" . number_format($sale->tax_amount, 2);
         $lines[] = "*TOTAL:* *₹" . number_format($sale->total_amount, 2) . "*";
 
         $lines[] = "";
@@ -92,15 +92,15 @@ class ReceiptService
         return implode("\n", $lines);
     }
 
-    private function getHeader(Organization $org, $store): string
+    private function getHeader(?Organization $org, $store): string
     {
         $text = "========================================\n";
-        $text .= $this->center($org->name)."\n";
+        $text .= $this->center($org?->name ?? 'Store')."\n";
         $text .= $this->center($store->address ?? '')."\n";
         $text .= $this->center("{$store->city}, {$store->state}")."\n";
         $text .= $this->center("Phone: {$store->phone}")."\n";
         if ($store->tax_number) {
-            $text .= $this->center("GSTIN: {$store->tax_number}")."\n";
+            $text .= $this->center($this->getTaxNumberLabel($org) . ": {$store->tax_number}")."\n";
         }
         $text .= "========================================\n\n";
 
@@ -125,7 +125,7 @@ class ReceiptService
         return $text;
     }
 
-    private function getItems(Sale $sale): string
+    private function getItems(Sale $sale, ?Organization $org = null): string
     {
         $text = sprintf("%-25s %5s %8s\n", 'Item', 'Qty', 'Amount');
         $text .= "----------------------------------------\n";
@@ -140,7 +140,7 @@ class ReceiptService
             // Show price and tax details
             $details = "  @₹{$item->price_per_unit}";
             if ($item->tax_rate > 0) {
-                $details .= " + GST {$item->tax_rate}%";
+                $details .= " + " . PricingService::getTaxLabel($org) . " {$item->tax_rate}%";
             }
             $text .= $details."\n";
         }
@@ -150,7 +150,7 @@ class ReceiptService
         return $text;
     }
 
-    private function getTotals(Sale $sale): string
+    private function getTotals(Sale $sale, ?Organization $org = null): string
     {
         $text = sprintf("%25s: %12s\n", 'Subtotal', '₹'.number_format($sale->subtotal, 2));
 
@@ -158,7 +158,8 @@ class ReceiptService
             $text .= sprintf("%25s: %12s\n", 'Discount', '-₹'.number_format($sale->discount_amount, 2));
         }
 
-        $text .= sprintf("%25s: %12s\n", 'Tax (GST)', '₹'.number_format($sale->tax_amount, 2));
+        $taxLabel = 'Tax (' . PricingService::getTaxLabel($org) . ')';
+        $text .= sprintf("%25s: %12s\n", $taxLabel, '₹'.number_format($sale->tax_amount, 2));
         $text .= "----------------------------------------\n";
         $text .= sprintf("%25s: %12s\n", 'TOTAL', '₹'.number_format($sale->total_amount, 2));
         $text .= "========================================\n\n";
@@ -176,7 +177,7 @@ class ReceiptService
         return $text;
     }
 
-    private function getFooter(Organization $org): string
+    private function getFooter(?Organization $org): string
     {
         $text = "\n";
         $text .= $this->center('Thank you for your purchase!')."\n";
@@ -185,6 +186,24 @@ class ReceiptService
         $text .= "========================================\n";
 
         return $text;
+    }
+
+    private function getTaxNumberLabel(?Organization $org): string
+    {
+        if (! $org) {
+            return 'Tax No';
+        }
+
+        $salesBillType = data_get($org->config, 'tax.sales_bill_type');
+        if (is_string($salesBillType) && $salesBillType !== '') {
+            return strtoupper($salesBillType);
+        }
+
+        return match ($org->country_code) {
+            'NP' => 'PAN',
+            'IN' => 'GSTIN',
+            default => 'Tax No',
+        };
     }
 
     private function center(string $text, int $width = 40): string
