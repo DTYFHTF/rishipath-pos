@@ -286,7 +286,13 @@ class PriceListPage extends Page
             'changedCount' => $this->getChangedPriceCount(),
             'uniqueProductCount' => $this->getUniqueProductCount(),
             'variantCount' => $this->getTotalProducts(),
-        ])->setPaper('a4', 'portrait');
+        ])
+            ->setOptions([
+                'isRemoteEnabled' => true,
+                'isHtml5ParserEnabled' => true,
+                'isFontSubsettingEnabled' => true,
+            ])
+            ->setPaper('a4', 'landscape');
 
         $filename = 'price-list-' . now()->format('Y-m-d') . '.pdf';
 

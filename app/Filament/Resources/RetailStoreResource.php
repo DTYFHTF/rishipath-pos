@@ -17,6 +17,7 @@ use Filament\Tables\Table;
 use Filament\Support\Enums\FontWeight;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Notifications\Notification;
 
 class RetailStoreResource extends Resource
 {
@@ -221,6 +222,15 @@ class RetailStoreResource extends Resource
                     ->label('Orders')
                     ->sortable()
                     ->toggleable(),
+
+                Tables\Columns\IconColumn::make('linkedCustomer.id')
+                    ->label('Customer?')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-user-circle')
+                    ->falseIcon('heroicon-o-minus')
+                    ->trueColor('success')
+                    ->falseColor('gray')
+                    ->tooltip(fn ($record) => $record->linkedCustomer?->customer_code ?? 'Not synced yet'),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
@@ -331,6 +341,24 @@ class RetailStoreResource extends Resource
                         ->icon('heroicon-o-shopping-cart')
                         ->color('warning')
                         ->url(fn (RetailStore $record) => BulkOrderInquiryResource::getUrl('create', ['store' => $record->id])),
+
+                    // Sync as Customer
+                    Tables\Actions\Action::make('syncCustomer')
+                        ->label(fn (RetailStore $record) => $record->linkedCustomer ? 'Re-sync Customer' : 'Create as Customer')
+                        ->icon('heroicon-o-user-plus')
+                        ->color(fn (RetailStore $record) => $record->linkedCustomer ? 'gray' : 'success')
+                        ->requiresConfirmation()
+                        ->modalHeading(fn (RetailStore $record) => $record->linkedCustomer ? "Re-sync Customer for {$record->store_name}" : "Create Customer for {$record->store_name}")
+                        ->modalDescription('Creates or updates a linked Customer account so this store can be selected in POS, Sales, and Ledger.')
+                        ->action(function (RetailStore $record) {
+                            $customer = $record->syncLinkedCustomer();
+
+                            Notification::make()
+                                ->success()
+                                ->title('Customer Synced')
+                                ->body("{$record->store_name} → Customer #{$customer->customer_code}")
+                                ->send();
+                        }),
                 ])->icon('heroicon-o-ellipsis-vertical'),
             ])
             ->bulkActions([

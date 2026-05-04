@@ -14,6 +14,21 @@ class RetailStore extends Model
 {
     use HasFactory, SoftDeletes;
 
+    protected static function booted(): void
+    {
+        static::saved(function (RetailStore $store): void {
+            $store->syncLinkedCustomer();
+        });
+
+        static::deleted(function (RetailStore $store): void {
+            $store->linkedCustomer()?->update(['active' => false]);
+        });
+
+        static::restored(function (RetailStore $store): void {
+            $store->syncLinkedCustomer();
+        });
+    }
+
     protected $fillable = [
         'organization_id',
         'store_name',
@@ -81,6 +96,11 @@ class RetailStore extends Model
         return $this->hasMany(Invoice::class);
     }
 
+    public function linkedCustomer(): HasOne
+    {
+        return $this->hasOne(Customer::class, 'retail_store_id');
+    }
+
     public function feedbacks(): MorphMany
     {
         return $this->morphMany(Feedback::class, 'feedbackable')->latest();
@@ -127,5 +147,47 @@ class RetailStore extends Model
     public function markVisited(): void
     {
         $this->update(['last_visited_at' => now()]);
+    }
+
+    public function syncLinkedCustomer(): Customer
+    {
+        $customer = $this->linkedCustomer()->first();
+
+        if (! $customer && filled($this->contact_number)) {
+            $customer = Customer::query()
+                ->where('organization_id', $this->organization_id)
+                ->where('phone', $this->contact_number)
+                ->first();
+        }
+
+        if (! $customer) {
+            $customer = Customer::query()
+                ->firstOrNew([
+                    'organization_id' => $this->organization_id,
+                    'retail_store_id' => $this->id,
+                ]);
+        }
+
+        $existingNotes = trim(strip_tags((string) ($customer->notes ?? '')));
+        $linkNote = 'Auto-linked retail store account.';
+
+        $customer->organization_id = $this->organization_id;
+        $customer->retail_store_id = $this->id;
+        $customer->name = $this->store_name;
+        $customer->phone = $this->contact_number ?: $customer->phone;
+        $customer->address = $this->full_address ?: $customer->address;
+        $customer->city = $this->city ?: $customer->city;
+        $customer->active = $this->status !== 'inactive';
+        $customer->notes = str_contains($existingNotes, $linkNote)
+            ? $customer->notes
+            : trim($existingNotes === '' ? $linkNote : $existingNotes . "\n" . $linkNote);
+
+        if (blank($customer->customer_code)) {
+            $customer->customer_code = Customer::generateNextCustomerCode();
+        }
+
+        $customer->save();
+
+        return $customer;
     }
 }
