@@ -96,7 +96,9 @@ class CustomerResource extends Resource
             })
             ->columns([
                 Tables\Columns\TextColumn::make('customer_code')->searchable(),
-                Tables\Columns\TextColumn::make('name')->searchable(),
+                Tables\Columns\TextColumn::make('name')
+                    ->searchable()
+                    ->description(fn ($record) => $record->retail_store_id ? '🏪 Retail Store Account' : null),
                 Tables\Columns\TextColumn::make('phone')
                     ->searchable()
                     ->formatStateUsing(fn ($record) => $record->country_code ? "{$record->country_code} {$record->phone}" : $record->phone),
@@ -104,9 +106,20 @@ class CustomerResource extends Resource
                 Tables\Columns\TextColumn::make('total_purchases')->label('Purchases'),
                 Tables\Columns\TextColumn::make('total_spent')->money('INR'),
                 Tables\Columns\IconColumn::make('active')->boolean(),
+                Tables\Columns\IconColumn::make('retail_store_id')
+                    ->label('Store')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-building-storefront')
+                    ->falseIcon('heroicon-o-minus')
+                    ->trueColor('indigo')
+                    ->falseColor('gray')
+                    ->tooltip(fn ($record) => $record->retailStore?->store_name),
             ])
             ->filters([
                 Tables\Filters\TernaryFilter::make('active'),
+                Tables\Filters\TernaryFilter::make('retail_store_id')
+                    ->label('Store Accounts')
+                    ->nullable(),
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([

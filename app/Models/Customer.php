@@ -6,11 +6,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
-
 class Customer extends Model
 {
     protected $fillable = [
         'organization_id',
+        'retail_store_id',
         'customer_code',
         'name',
         'country_code',
@@ -89,6 +89,19 @@ class Customer extends Model
     public function organization(): BelongsTo
     {
         return $this->belongsTo(Organization::class);
+    }
+
+    public function retailStore(): BelongsTo
+    {
+        return $this->belongsTo(RetailStore::class);
+    }
+
+    /**
+     * Is this customer record auto-linked to a retail store?
+     */
+    public function isRetailStore(): bool
+    {
+        return $this->retail_store_id !== null;
     }
 
     public function sales(): HasMany

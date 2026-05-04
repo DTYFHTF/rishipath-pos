@@ -12,6 +12,7 @@ use App\Models\Reward;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\StockLevel;
+use App\Models\RetailStore;
 use App\Models\Store;
 use App\Models\Terminal;
 use App\Services\InventoryService;
@@ -191,6 +192,7 @@ class EnhancedPOS extends Page
                 $this->sessions[$this->activeSessionKey]['customer_name'] = $customer->name;
                 $this->sessions[$this->activeSessionKey]['customer_phone'] = $customer->phone;
                 $this->sessions[$this->activeSessionKey]['customer_email'] = $customer->email;
+                $this->sessions[$this->activeSessionKey]['customer_is_retail_store'] = (bool) $customer->retail_store_id;
 
                 Notification::make()
                     ->success()
@@ -322,6 +324,7 @@ class EnhancedPOS extends Page
                 'customer_name' => $session->customer?->name,
                 'customer_phone' => $session->customer?->phone,
                 'customer_email' => $session->customer?->email,
+                'customer_is_retail_store' => (bool) ($session->customer?->retail_store_id),
                 'cart' => $session->cart_items ?? [],
                 'subtotal' => $session->subtotal,
                 'discount' => $session->discount_amount,
@@ -348,7 +351,6 @@ class EnhancedPOS extends Page
             ->where('active', true);
 
         if (! empty($this->customerSearch)) {
-            // Search by name, phone, email or code
             $search = $this->customerSearch;
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
@@ -357,17 +359,35 @@ class EnhancedPOS extends Page
                     ->orWhere('customer_code', 'like', "%{$search}%");
             });
 
-            // When searching, show more results and prioritize recent matches
-            return $query->orderByDesc('created_at')
-                ->limit(10)
+            // Retail store accounts bubble to the top when searching
+            return $query
+                ->orderByRaw('CASE WHEN retail_store_id IS NOT NULL THEN 0 ELSE 1 END')
+                ->orderByDesc('created_at')
+                ->limit(12)
                 ->get();
         }
 
-        // When not searching, show top customers by purchase count
-        return $query->orderByDesc('total_purchases')
+        // Default: retail store accounts first, then top buyers
+        return $query
+            ->orderByRaw('CASE WHEN retail_store_id IS NOT NULL THEN 0 ELSE 1 END')
+            ->orderByDesc('total_purchases')
             ->orderByDesc('created_at')
-            ->limit(5)
+            ->limit(8)
             ->get();
+    }
+
+    /**
+     * Ensure a RetailStore has a linked Customer and select it in the current POS session.
+     */
+    public function selectRetailStoreAsCustomer(int $storeId): void
+    {
+        $store = RetailStore::find($storeId);
+        if (! $store) {
+            return;
+        }
+
+        $customer = $store->linkedCustomer()->first() ?? $store->syncLinkedCustomer();
+        $this->selectCustomer($customer->id);
     }
 
     /**
@@ -385,6 +405,7 @@ class EnhancedPOS extends Page
             $this->sessions[$this->activeSessionKey]['customer_name'] = $customer?->name;
             $this->sessions[$this->activeSessionKey]['customer_phone'] = $customer?->phone;
             $this->sessions[$this->activeSessionKey]['customer_email'] = $customer?->email;
+            $this->sessions[$this->activeSessionKey]['customer_is_retail_store'] = (bool) ($customer?->retail_store_id);
             $this->sessions[$this->activeSessionKey]['applied_reward_id'] = null;
             $this->sessions[$this->activeSessionKey]['reward_discount'] = 0;
         } else {
@@ -392,6 +413,7 @@ class EnhancedPOS extends Page
             $this->sessions[$this->activeSessionKey]['customer_name'] = null;
             $this->sessions[$this->activeSessionKey]['customer_phone'] = null;
             $this->sessions[$this->activeSessionKey]['customer_email'] = null;
+            $this->sessions[$this->activeSessionKey]['customer_is_retail_store'] = false;
             $this->sessions[$this->activeSessionKey]['applied_reward_id'] = null;
             $this->sessions[$this->activeSessionKey]['reward_discount'] = 0;
         }
@@ -414,6 +436,7 @@ class EnhancedPOS extends Page
 
         $this->sessions[$this->activeSessionKey]['customer_id'] = null;
         $this->sessions[$this->activeSessionKey]['customer_name'] = null;
+        $this->sessions[$this->activeSessionKey]['customer_is_retail_store'] = false;
         $this->sessions[$this->activeSessionKey]['applied_reward_id'] = null;
         $this->sessions[$this->activeSessionKey]['reward_discount'] = 0;
         $this->customerSearch = '';

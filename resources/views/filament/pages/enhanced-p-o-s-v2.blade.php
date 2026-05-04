@@ -288,9 +288,14 @@
                             @if($session['customer_id'])
                                 <div class="p-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg">
                                     <div class="flex items-center gap-2 mb-1">
-                                        <span class="text-xl">👤</span>
+                                        <span class="text-xl">{{ !empty($session['customer_is_retail_store']) ? '🏪' : '👤' }}</span>
                                         <div class="flex-1 min-w-0">
-                                            <div class="font-medium text-gray-900 dark:text-gray-100 truncate">{{ $session['customer_name'] ?? 'Customer' }}</div>
+                                            <div class="font-medium text-gray-900 dark:text-gray-100 truncate">
+                                                {{ $session['customer_name'] ?? 'Customer' }}
+                                                @if(!empty($session['customer_is_retail_store']))
+                                                    <span class="ml-1 text-[10px] bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-200 px-1.5 py-0.5 rounded">Store</span>
+                                                @endif
+                                            </div>
                                             <div class="text-xs text-gray-500 dark:text-gray-400 truncate">
                                                 @if(!empty($session['customer_phone']))
                                                     {{ $session['customer_phone'] }}
@@ -351,14 +356,23 @@
                                                 type="button"
                                                 wire:click="selectCustomer({{ $customer->id }})"
                                                 @click="open = false"
-                                                class="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 pos-customer-item"
+                                                class="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 pos-customer-item {{ $customer->retail_store_id ? 'border-l-2 border-indigo-400' : '' }}"
                                             >
-                                                <span>👤</span>
+                                                <span>{{ $customer->retail_store_id ? '🏪' : '👤' }}</span>
                                                 <div class="flex-1 min-w-0">
                                                     <div class="font-medium text-gray-900 dark:text-gray-100 truncate">{{ $customer->name }}</div>
-                                                    <div class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ $customer->phone ?? 'No phone' }}</div>
+                                                    <div class="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                                        {{ $customer->phone ?? 'No phone' }}
+                                                        @if($customer->city)
+                                                            &middot; {{ $customer->city }}
+                                                        @endif
+                                                    </div>
                                                 </div>
-                                                @if($customer->loyalty_points > 0)
+                                                @if($customer->retail_store_id)
+                                                    <span class="text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-200 px-1.5 py-0.5 rounded flex-shrink-0">
+                                                        Store
+                                                    </span>
+                                                @elseif($customer->loyalty_points > 0)
                                                     <span class="text-xs bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 px-2 py-1 rounded flex-shrink-0">
                                                         {{ $customer->loyalty_points }} pts
                                                     </span>

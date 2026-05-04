@@ -4,18 +4,53 @@
     <meta charset="utf-8">
     <title>Price List PDF</title>
     <style>
-        body { font-family: DejaVu Sans, sans-serif; font-size: 11px; color: #1f2937; }
-        h1 { margin: 0 0 4px 0; font-size: 18px; }
-        .meta { margin-bottom: 10px; color: #4b5563; font-size: 10px; }
-        .kpi-wrap { margin-bottom: 12px; }
-        .kpi { display: inline-block; margin-right: 18px; font-size: 10px; color: #4b5563; }
-        .kpi strong { display: block; color: #111827; font-size: 14px; margin-top: 2px; }
-        .category-title { background: #eef2ff; color: #3730a3; font-weight: bold; padding: 6px 8px; margin-top: 12px; border: 1px solid #dbeafe; }
-        table { width: 100%; border-collapse: collapse; margin-top: 0; }
-        th, td { border: 1px solid #e5e7eb; padding: 6px 7px; }
-        th { background: #f9fafb; text-align: left; font-size: 10px; color: #374151; }
+        @font-face {
+            font-family: 'NotoSansDevanagariLocal';
+            font-style: normal;
+            font-weight: 400;
+            src: url('{{ resource_path('fonts/NotoSansDevanagari-Regular.ttf') }}') format('truetype');
+        }
+
+        body {
+            font-family: 'NotoSansDevanagariLocal', DejaVu Sans, sans-serif;
+            font-size: 10px;
+            color: #1f2937;
+            line-height: 1.35;
+        }
+
+        h1 { margin: 0 0 4px 0; font-size: 16px; }
+        .meta { margin-bottom: 8px; color: #4b5563; font-size: 9px; }
+        .kpi-wrap { margin-bottom: 8px; }
+        .kpi { display: inline-block; margin-right: 16px; font-size: 9px; color: #4b5563; }
+        .kpi strong { display: block; color: #111827; font-size: 12px; margin-top: 2px; }
+        .category-title { background: #eef2ff; color: #3730a3; font-weight: bold; padding: 5px 7px; margin-top: 10px; border: 1px solid #dbeafe; }
+        table { width: 100%; border-collapse: collapse; margin-top: 0; table-layout: fixed; }
+        th, td { border: 1px solid #e5e7eb; padding: 5px 6px; vertical-align: middle; }
+        th { background: #f9fafb; text-align: left; font-size: 9px; color: #374151; }
         td.num { text-align: right; }
-        .product-row { background: #f3f4f6; font-weight: bold; }
+        .product-row { background: #f3f4f6; font-weight: 600; }
+        .product-cell { padding: 6px; }
+        .product-name { font-size: 11px; font-weight: 700; }
+        .product-header { width: 100%; border-collapse: collapse; }
+        .product-header td { border: none; padding: 0; vertical-align: top; }
+        .image-wrap { width: 120px; }
+        .product-image {
+            width: 120px;
+            height: 120px;
+            object-fit: cover;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+        }
+        .image-placeholder {
+            width: 120px;
+            height: 120px;
+            border: 1px dashed #d1d5db;
+            color: #9ca3af;
+            text-align: center;
+            font-size: 9px;
+            line-height: 120px;
+        }
+        .product-meta { padding-left: 8px !important; }
     </style>
 </head>
 <body>
@@ -35,10 +70,10 @@
         <table>
             <thead>
                 <tr>
-                    <th style="width: 40px;">#</th>
-                    <th>Pack Size</th>
-                    <th style="width: 110px;">Wholesale (NPR)</th>
-                    <th style="width: 90px;">MRP (NPR)</th>
+                    <th style="width: 28px;">#</th>
+                    <th style="width: 86px;">Pack Size</th>
+                    <th style="width: 96px;">Wholesale (NPR)</th>
+                    <th style="width: 92px;">MRP (NPR)</th>
                 </tr>
             </thead>
             <tbody>
@@ -50,7 +85,53 @@
                     @endphp
                     <tr class="product-row">
                         <td>{{ $sn }}</td>
-                        <td colspan="3">{{ $productName }}</td>
+                        <td colspan="3" class="product-cell">
+                            @php
+                                $first = $sorted->first();
+                                $imageUrl = $first['image_url'] ?? null;
+                                $imageSlug = $first['image_slug'] ?? null;
+
+                                $localCandidates = [];
+                                if (is_string($imageUrl) && $imageUrl !== '' && ! preg_match('/^https?:\/\//i', $imageUrl)) {
+                                    $localCandidates[] = public_path(ltrim($imageUrl, '/'));
+                                }
+                                if (is_string($imageSlug) && $imageSlug !== '') {
+                                    foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
+                                        $localCandidates[] = public_path('images/products/' . $imageSlug . '.' . $ext);
+                                    }
+                                }
+
+                                $resolvedLocalImage = null;
+                                foreach ($localCandidates as $path) {
+                                    if (is_string($path) && is_file($path)) {
+                                        $resolvedLocalImage = $path;
+                                        break;
+                                    }
+                                }
+
+                                $resolvedImage = $resolvedLocalImage;
+                                if (! $resolvedImage && is_string($imageUrl) && preg_match('/^https?:\/\//i', $imageUrl)) {
+                                    $resolvedImage = $imageUrl;
+                                }
+
+                                $cleanProductName = preg_replace('/\s+/u', ' ', trim((string) $productName));
+                            @endphp
+
+                            <table class="product-header">
+                                <tr>
+                                    <td class="image-wrap">
+                                        @if($resolvedImage)
+                                            <img src="{{ $resolvedImage }}" alt="{{ $cleanProductName }}" class="product-image">
+                                        @else
+                                            <div class="image-placeholder">No image</div>
+                                        @endif
+                                    </td>
+                                    <td class="product-meta">
+                                        <div class="product-name">{{ $cleanProductName }}</div>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
                     </tr>
                     @foreach($sorted as $item)
                         <tr>
