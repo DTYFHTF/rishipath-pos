@@ -102,6 +102,8 @@ class ProductCatalogSeeder extends Seeder
         ProductVariant::where('product_id', $product->id)->delete();
 
         $cpPerKg = $d['cp'];
+        $costOverrides = $d['cost_overrides'] ?? [];
+
         foreach ($d['packs'] as $grams => $mrp) {
             if ($grams === 1000) {
                 $packSize = 1.000;
@@ -119,6 +121,10 @@ class ProductCatalogSeeder extends Seeder
                 $unit     = 'GMS';
                 $cost     = round($cpPerKg * $grams / 1000, 2);
                 $sfx      = $grams . 'G';
+            }
+
+            if (array_key_exists($grams, $costOverrides)) {
+                $cost = (float) $costOverrides[$grams];
             }
 
             ProductVariant::create([
@@ -181,7 +187,8 @@ class ProductCatalogSeeder extends Seeder
              'packs'=>[1000=>1125,500=>600,200=>260,100=>135,50=>80,20=>45]],
 
             ['name'=>'Asafoetida','existing_name'=>'Asafoetida (Hing)','nepali'=>'हिङ','romanized'=>'Hing','category'=>'Spices','cp'=>1575,
-             'packs'=>[1000=>1970,500=>1045,200=>455,100=>240,50=>140,20=>80]],
+             'packs'=>[1000=>1970,500=>1045,200=>455,100=>240,50=>140,20=>80],
+             'cost_overrides'=>[100=>160,20=>40]],
 
             ['name'=>'Dried Fenugreek Leaves','nepali'=>'मेथी पात','romanized'=>'Methi Paat','category'=>'Spices','cp'=>400,
              'packs'=>[1000=>500,500=>265,200=>115,100=>60,50=>35,20=>20]],

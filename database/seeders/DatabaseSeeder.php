@@ -23,6 +23,7 @@ class DatabaseSeeder extends Seeder
             ProductCatalogSeeder::class,
             SpiceProductSeeder::class,
             DryFruitsSeeder::class,
+            ProductImageSeeder::class,
         ]);
     }
 }
