@@ -25,6 +25,7 @@ class ProductImageSeeder extends Seeder
         'fennel-seeds-normal' => 'fennel-seeds-normal',
         'fennel-seeds-normal-local' => 'fennel-seeds-normal-local',
         'kishmish-raisins' => 'raisins',
+        'anjeer-figs' => 'anjeer',
         'dates-khajur' => 'alkhalifa-dates-premium',
         'areca-nut' => 'areca-nut',
     ];

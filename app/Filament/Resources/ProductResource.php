@@ -12,6 +12,8 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\HtmlString;
 
 class ProductResource extends Resource
 {
@@ -137,40 +139,72 @@ class ProductResource extends Resource
                     ])
                     ->columns(2),
 
-                Forms\Components\Section::make('Product Images')
+                Forms\Components\Section::make('Price List Image')
+                    ->description('This image is shown in the Price List PDF and the POS screen.')
+                    ->schema([
+                        Forms\Components\Placeholder::make('image_url_preview')
+                            ->label('Current Image')
+                            ->content(function ($record) {
+                                if (! $record?->image_url) {
+                                    return new HtmlString('<span class="text-sm text-gray-400">No image set yet. Upload one below.</span>');
+                                }
+                                $src = str_starts_with($record->image_url, '/')
+                                    ? asset(ltrim($record->image_url, '/'))
+                                    : Storage::disk('public')->url($record->image_url);
+
+                                return new HtmlString(
+                                    '<img src="' . e($src) . '" style="max-height:200px;border-radius:10px;border:1px solid #e5e7eb;box-shadow:0 1px 4px rgba(0,0,0,.12)">'
+                                );
+                            })
+                            ->visible(fn ($record) => $record !== null),
+                        Forms\Components\FileUpload::make('image_url')
+                            ->label('Upload New Image')
+                            ->image()
+                            ->disk('public')
+                            ->directory('product-images')
+                            ->imageEditor()
+                            ->imageEditorAspectRatios(['1:1'])
+                            ->maxSize(4096)
+                            ->helperText('Uploading a new file will replace the current image. Square images (1:1) recommended.')
+                            ->afterStateHydrated(function (\Filament\Forms\Components\FileUpload $component, $state) {
+                                // Seeder-set paths like /images/productv2-webp/... cannot be loaded
+                                // by Filament\'s FileUpload (different disk). Clear so widget shows empty;
+                                // dehydrated(false) below ensures the DB value is NOT overwritten on save.
+                                if (is_string($state) && str_starts_with($state, '/')) {
+                                    $component->state(null);
+                                }
+                            })
+                            ->dehydrated(fn ($state) => $state !== null),
+                    ])
+                    ->columns(1),
+
+                Forms\Components\Section::make('Gallery Images')
+                    ->description('Additional product photos for catalog display (not used in price list).')
                     ->schema([
                         Forms\Components\FileUpload::make('image_1')
-                            ->label('Product Image 1')
+                            ->label('Gallery Image 1')
                             ->image()
                             ->directory('product-images')
                             ->imageEditor()
-                            ->imageEditorAspectRatios([
-                                '1:1',
-                                '4:3',
-                            ])
+                            ->imageEditorAspectRatios(['1:1', '4:3'])
                             ->maxSize(2048),
                         Forms\Components\FileUpload::make('image_2')
-                            ->label('Product Image 2')
+                            ->label('Gallery Image 2')
                             ->image()
                             ->directory('product-images')
                             ->imageEditor()
-                            ->imageEditorAspectRatios([
-                                '1:1',
-                                '4:3',
-                            ])
+                            ->imageEditorAspectRatios(['1:1', '4:3'])
                             ->maxSize(2048),
                         Forms\Components\FileUpload::make('image_3')
-                            ->label('Product Image 3')
+                            ->label('Gallery Image 3')
                             ->image()
                             ->directory('product-images')
                             ->imageEditor()
-                            ->imageEditorAspectRatios([
-                                '1:1',
-                                '4:3',
-                            ])
+                            ->imageEditorAspectRatios(['1:1', '4:3'])
                             ->maxSize(2048),
                     ])
-                    ->columns(3),
+                    ->columns(3)
+                    ->collapsed(),
 
                 Forms\Components\Section::make('Status')
                     ->schema([
@@ -190,6 +224,17 @@ class ProductResource extends Resource
                 return $query->where('organization_id', $orgId);
             })
             ->columns([
+                Tables\Columns\ImageColumn::make('image_url')
+                    ->label('')
+                    ->size(52)
+                    ->square()
+                    ->extraImgAttributes(['class' => 'rounded-md object-cover'])
+                    ->getStateUsing(fn ($record) => $record->image_url
+                        ? (str_starts_with($record->image_url, '/')
+                            ? asset(ltrim($record->image_url, '/'))
+                            : Storage::disk('public')->url($record->image_url))
+                        : null
+                    ),
                 Tables\Columns\TextColumn::make('sku')
                     ->label('SKU')
                     ->searchable()
