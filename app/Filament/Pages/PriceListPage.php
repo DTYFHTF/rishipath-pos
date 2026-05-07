@@ -189,6 +189,10 @@ class PriceListPage extends Page
                         'product_id' => $product->id,
                         'variant_id' => $variant->id,
                         'product_name' => $displayName,
+                        'product_name_english' => $product->name,
+                        'product_name_nepali' => $product->name_nepali,
+                        'product_name_romanized' => $product->name_romanized,
+                        'product_name_hindi' => $product->name_hindi,
                         'image_slug' => Str::slug($product->name),
                         'image_url' => $product->image_url,
                         'pack_size' => $this->formatPackSize((float) $variant->pack_size, (string) $variant->unit),
@@ -290,7 +294,8 @@ class PriceListPage extends Page
             ->setOptions([
                 'isRemoteEnabled' => true,
                 'isHtml5ParserEnabled' => true,
-                'isFontSubsettingEnabled' => true,
+                'isFontSubsettingEnabled' => false,
+                'defaultFont' => 'NotoSansDevanagariLocal',
             ])
             ->setPaper('a4', 'landscape');
 

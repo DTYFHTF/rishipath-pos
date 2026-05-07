@@ -199,6 +199,7 @@ class DryFruitsSeeder extends Seeder
                     ['pack_size' => 100,  'mrp' => 280.00, 'cost' => 168.00],
                     ['pack_size' => 250,  'mrp' => 650.00, 'cost' => 390.00],
                     ['pack_size' => 500,  'mrp' => 1200.00, 'cost' => 720.00],
+                    ['pack_size' => 1000, 'mrp' => 2635.00, 'cost' => 1580.00],
                 ],
             ],
             [
@@ -211,6 +212,7 @@ class DryFruitsSeeder extends Seeder
                     ['pack_size' => 100,  'mrp' => 180.00, 'cost' => 108.00],
                     ['pack_size' => 250,  'mrp' => 420.00, 'cost' => 252.00],
                     ['pack_size' => 500,  'mrp' => 780.00, 'cost' => 468.00],
+                    ['pack_size' => 1000, 'mrp' => 390.00, 'cost' => 230.00],
                 ],
             ],
             [
