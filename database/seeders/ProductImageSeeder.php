@@ -52,8 +52,17 @@ class ProductImageSeeder extends Seeder
         $updated = 0;
         $missing = 0;
 
-        Product::query()->orderBy('id')->chunk(200, function ($products) use (&$updated, &$missing, $sourcePath, $targetPath, $sourceFiles) {
+        $lastId = 0;
+        do {
+            $products = Product::query()
+                ->where('id', '>', $lastId)
+                ->orderBy('id')
+                ->limit(200)
+                ->get();
+
             foreach ($products as $product) {
+                $lastId = $product->id;
+
                 $sourceFile = $this->resolveSourceFile($product->name, $sourceFiles);
 
                 if (! $sourceFile) {
@@ -76,7 +85,7 @@ class ProductImageSeeder extends Seeder
                     $updated++;
                 }
             }
-        });
+        } while ($products->count() === 200);
 
         $this->command->info("ProductImageSeeder: updated {$updated} products, unmatched {$missing}.");
     }
