@@ -44,7 +44,6 @@ class ProductImageSeeder extends Seeder
         }
 
         $sourceFiles = $this->buildSourceIndex($sourcePath);
-        $this->command->info('DEBUG source count: ' . count($sourceFiles));
         if (empty($sourceFiles)) {
             $this->command->warn('ProductImageSeeder: no source images found in productv2.');
             return;
@@ -65,10 +64,6 @@ class ProductImageSeeder extends Seeder
                 $lastId = $product->id;
 
                 $sourceFile = $this->resolveSourceFile($product->name, $sourceFiles);
-                if ($product->id <= 3) {
-                    $this->command->info("DEBUG [{$product->id}] {$product->name} => " . ($sourceFile ?? 'NULL'));
-                }
-
                 if (! $sourceFile) {
                     $missing++;
                     continue;
