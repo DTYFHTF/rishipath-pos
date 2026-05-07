@@ -174,12 +174,26 @@ class ProductImageSeeder extends Seeder
 
         $image = match ($ext) {
             'jpg', 'jpeg' => @imagecreatefromjpeg($source),
-            'png' => @imagecreatefrompng($source),
-            default => null,
+            'png'         => @imagecreatefrompng($source),
+            default       => null,
         };
 
         if (! $image) {
             return false;
+        }
+
+        // Convert palette/indexed PNGs to true-color RGBA (required for imagewebp)
+        if (imagecolorstotal($image) > 0 || imageistruecolor($image) === false) {
+            $w = imagesx($image);
+            $h = imagesy($image);
+            $trueColor = imagecreatetruecolor($w, $h);
+            imagealphablending($trueColor, false);
+            imagesavealpha($trueColor, true);
+            $transparent = imagecolorallocatealpha($trueColor, 0, 0, 0, 127);
+            imagefill($trueColor, 0, 0, $transparent);
+            imagecopy($trueColor, $image, 0, 0, 0, 0, $w, $h);
+            imagedestroy($image);
+            $image = $trueColor;
         }
 
         $result = imagewebp($image, $target, 82);
