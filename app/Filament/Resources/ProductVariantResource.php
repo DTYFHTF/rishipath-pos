@@ -331,6 +331,48 @@ class ProductVariantResource extends Resource
                         })
                         ->deselectRecordsAfterCompletion(),
 
+                    Tables\Actions\BulkAction::make('mark_inactive')
+                        ->label('Mark Inactive')
+                        ->icon('heroicon-o-eye-slash')
+                        ->color('warning')
+                        ->requiresConfirmation()
+                        ->action(function ($records): void {
+                            $updated = 0;
+                            foreach ($records as $record) {
+                                if ($record->active) {
+                                    $record->update(['active' => false]);
+                                    $updated++;
+                                }
+                            }
+                            Notification::make()
+                                ->success()
+                                ->title('Variants marked inactive')
+                                ->body("{$updated} variant(s) updated.")
+                                ->send();
+                        })
+                        ->deselectRecordsAfterCompletion(),
+
+                    Tables\Actions\BulkAction::make('mark_active')
+                        ->label('Mark Active')
+                        ->icon('heroicon-o-eye')
+                        ->color('success')
+                        ->requiresConfirmation()
+                        ->action(function ($records): void {
+                            $updated = 0;
+                            foreach ($records as $record) {
+                                if (! $record->active) {
+                                    $record->update(['active' => true]);
+                                    $updated++;
+                                }
+                            }
+                            Notification::make()
+                                ->success()
+                                ->title('Variants marked active')
+                                ->body("{$updated} variant(s) updated.")
+                                ->send();
+                        })
+                        ->deselectRecordsAfterCompletion(),
+
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
