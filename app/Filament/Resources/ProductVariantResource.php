@@ -82,6 +82,7 @@ class ProductVariantResource extends Resource
                             ->minValue(0),
                         Forms\Components\TextInput::make('cost_price')
                             ->label('Cost Price')
+                            ->required()
                             ->live()
                             ->numeric()
                             ->prefix('₹')
@@ -376,6 +377,7 @@ class ProductVariantResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
+            ->persistFiltersInSession()
             ->defaultSort('id', 'desc');
     }
 
