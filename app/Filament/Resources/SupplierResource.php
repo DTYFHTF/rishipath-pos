@@ -56,8 +56,29 @@ class SupplierResource extends Resource
                             ->columnSpan(1),
                         Forms\Components\TextInput::make('phone')
                             ->tel()
-                            ->columnSpan(1),
+                            ->required()
+                            ->unique(
+                                table: 'suppliers',
+                                column: 'phone',
+                                ignoreRecord: true,
+                                modifyRuleUsing: fn ($rule) => $rule->where(
+                                    'organization_id',
+                                    OrganizationContext::getCurrentOrganizationId() ?? auth()->user()?->organization_id
+                                )
+                            )
+                            ->columnSpan(1)
+                            ->helperText('Required. Must be unique within your organization.'),
                     ]),
+                Forms\Components\TextInput::make('email')
+                    ->email(),
+                Forms\Components\Textarea::make('address')
+                    ->columnSpanFull()
+                    ->helperText('Address helps distinguish multiple suppliers with same name. Include street, area, and postal code.'),
+                Forms\Components\TextInput::make('city')
+                    ->datalist([
+                        'Mumbai', 'Delhi', 'Bangalore', 'Kolkata', 'Chennai', 'Kathmandu', 'Pokhara'
+                    ])
+                    ->helperText('City/region where supplier is located'),
                 Forms\Components\TextInput::make('email')
                     ->email(),
                 Forms\Components\Textarea::make('address')
