@@ -79,3 +79,6 @@ Route::get('/api/price-calculator/products', function (\Illuminate\Http\Request 
 
     return response()->json(['products' => $products]);
 });
+
+// Public helper tools - completely client-side, no auth required
+Route::get('/helper-tools', fn() => view('helper-tools.index'))->name('helper-tools');
