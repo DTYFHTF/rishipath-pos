@@ -49,6 +49,31 @@ class AdminadminPanelProvider extends PanelProvider
                 PanelsRenderHook::USER_MENU_BEFORE,
                 fn (): string => view('components.topbar-navigation')->render(),
             )
+            ->renderHook(
+                PanelsRenderHook::STYLES_AFTER,
+                fn (): string => Blade::render(<<<'BLADE'
+                    <style>
+                        /* Prevent sidebar/content overlap on tablet and mobile. */
+                        @media (max-width: 1279px) {
+                            .fi-sidebar {
+                                display: none !important;
+                            }
+
+                            .fi-topbar,
+                            .fi-main,
+                            .fi-main-ctn,
+                            .fi-page,
+                            .fi-body {
+                                left: 0 !important;
+                                margin-left: 0 !important;
+                                padding-left: 0 !important;
+                                width: 100% !important;
+                                max-width: 100% !important;
+                            }
+                        }
+                    </style>
+                BLADE),
+            )
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

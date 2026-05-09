@@ -17,6 +17,7 @@ class Sale extends Model
         'date',
         'time',
         'cashier_id',
+        'sales_agent_id',
         'customer_id',
         'customer_name',
         'customer_phone',
@@ -29,7 +30,11 @@ class Sale extends Model
         'tax_amount',
         'tax_details',
         'total_amount',
+        'wholesale_base_amount',
+        'company_profit_amount',
+        'agent_commission_amount',
         'payment_method',
+        'order_channel',
         'payment_status',
         'payment_reference',
         'amount_paid',
@@ -47,6 +52,9 @@ class Sale extends Model
         'discount_amount' => 'decimal:2',
         'tax_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
+        'wholesale_base_amount' => 'decimal:2',
+        'company_profit_amount' => 'decimal:2',
+        'agent_commission_amount' => 'decimal:2',
         'amount_paid' => 'decimal:2',
         'amount_change' => 'decimal:2',
         'tax_details' => 'array',
@@ -136,6 +144,11 @@ class Sale extends Model
     public function cashier(): BelongsTo
     {
         return $this->belongsTo(User::class, 'cashier_id');
+    }
+
+    public function salesAgent(): BelongsTo
+    {
+        return $this->belongsTo(SalesAgent::class, 'sales_agent_id');
     }
 
     public function customer(): BelongsTo
