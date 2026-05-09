@@ -17,11 +17,14 @@ class PriceListExport implements FromArray, ShouldAutoSize, WithHeadings, WithSt
 
     protected bool $showCost;
 
-    public function __construct(array $rows, string $generatedAt, bool $showCost = false)
+    protected bool $showWholesale;
+
+    public function __construct(array $rows, string $generatedAt, bool $showCost = false, bool $showWholesale = true)
     {
         $this->rows = $rows;
         $this->generatedAt = $generatedAt;
         $this->showCost = $showCost;
+        $this->showWholesale = $showWholesale;
     }
 
     public function title(): string
@@ -35,7 +38,9 @@ class PriceListExport implements FromArray, ShouldAutoSize, WithHeadings, WithSt
         if ($this->showCost) {
             $headings[] = 'Cost Price (NPR)';
         }
-        $headings[] = 'Wholesale Price (NPR)';
+        if ($this->showWholesale) {
+            $headings[] = 'Wholesale Price (NPR)';
+        }
         $headings[] = 'MRP (NPR)';
 
         return $headings;

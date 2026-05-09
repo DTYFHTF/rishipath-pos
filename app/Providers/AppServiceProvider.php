@@ -5,6 +5,8 @@ namespace App\Providers;
 use App\Models\ProductBatch;
 use App\Observers\ProductBatchObserver;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Auth\Events\Login;
 
@@ -25,6 +27,21 @@ class AppServiceProvider extends ServiceProvider
     {
         // Register ProductBatch observer to auto-sync stock levels
         ProductBatch::observe(ProductBatchObserver::class);
+
+        // Ensure Livewire/FileUpload temporary directories exist to avoid stuck uploads.
+        try {
+            $frameworkTmp = storage_path('framework/livewire-tmp');
+            if (! File::exists($frameworkTmp)) {
+                File::ensureDirectoryExists($frameworkTmp, 0755, true);
+            }
+
+            $diskTmp = Storage::disk('local')->path('livewire-tmp');
+            if (! File::exists($diskTmp)) {
+                File::ensureDirectoryExists($diskTmp, 0755, true);
+            }
+        } catch (\Throwable $e) {
+            // Ignore directory bootstrap failures to avoid breaking app boot.
+        }
 
         // Initialize organization context on every authenticated request
         if (\Illuminate\Support\Facades\Auth::check()) {

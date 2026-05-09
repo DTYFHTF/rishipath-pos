@@ -5,7 +5,6 @@ namespace App\Filament\Pages;
 use App\Exports\PriceListExport;
 use App\Models\Category;
 use App\Services\OrganizationContext;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\Storage;
@@ -35,6 +34,8 @@ class PriceListPage extends Page
     public bool $showInactive = false;
 
     public bool $showCost = false;
+
+    public bool $showWholesale = true;
 
     // Cache file lives in storage/app/price-lists/latest.json
     private const CACHE_FILE = 'price-lists/latest.json';
@@ -234,7 +235,7 @@ class PriceListPage extends Page
             ->send();
     }
 
-    public function downloadExcel(): void
+    public function downloadExcel(): \Symfony\Component\HttpFoundation\BinaryFileResponse|\Illuminate\Http\Response|null
     {
         if (empty($this->priceList)) {
             Notification::make()
@@ -242,7 +243,7 @@ class PriceListPage extends Page
                 ->warning()
                 ->send();
 
-            return;
+            return null;
         }
 
         $rows = [];
@@ -259,21 +260,25 @@ class PriceListPage extends Page
                 if ($this->showCost) {
                     $row[] = $item['cost_price'] ?? 0;
                 }
-                $row[] = $item['wholesale'];
+                if ($this->showWholesale) {
+                    $row[] = $item['wholesale'];
+                }
                 $row[] = $item['mrp'];
                 $rows[] = $row;
             }
         }
 
         $filename = 'price-list-' . date('Y-m-d') . '.xlsx';
-        $storagePath = 'price-lists/' . $filename;
 
-        Excel::store(new PriceListExport($rows, $this->generatedAt ?? now()->toDateTimeString(), $this->showCost), $storagePath);
-
-        $this->dispatch('download-price-list', url: Storage::url($storagePath));
+        return Excel::download(new PriceListExport(
+            $rows,
+            $this->generatedAt ?? now()->toDateTimeString(),
+            $this->showCost,
+            $this->showWholesale
+        ), $filename);
     }
 
-    public function downloadPdf()
+    public function downloadPdf(): void
     {
         if (empty($this->priceList)) {
             Notification::make()
@@ -281,29 +286,11 @@ class PriceListPage extends Page
                 ->warning()
                 ->send();
 
-            return null;
+            return;
         }
 
-        $pdf = Pdf::loadView('exports.price-list-pdf', [
-            'priceList' => $this->priceList,
-            'generatedAt' => $this->generatedAt ?? now()->toDateTimeString(),
-            'changedCount' => $this->getChangedPriceCount(),
-            'uniqueProductCount' => $this->getUniqueProductCount(),
-            'variantCount' => $this->getTotalProducts(),
-        ])
-            ->setOptions([
-                'isRemoteEnabled' => true,
-                'isHtml5ParserEnabled' => true,
-                'isFontSubsettingEnabled' => false,
-                'defaultFont' => 'NotoSansDevanagariLocal',
-            ])
-            ->setPaper('a4', 'landscape');
-
-        $filename = 'price-list-' . now()->format('Y-m-d') . '.pdf';
-
-        return response()->streamDownload(function () use ($pdf) {
-            echo $pdf->output();
-        }, $filename);
+        // DRY: print the same rendered page content instead of maintaining a separate PDF template.
+        $this->dispatch('print-price-list');
     }
 
     public function getGeneratedAtForHumans(): string
