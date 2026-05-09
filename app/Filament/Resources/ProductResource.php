@@ -162,8 +162,6 @@ class ProductResource extends Resource
                             ->image()
                             ->disk('public')
                             ->directory('product-images')
-                            ->imageEditor()
-                            ->imageEditorAspectRatios(['1:1'])
                             ->maxSize(4096)
                             ->helperText('Uploading a new file will replace the current image. Square images (1:1) recommended.')
                             ->afterStateHydrated(function (\Filament\Forms\Components\FileUpload $component, $state) {
@@ -339,7 +337,8 @@ class ProductResource extends Resource
 
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->persistFiltersInSession();
     }
 
     public static function getRelations(): array

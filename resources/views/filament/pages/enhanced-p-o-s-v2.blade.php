@@ -1,5 +1,5 @@
 <x-filament-panels::page>
-    <div class="space-y-4" x-data="posSystem()" x-init="init()" @keydown.window="handleKeyboard($event)">
+    <div class="space-y-4 pos-v2-page" x-data="posSystem()" x-init="init()" @keydown.window="handleKeyboard($event)">
         {{-- Cache bust: {{ now()->timestamp }} --}}
         {{-- VERSION: 2.0.0 REDESIGNED LAYOUT --}}
         <style>
@@ -13,24 +13,24 @@
             /* Fix sidebar overlap on smaller screens */
             @media (max-width: 1024px) {
                 /* Hide Filament sidebar on POS page for smaller screens */
-                .fi-sidebar {
+                body:has(.pos-v2-page) .fi-sidebar {
                     display: none !important;
                 }
                 
                 /* Remove left margin/padding that accounts for sidebar */
-                .fi-main {
+                body:has(.pos-v2-page) .fi-main {
                     margin-left: 0 !important;
                     padding-left: 0 !important;
                 }
                 
                 /* Ensure POS page takes full width */
-                .fi-page {
+                body:has(.pos-v2-page) .fi-page {
                     margin-left: 0 !important;
                     padding-left: 0 !important;
                 }
                 
                 /* Make sure topbar takes full width too */
-                .fi-topbar {
+                body:has(.pos-v2-page) .fi-topbar {
                     left: 0 !important;
                     width: 100% !important;
                 }
@@ -38,7 +38,7 @@
             
             /* Force POS interface to use full viewport width on small screens */
             @media (max-width: 1024px) {
-                body:has(.fi-page) .fi-body {
+                body:has(.pos-v2-page) .fi-body {
                     margin-left: 0 !important;
                 }
             }

@@ -40,11 +40,15 @@
                     <input type="checkbox" wire:model.live="showCost" class="rounded border-gray-300">
                     <span>Show Cost</span>
                 </label>
+                <label class="flex items-center gap-2 cursor-pointer text-gray-700 dark:text-gray-300">
+                    <input type="checkbox" wire:model.live="showWholesale" class="rounded border-gray-300">
+                    <span>Show Wholesale</span>
+                </label>
             </div>
         @endif
 
         {{-- Buttons --}}
-        <div class="flex gap-2">
+        <div class="flex gap-2 sticky top-2 z-30 bg-white/95 dark:bg-gray-900/95 backdrop-blur px-2 py-2 rounded-xl border border-gray-200 dark:border-gray-700 shadow-md">
             @if($generatedAt && !$isStale)
                 <button
                     wire:click="generate"
@@ -69,7 +73,8 @@
             @if(!empty($priceList))
                 <button
                     wire:click="downloadPdf"
-                    class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition"
+                    style="display:inline-flex;align-items:center;gap:8px;padding:8px 16px;font-size:0.875rem;font-weight:700;color:#ffffff !important;background:#111827 !important;border:2px solid #000000 !important;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.28);cursor:pointer;"
+                    onmouseover="this.style.background='#000000'" onmouseout="this.style.background='#111827'"
                 >
                     <x-heroicon-o-document-arrow-down class="w-4 h-4"/>
                     Save as PDF
@@ -77,7 +82,8 @@
 
                 <button
                     wire:click="downloadExcel"
-                    class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                    style="display:inline-flex;align-items:center;gap:8px;padding:8px 16px;font-size:0.875rem;font-weight:700;color:#ffffff !important;background:#0f766e !important;border:2px solid #115e59 !important;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.28);cursor:pointer;"
+                    onmouseover="this.style.background='#115e59'" onmouseout="this.style.background='#0f766e'"
                 >
                     <x-heroicon-o-arrow-down-tray class="w-4 h-4"/>
                     Download Excel
@@ -115,134 +121,110 @@
 
     {{-- Price list table --}}
     @if(!empty($priceList))
-        <div class="space-y-6">
+        <div id="price-list-print-root">
             @foreach($priceList as $group)
-                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700">
+                @php $grouped = collect($group['items'])->groupBy('product_name'); @endphp
 
+                {{-- Category section --}}
+                <div class="price-list-category mb-8">
                     {{-- Category header --}}
-                    @php $grouped = collect($group['items'])->groupBy('product_name'); @endphp
-                    <div class="px-4 py-3 bg-primary-50 dark:bg-primary-900/30 border-b border-gray-200 dark:border-gray-700">
-                        <h3 class="font-semibold text-primary-800 dark:text-primary-300">{{ $group['category'] }}</h3>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ $grouped->count() }} products &middot; {{ count($group['items']) }} variants</p>
+                    <div class="category-header px-4 py-3 rounded-t-xl bg-primary-600 text-white mb-3 flex items-center justify-between">
+                        <h3 class="font-bold text-base">{{ $group['category'] }}</h3>
+                        <span class="text-xs opacity-80">{{ $grouped->count() }} products &middot; {{ count($group['items']) }} variants</span>
                     </div>
 
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full text-sm">
-                            <thead>
-                                <tr class="bg-gray-50 dark:bg-gray-900 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                    <th class="px-4 py-2 w-8">#</th>
-                                    <th class="px-4 py-2 text-center">Pack Size</th>
-                                    @if($showCost)
-                                        <th class="px-4 py-2 text-right">Cost</th>
+                    {{-- 2-column product grid --}}
+                    <div class="product-grid grid grid-cols-1 md:grid-cols-2 gap-3">
+                        @php $productIndex = 0; @endphp
+                        @foreach($grouped as $productName => $variants)
+                            @php
+                                $productIndex++;
+                                $anyChanged = $variants->contains(fn($v) => !empty($v['price_changed']));
+                                $missingPacks = $variants->first()['missing_mandatory_packs'] ?? [];
+                                $imageSlug = $variants->first()['image_slug'] ?? '';
+                                $imageUrl = $variants->first()['image_url'] ?? null;
+                                $imageSrc = $imageUrl ?: ($imageSlug ? '/images/products/' . $imageSlug . '.jpg' : null);
+                                $sortedVariants = $variants->sortBy(fn($v) => $v['pack_size_grams'] ?? PHP_INT_MAX)->values();
+                                $ruleSource = $sortedVariants->first(fn($v) => !empty($v['one_gram_mrp']));
+                                $oneGramMrp = $ruleSource['one_gram_mrp'] ?? null;
+                            @endphp
+
+                            {{-- Product card --}}
+                            <div class="product-card bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+
+                                {{-- Product header --}}
+                                <div class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600">
+                                    @if($imageSrc)
+                                        <img src="{{ $imageSrc }}" alt="{{ $productName }}"
+                                            class="w-16 h-16 rounded-lg object-cover flex-shrink-0 border border-gray-200 dark:border-gray-600"
+                                            onerror="this.style.display='none'">
                                     @endif
-                                    <th class="px-4 py-2 text-right">Wholesale</th>
-                                    <th class="px-4 py-2 text-right">MRP</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                                @php $productIndex = 0; @endphp
-                                @foreach($grouped as $productName => $variants)
-                                    @php
-                                        $productIndex++;
-                                        $anyChanged = $variants->contains(fn($v) => !empty($v['price_changed']));
-                                        $missingPacks = $variants->first()['missing_mandatory_packs'] ?? [];
-                                        $imageSlug = $variants->first()['image_slug'] ?? '';
-                                        $imageUrl = $variants->first()['image_url'] ?? null;
-                                        $imageSrc = $imageUrl ?: ($imageSlug ? '/images/products/' . $imageSlug . '.jpg' : null);
-
-                                        $sortedVariants = $variants->sortBy(fn ($v) => $v['pack_size_grams'] ?? PHP_INT_MAX)->values();
-                                        $ruleSource = $sortedVariants->first(fn ($v) => !empty($v['one_gram_mrp']));
-                                        $oneGramMrp = $ruleSource['one_gram_mrp'] ?? null;
-                                    @endphp
-                                    {{-- Product header row --}}
-                                    <tr class="bg-gray-100 dark:bg-gray-700/60 border-t-2 border-gray-200 dark:border-gray-600">
-                                        <td class="px-4 py-2.5 text-gray-500 dark:text-gray-400 text-xs font-medium align-middle">{{ $productIndex }}</td>
-                                        <td colspan="3" class="px-4 py-3 align-middle">
-                                            <div class="flex flex-col md:flex-row md:items-center gap-3">
-                                                @if($imageSrc)
-                                                    <img
-                                                        src="{{ $imageSrc }}"
-                                                        alt="{{ $productName }}"
-                                                        class="rounded-xl object-cover flex-shrink-0 border border-gray-200 dark:border-gray-600"
-                                                        style="width:120px;height:120px"
-                                                        onerror="this.style.display='none'"
-                                                    >
-                                                @endif
-
-                                                <div class="flex-1 min-w-0">
-                                                    <div class="flex items-center gap-2 flex-wrap mb-1">
-                                                        <span class="text-lg font-bold text-gray-900 dark:text-gray-100">{{ $productName }}</span>
-                                                        @if($anyChanged)
-                                                            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-200">Price Changed</span>
-                                                        @endif
-                                                        @if(!empty($missingPacks))
-                                                            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200">
-                                                                Missing: {{ implode(', ', $missingPacks) }}
-                                                            </span>
-                                                        @endif
-                                                    </div>
-
-                                                    <div class="flex flex-wrap items-center gap-1.5 mb-2">
-                                                        <span class="text-xs font-semibold text-gray-500 dark:text-gray-400">Available Weights:</span>
-                                                        @foreach($sortedVariants as $weightItem)
-                                                            @php
-                                                                $weightClass = $weightItem['pack_color_class'] ?? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200';
-                                                                $weightLabel = $weightItem['pack_size'] ?? '';
-                                                            @endphp
-                                                            <span class="inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold {{ $weightClass }}">
-                                                                {{ $weightLabel }}
-                                                            </span>
-                                                        @endforeach
-                                                    </div>
-
-                                                    @if($oneGramMrp)
-                                                        <div class="inline-flex flex-wrap items-center gap-2 text-xs rounded-lg px-2.5 py-1.5 bg-blue-50 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200">
-                                                            <span class="font-semibold">Guide:</span>
-                                                            <span>1g: NPR {{ number_format($oneGramMrp, 0) }}</span>
-                                                        </div>
-                                                    @endif
-                                                </div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    {{-- Variant rows --}}
-                                    @foreach($variants as $vi => $item)
-                                        @php
-                                            $packColorClass = $item['pack_color_class'] ?? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200';
-                                            $packCode       = $item['pack_code'] ?? '?';
-                                            $packSize       = $item['pack_size'] ?? '';
-                                            $wholesale      = $item['wholesale'] ?? 0;
-                                            $mrp            = $item['mrp'] ?? 0;
-                                            $packGrams      = $item['pack_size_grams'] ?? 0;
-                                            $priceChanged   = !empty($item['price_changed']);
-                                        @endphp
-                                        <tr class="{{ $priceChanged ? 'bg-orange-50 dark:bg-orange-900/20' : ($vi % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900/50') }} hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
-                                            <td class="px-4 py-2"></td>
-                                            <td class="px-4 py-2 text-center text-gray-800 dark:text-gray-200">
-                                                <span class="inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold {{ $packColorClass }}">{{ $packSize }}</span>
-                                            </td>
-                                            @if($showCost)
-                                                <td class="px-4 py-2 text-right text-gray-700 dark:text-gray-300">
-                                                    NPR {{ number_format($item['cost_price'] ?? 0, 0) }}
-                                                </td>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-start gap-2 flex-wrap mb-1">
+                                            <span class="text-xs text-gray-400 dark:text-gray-500 font-medium">{{ $productIndex }}.</span>
+                                            <span class="font-bold text-gray-900 dark:text-gray-100 leading-snug">{{ $productName }}</span>
+                                            @if($anyChanged)
+                                                <span class="inline-flex items-center rounded-full px-1.5 py-0.5 text-xs font-medium bg-orange-100 text-orange-800">Price Changed</span>
                                             @endif
-                                            <td class="px-4 py-2 text-right text-blue-700 dark:text-blue-200 font-medium">
-                                                NPR {{ number_format($wholesale, 0) }}
-                                            </td>
-                                            <td class="px-4 py-2 text-right font-semibold {{ $priceChanged ? 'text-orange-700 dark:text-orange-200' : 'text-green-700 dark:text-green-300' }}">
-                                                NPR {{ number_format($mrp, 0) }}
-                                            </td>
+                                            @if(!empty($missingPacks))
+                                                <span class="inline-flex items-center rounded-full px-1.5 py-0.5 text-xs font-medium bg-red-100 text-red-800">Missing: {{ implode(', ', $missingPacks) }}</span>
+                                            @endif
+                                        </div>
+                                        <div class="flex flex-wrap gap-1 mb-1">
+                                            @foreach($sortedVariants as $weightItem)
+                                                <span class="inline-flex items-center rounded-full px-1.5 py-0.5 text-xs font-semibold {{ $weightItem['pack_color_class'] ?? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200' }}">{{ $weightItem['pack_size'] ?? '' }}</span>
+                                            @endforeach
+                                        </div>
+                                        @if($oneGramMrp)
+                                            <span class="text-xs text-blue-700 dark:text-blue-300 font-medium">1g = NPR {{ number_format($oneGramMrp, 0) }}</span>
+                                        @endif
+                                    </div>
+                                </div>
+
+                                {{-- Variants table --}}
+                                <table class="w-full text-sm">
+                                    <thead>
+                                        <tr class="bg-gray-50 dark:bg-gray-900/60 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                            <th class="px-3 py-1.5 text-left">Pack Size</th>
+                                            @if($this->showCost)<th class="px-3 py-1.5 text-right">Cost</th>@endif
+                                            @if($this->showWholesale)<th class="px-3 py-1.5 text-right">Wholesale</th>@endif
+                                            <th class="px-3 py-1.5 text-right">MRP</th>
                                         </tr>
-                                    @endforeach
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                                        @foreach($sortedVariants as $vi => $item)
+                                            @php
+                                                $packColorClass = $item['pack_color_class'] ?? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200';
+                                                $packSize       = $item['pack_size'] ?? '';
+                                                $wholesale      = $item['wholesale'] ?? 0;
+                                                $mrp            = $item['mrp'] ?? 0;
+                                                $priceChanged   = !empty($item['price_changed']);
+                                            @endphp
+                                            <tr class="{{ $priceChanged ? 'bg-orange-50 dark:bg-orange-900/20' : ($vi % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900/40') }}">
+                                                <td class="px-3 py-1.5">
+                                                    <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold {{ $packColorClass }}">{{ $packSize }}</span>
+                                                </td>
+                                                @if($this->showCost)
+                                                    <td class="px-3 py-1.5 text-right text-gray-700 dark:text-gray-300 text-xs">NPR {{ number_format($item['cost_price'] ?? 0, 0) }}</td>
+                                                @endif
+                                                @if($this->showWholesale)
+                                                    <td class="px-3 py-1.5 text-right text-blue-700 dark:text-blue-200 font-medium text-xs">NPR {{ number_format($wholesale, 0) }}</td>
+                                                @endif
+                                                <td class="px-3 py-1.5 text-right font-semibold text-xs {{ $priceChanged ? 'text-orange-700 dark:text-orange-200' : 'text-green-700 dark:text-green-300' }}">
+                                                    NPR {{ number_format($mrp, 0) }}
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>{{-- /.product-card --}}
+                        @endforeach
+                    </div>{{-- /.product-grid --}}
+                </div>{{-- /.price-list-category --}}
             @endforeach
 
             {{-- Footer summary --}}
-            <div class="text-center text-xs text-gray-400 dark:text-gray-500 pt-2 pb-4">
+            <div class="text-center text-xs text-gray-400 dark:text-gray-500 pt-2 pb-6">
                 {{ $this->getTotalProducts() }} product variants across {{ count($priceList) }} categories &nbsp;·&nbsp;
                 Generated {{ $generatedAt }}
             </div>
@@ -258,13 +240,59 @@
 
 <script>
     document.addEventListener('livewire:initialized', () => {
-        Livewire.on('download-price-list', ({ url }) => {
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = '';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+        Livewire.on('print-price-list', () => {
+            // Inject a temporary print stylesheet and call window.print() directly
+            // (avoids popup blockers entirely)
+            let printStyle = document.getElementById('price-list-print-style');
+            if (!printStyle) {
+                printStyle = document.createElement('style');
+                printStyle.id = 'price-list-print-style';
+                printStyle.media = 'print';
+                document.head.appendChild(printStyle);
+            }
+            printStyle.textContent = `
+                @page { size: A4 landscape; margin: 10mm; }
+                .fi-sidebar, .fi-topbar, .fi-topbar-item,
+                nav, header, aside, footer,
+                [data-sidebar], button,
+                .fi-page-header, .fi-breadcrumbs,
+                .grid.grid-cols-1.md\\:grid-cols-3 { display: none !important; }
+
+                body, html {
+                    padding: 0 !important;
+                    margin: 0 !important;
+                    background: #fff !important;
+                }
+
+                #price-list-print-root {
+                    display: block !important;
+                }
+
+                /* Keep same 2-column structure in print */
+                .product-grid {
+                    display: grid !important;
+                    grid-template-columns: 1fr 1fr !important;
+                    gap: 0.75rem !important;
+                }
+
+                /* Prevent splitting one product card across pages */
+                .product-card {
+                    break-inside: avoid !important;
+                    page-break-inside: avoid !important;
+                    -webkit-column-break-inside: avoid !important;
+                }
+
+                .category-header {
+                    break-after: avoid !important;
+                    page-break-after: avoid !important;
+                }
+
+                * {
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
+            `;
+            window.print();
         });
     });
 </script>
