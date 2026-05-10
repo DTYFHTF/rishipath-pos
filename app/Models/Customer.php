@@ -96,6 +96,11 @@ class Customer extends Model
         return $this->belongsTo(RetailStore::class);
     }
 
+    public function salesAgent(): BelongsTo
+    {
+        return $this->belongsTo(SalesAgent::class, 'sales_agent_id');
+    }
+
     /**
      * Is this customer record auto-linked to a retail store?
      */
@@ -198,5 +203,16 @@ class Customer extends Model
         }
 
         return $query->get();
+    }
+
+    /**
+     * Scope: Filter customers assigned to agent
+     */
+    public function scopeForAgent($query, ?int $agentId)
+    {
+        if ($agentId) {
+            return $query->where('sales_agent_id', $agentId);
+        }
+        return $query;
     }
 }

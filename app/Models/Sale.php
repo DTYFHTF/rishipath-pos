@@ -33,10 +33,14 @@ class Sale extends Model
         'wholesale_base_amount',
         'company_profit_amount',
         'agent_commission_amount',
+        'delivery_charge',
+        'delivery_charge_applied',
         'payment_method',
         'order_channel',
         'payment_status',
         'payment_reference',
+        'settlement_reference',
+        'settlement_confirmed_at',
         'amount_paid',
         'amount_change',
         'notes',
@@ -55,11 +59,14 @@ class Sale extends Model
         'wholesale_base_amount' => 'decimal:2',
         'company_profit_amount' => 'decimal:2',
         'agent_commission_amount' => 'decimal:2',
+        'delivery_charge' => 'decimal:2',
+        'delivery_charge_applied' => 'boolean',
         'amount_paid' => 'decimal:2',
         'amount_change' => 'decimal:2',
         'tax_details' => 'array',
         'is_synced' => 'boolean',
         'synced_at' => 'datetime',
+        'settlement_confirmed_at' => 'datetime',
     ];
 
     protected static function booted(): void
@@ -78,7 +85,12 @@ class Sale extends Model
                 // Ensure customer stats update on creation
                 $sale->customer?->recalculateTotals();
             }
-        });
+        });// Auto-post commission to SalesAgentLedger when sale is completed and paid
+            if ($sale->wasChanged(['payment_status']) && $sale->payment_status === 'paid' && $sale->sales_agent_id) {
+                self::postCommissionToLedger($sale);
+            }
+
+            
 
         static::saved(function ($sale) {
             if ($sale->customer_id && $sale->wasChanged(['status', 'total_amount'])) {
@@ -188,6 +200,79 @@ class Sale extends Model
     public function hasSplitPayments(): bool
     {
         return $this->paymentSplits()->count() > 1;
+    }
+
+    /**
+     * Scope: Filter sales by agent
+     */
+    public function scopeForAgent($query, ?int $agentId)
+    {
+        if ($agentId) {
+            return $query->where('sales_agent_id', $agentId);
+        }
+        return $query;
+    }
+
+    /**
+     * Scope: Filter sales for a customer
+     */
+    public function scopeForCustomer($query, ?int $customerId)
+    {
+        if ($customerId) {
+            return $query->where('customer_id', $customerId);
+        }
+        return $query;
+    }
+
+    /**
+     * Apply delivery charge rule: if order subtotal < threshold, add delivery charge
+     * Returns the charge amount applied
+     */
+    public function applyDeliveryChargeRule(float $threshold = 10000, float $chargeAmount = 0): float
+    {
+        $subtotal = (float) ($this->subtotal ?? 0);
+
+        if ($subtotal < $threshold && $chargeAmount > 0) {
+            $this->delivery_charge = $chargeAmount;
+            $this->delivery_charge_applied = true;
+            // Recalculate total to include delivery charge
+            $this->total_amount = (float) ($this->subtotal ?? 0)
+                + (float) ($this->tax_amount ?? 0)
+                + (float) ($this->discount_amount ?? 0)
+                + (float) $this->delivery_charge;
+            return $chargeAmount;
+        }
+
+        return 0.0;
+    }
+
+    /**
+     * Auto-post commission to SalesAgentLedger when sale is paid
+     */
+    protected static function postCommissionToLedger(self $sale): void
+    {
+        if (! $sale->sales_agent_id || ! $sale->agent_commission_amount) {
+            return;
+        }
+
+        // Check if already posted
+        $existing = \App\Models\SalesAgentLedger::where('sale_id', $sale->id)
+            ->where('entry_type', 'commission')
+            ->first();
+
+        if ($existing) {
+            return; // Already posted
+        }
+
+        \App\Models\SalesAgentLedger::create([
+            'organization_id' => $sale->organization_id,
+            'sales_agent_id' => $sale->sales_agent_id,
+            'sale_id' => $sale->id,
+            'entry_type' => 'commission',
+            'amount' => $sale->agent_commission_amount,
+            'reference' => $sale->receipt_number,
+            'description' => 'Commission: '.$sale->order_channel.' order '.$sale->receipt_number,
+        ]);
     }
 
     /**
