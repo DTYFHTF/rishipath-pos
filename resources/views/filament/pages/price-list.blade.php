@@ -92,6 +92,76 @@
         </div>
     </div>
 
+    {{-- Voice Search Bar --}}
+    @if(!empty($priceList))
+    <div id="voice-search-bar" class="mb-5 p-4 rounded-2xl bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/30 dark:to-blue-900/30 border border-indigo-200 dark:border-indigo-700 shadow-sm">
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+
+            {{-- Label --}}
+            <div class="flex items-center gap-2 shrink-0">
+                <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+                <span class="text-sm font-semibold text-indigo-700 dark:text-indigo-300 whitespace-nowrap">Search Product</span>
+            </div>
+
+            {{-- Text search input --}}
+            <div class="relative flex-1">
+                <input
+                    type="text"
+                    id="price-search-input"
+                    placeholder="Type or speak a product name…"
+                    oninput="priceListSearch(this.value)"
+                    autocomplete="off"
+                    style="width:100%;padding:12px 44px 12px 16px;font-size:1.05rem;border:2px solid #a5b4fc;border-radius:12px;outline:none;background:#fff;color:#1e1b4b;transition:border-color .2s;"
+                    onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#a5b4fc'"
+                >
+                <button onclick="document.getElementById('price-search-input').value='';priceListSearch('');"
+                    id="voice-clear-btn"
+                    title="Clear"
+                    style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#6b7280;font-size:1.2rem;line-height:1;">
+                    ✕
+                </button>
+            </div>
+
+            {{-- Language selector --}}
+            <div class="flex gap-1 shrink-0">
+                <button id="lang-en" onclick="setVoiceLang('en-US')"
+                    style="padding:8px 14px;border-radius:10px;font-size:0.8rem;font-weight:700;border:2px solid #6366f1;background:#6366f1;color:#fff;cursor:pointer;transition:all .15s;">
+                    EN
+                </button>
+                <button id="lang-ne" onclick="setVoiceLang('ne-NP')"
+                    style="padding:8px 14px;border-radius:10px;font-size:0.8rem;font-weight:700;border:2px solid #a5b4fc;background:#fff;color:#6366f1;cursor:pointer;transition:all .15s;">
+                    नेपाली
+                </button>
+                <button id="lang-hi" onclick="setVoiceLang('hi-IN')"
+                    style="padding:8px 14px;border-radius:10px;font-size:0.8rem;font-weight:700;border:2px solid #a5b4fc;background:#fff;color:#6366f1;cursor:pointer;transition:all .15s;">
+                    हिन्दी
+                </button>
+            </div>
+
+            {{-- Mic button --}}
+            <button id="voice-mic-btn" onclick="toggleVoiceSearch()"
+                title="Tap to speak"
+                style="flex-shrink:0;width:52px;height:52px;border-radius:50%;background:#6366f1;border:3px solid #4338ca;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 14px rgba(99,102,241,.4);transition:all .2s;">
+                <svg id="mic-icon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4M12 3a4 4 0 014 4v4a4 4 0 01-8 0V7a4 4 0 014-4z"/>
+                </svg>
+            </button>
+        </div>
+
+        {{-- Status / feedback bar --}}
+        <div id="voice-status" style="display:none;margin-top:10px;padding:10px 16px;border-radius:10px;background:#fff;border:1.5px solid #c7d2fe;font-size:1rem;color:#312e81;font-weight:600;display:flex;align-items:center;gap:10px;min-height:44px;">
+            <span id="voice-status-icon">🎙️</span>
+            <span id="voice-status-text">Listening…</span>
+        </div>
+
+        {{-- Result count --}}
+        <div id="voice-result-count" style="display:none;margin-top:8px;font-size:0.85rem;color:#6366f1;font-weight:600;"></div>
+    </div>
+    @endif
+
     {{-- Value banners --}}
     @if($isStale && !empty($priceList))
         <div class="mb-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-300">
@@ -126,7 +196,7 @@
                 @php $grouped = collect($group['items'])->groupBy('product_name'); @endphp
 
                 {{-- Category section --}}
-                <div class="price-list-category mb-8">
+                <div class="price-list-category mb-8" data-category-section="{{ strtolower($group['category']) }}">
                     {{-- Category header --}}
                     <div class="category-header px-4 py-3 rounded-t-xl bg-primary-600 text-white mb-3 flex items-center justify-between">
                         <h3 class="font-bold text-base">{{ $group['category'] }}</h3>
@@ -147,10 +217,20 @@
                                 $sortedVariants = $variants->sortBy(fn($v) => $v['pack_size_grams'] ?? PHP_INT_MAX)->values();
                                 $ruleSource = $sortedVariants->first(fn($v) => !empty($v['one_gram_mrp']));
                                 $oneGramMrp = $ruleSource['one_gram_mrp'] ?? null;
+                                // Build search index from all name fields available
+                                $searchIndex = strtolower(
+                                    $productName . ' ' .
+                                    ($variants->first()['name_nepali'] ?? '') . ' ' .
+                                    ($variants->first()['name_hindi'] ?? '') . ' ' .
+                                    ($variants->first()['name_romanized'] ?? '') . ' ' .
+                                    ($group['category'] ?? '')
+                                );
                             @endphp
 
                             {{-- Product card --}}
-                            <div class="product-card bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                            <div class="product-card bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden"
+                                 data-search="{{ $searchIndex }}"
+                                 data-product-name="{{ strtolower($productName) }}">
 
                                 {{-- Product header --}}
                                 <div class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600">
@@ -239,10 +319,9 @@
 
 
 <script>
+    // ─── Print handler ────────────────────────────────────────────────────────
     document.addEventListener('livewire:initialized', () => {
         Livewire.on('print-price-list', () => {
-            // Inject a temporary print stylesheet and call window.print() directly
-            // (avoids popup blockers entirely)
             let printStyle = document.getElementById('price-list-print-style');
             if (!printStyle) {
                 printStyle = document.createElement('style');
@@ -256,6 +335,7 @@
                 nav, header, aside, footer,
                 [data-sidebar], button,
                 .fi-page-header, .fi-breadcrumbs,
+                #voice-search-bar,
                 .grid.grid-cols-1.md\\:grid-cols-3 { display: none !important; }
 
                 body, html {
@@ -268,14 +348,12 @@
                     display: block !important;
                 }
 
-                /* Keep same 2-column structure in print */
                 .product-grid {
                     display: grid !important;
                     grid-template-columns: 1fr 1fr !important;
                     gap: 0.75rem !important;
                 }
 
-                /* Prevent splitting one product card across pages */
                 .product-card {
                     break-inside: avoid !important;
                     page-break-inside: avoid !important;
@@ -295,6 +373,209 @@
             window.print();
         });
     });
+
+    // ─── Voice Search ─────────────────────────────────────────────────────────
+    let voiceLang = 'en-US';
+    let recognition = null;
+    let isListening = false;
+
+    function setVoiceLang(lang) {
+        voiceLang = lang;
+        // Update button styles
+        const map = { 'en-US': 'lang-en', 'ne-NP': 'lang-ne', 'hi-IN': 'lang-hi' };
+        ['lang-en', 'lang-ne', 'lang-hi'].forEach(id => {
+            const btn = document.getElementById(id);
+            if (!btn) return;
+            if (id === map[lang]) {
+                btn.style.background = '#6366f1';
+                btn.style.color = '#fff';
+                btn.style.borderColor = '#6366f1';
+            } else {
+                btn.style.background = '#fff';
+                btn.style.color = '#6366f1';
+                btn.style.borderColor = '#a5b4fc';
+            }
+        });
+        if (recognition) recognition.lang = lang;
+    }
+
+    function priceListSearch(query) {
+        const q = query.trim().toLowerCase();
+        const clearBtn = document.getElementById('voice-clear-btn');
+        const resultCount = document.getElementById('voice-result-count');
+
+        if (clearBtn) clearBtn.style.display = q ? 'block' : 'none';
+
+        const cards = document.querySelectorAll('.product-card');
+        let matched = 0;
+
+        cards.forEach(card => {
+            const searchData = card.getAttribute('data-search') || '';
+            const visible = !q || searchData.includes(q);
+            card.style.display = visible ? '' : 'none';
+            if (visible) matched++;
+        });
+
+        // Show/hide category sections that have no visible cards
+        document.querySelectorAll('[data-category-section]').forEach(section => {
+            const hasVisible = Array.from(section.querySelectorAll('.product-card'))
+                .some(c => c.style.display !== 'none');
+            section.style.display = (q && !hasVisible) ? 'none' : '';
+        });
+
+        // Result count
+        if (resultCount) {
+            if (q) {
+                resultCount.style.display = 'block';
+                resultCount.textContent = matched === 0
+                    ? '❌ No products found for "' + query.trim() + '"'
+                    : '✅ ' + matched + ' product' + (matched === 1 ? '' : 's') + ' found';
+            } else {
+                resultCount.style.display = 'none';
+            }
+        }
+
+        // Auto-scroll to first match
+        if (q && matched > 0) {
+            const first = document.querySelector('.product-card[style=""], .product-card:not([style*="none"])');
+            if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // Highlight matched cards
+        cards.forEach(card => {
+            card.style.boxShadow = (q && card.style.display !== 'none') ? '0 0 0 3px #6366f1' : '';
+        });
+    }
+
+    function toggleVoiceSearch() {
+        if (isListening) {
+            stopListening();
+            return;
+        }
+
+        const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRec) {
+            showVoiceStatus('⚠️', 'Voice search is not supported in this browser. Please use Chrome or Safari.', '#ef4444');
+            setTimeout(hideVoiceStatus, 4000);
+            return;
+        }
+
+        recognition = new SpeechRec();
+        recognition.lang = voiceLang;
+        recognition.interimResults = true;
+        recognition.maxAlternatives = 3;
+        recognition.continuous = false;
+
+        recognition.onstart = () => {
+            isListening = true;
+            setMicListening(true);
+            const langLabels = { 'en-US': 'English', 'ne-NP': 'Nepali', 'hi-IN': 'Hindi' };
+            showVoiceStatus('🎙️', 'Listening in ' + (langLabels[voiceLang] || voiceLang) + '… Speak now', '#312e81');
+        };
+
+        recognition.onresult = (event) => {
+            let interim = '';
+            let final = '';
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                if (event.results[i].isFinal) {
+                    final += event.results[i][0].transcript;
+                } else {
+                    interim += event.results[i][0].transcript;
+                }
+            }
+            const display = final || interim;
+            if (display) {
+                document.getElementById('price-search-input').value = display;
+                priceListSearch(display);
+                showVoiceStatus('🔍', '"' + display + '"', '#1e40af');
+            }
+            if (final) {
+                speakConfirmation(final);
+            }
+        };
+
+        recognition.onerror = (event) => {
+            const msgs = {
+                'no-speech': 'No speech detected. Please try again.',
+                'audio-capture': 'Microphone not found. Check permissions.',
+                'not-allowed': 'Microphone access denied. Please allow it in browser settings.',
+                'network': 'Network error. Try again.',
+            };
+            showVoiceStatus('⚠️', msgs[event.error] || 'Error: ' + event.error, '#ef4444');
+            stopListening();
+            setTimeout(hideVoiceStatus, 5000);
+        };
+
+        recognition.onend = () => {
+            stopListening();
+        };
+
+        recognition.start();
+    }
+
+    function stopListening() {
+        isListening = false;
+        setMicListening(false);
+        if (recognition) {
+            try { recognition.stop(); } catch(e) {}
+            recognition = null;
+        }
+    }
+
+    function setMicListening(on) {
+        const btn = document.getElementById('voice-mic-btn');
+        if (!btn) return;
+        if (on) {
+            btn.style.background = '#ef4444';
+            btn.style.borderColor = '#b91c1c';
+            btn.style.boxShadow = '0 0 0 6px rgba(239,68,68,.3)';
+            btn.style.animation = 'mic-pulse 1s ease-in-out infinite';
+            btn.title = 'Tap to stop';
+        } else {
+            btn.style.background = '#6366f1';
+            btn.style.borderColor = '#4338ca';
+            btn.style.boxShadow = '0 4px 14px rgba(99,102,241,.4)';
+            btn.style.animation = '';
+            btn.title = 'Tap to speak';
+        }
+    }
+
+    function showVoiceStatus(icon, text, color) {
+        const bar = document.getElementById('voice-status');
+        const iconEl = document.getElementById('voice-status-icon');
+        const textEl = document.getElementById('voice-status-text');
+        if (!bar) return;
+        bar.style.display = 'flex';
+        bar.style.borderColor = color || '#c7d2fe';
+        if (iconEl) iconEl.textContent = icon;
+        if (textEl) { textEl.textContent = text; textEl.style.color = color || '#312e81'; }
+    }
+
+    function hideVoiceStatus() {
+        const bar = document.getElementById('voice-status');
+        if (bar) bar.style.display = 'none';
+    }
+
+    function speakConfirmation(text) {
+        if (!('speechSynthesis' in window)) return;
+        const utterance = new SpeechSynthesisUtterance('Searching for ' + text);
+        utterance.lang = 'en-US';
+        utterance.rate = 0.95;
+        utterance.pitch = 1;
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(utterance);
+    }
+
+    // Mic pulse animation
+    const micStyle = document.createElement('style');
+    micStyle.textContent = `
+        @keyframes mic-pulse {
+            0%   { box-shadow: 0 0 0 0 rgba(239,68,68,.5); }
+            70%  { box-shadow: 0 0 0 14px rgba(239,68,68,0); }
+            100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+        }
+    `;
+    document.head.appendChild(micStyle);
 </script>
 
 </x-filament-panels::page>
