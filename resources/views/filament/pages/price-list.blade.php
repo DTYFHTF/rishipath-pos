@@ -159,6 +159,11 @@
 
         {{-- Result count --}}
         <div id="voice-result-count" style="display:none;margin-top:8px;font-size:0.85rem;color:#6366f1;font-weight:600;"></div>
+
+        {{-- Keyboard dictation tip (always visible, helpful for Nepal) --}}
+        <p style="margin-top:8px;font-size:0.78rem;color:#6b7280;">
+            💡 <strong>On mobile?</strong> Tap the text box, then use the <strong>🎤 mic button on your keyboard</strong> — it works in any language even without internet.
+        </p>
     </div>
     @endif
 
@@ -495,14 +500,21 @@
         };
 
         recognition.onerror = (event) => {
+            stopListening();
+            if (event.error === 'network') {
+                // Google's speech servers unreachable — show keyboard dictation tip instead
+                showVoiceStatus('⌨️', 'Voice needs Google servers (unavailable). Use the keyboard mic 🎤 instead — tap the mic icon on your phone\'s keyboard!', '#b45309');
+                // Keep visible longer so user can read
+                setTimeout(hideVoiceStatus, 9000);
+                return;
+            }
             const msgs = {
-                'no-speech': 'No speech detected. Please try again.',
-                'audio-capture': 'Microphone not found. Check permissions.',
-                'not-allowed': 'Microphone access denied. Please allow it in browser settings.',
-                'network': 'Network error. Try again.',
+                'no-speech': 'No speech detected. Speak louder or closer to the mic.',
+                'audio-capture': 'Microphone not found. Check device permissions.',
+                'not-allowed': 'Microphone access denied. Allow it in your browser settings.',
+                'aborted': 'Stopped.',
             };
             showVoiceStatus('⚠️', msgs[event.error] || 'Error: ' + event.error, '#ef4444');
-            stopListening();
             setTimeout(hideVoiceStatus, 5000);
         };
 
