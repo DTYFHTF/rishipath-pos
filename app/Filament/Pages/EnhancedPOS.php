@@ -334,6 +334,7 @@ class EnhancedPOS extends Page
                 'parked_at' => $session->parked_at,
                 'payment_method' => 'cash',
                 'amount_received' => 0,
+                'delivery_charge' => 0,
                 'notes' => $session->notes,
             ];
         }
@@ -420,7 +421,7 @@ class EnhancedPOS extends Page
 
         $this->customerSearch = '';
 
-        // Recalculate cart so any loyalty tier discount (if applicable) is applied immediately
+        // Recalculate cart totals after customer change
         $this->recalculateCart();
         $this->saveCurrentSession();
     }
@@ -634,6 +635,7 @@ class EnhancedPOS extends Page
             'parked_at' => null,
             'payment_method' => 'cash',
             'amount_received' => 0,
+            'delivery_charge' => 0,
             'notes' => '',
         ];
 
@@ -1053,33 +1055,19 @@ class EnhancedPOS extends Page
             $totalTax += $tax;
         }
 
-        // Compute loyalty tier discount (percentage-based benefit) dynamically
+        // Loyalty tier automatic discount is intentionally disabled for thin-margin MVP.
+        // Rewards redemption remains active and is handled via reward_discount.
         $loyaltyDiscount = 0;
-        $customerId = $this->sessions[$this->activeSessionKey]['customer_id'] ?? null;
-        if ($customerId) {
-            $customer = Customer::find($customerId);
-            if ($customer) {
-                try {
-                    $loyaltySummary = (new LoyaltyService())->getCustomerSummary($customer);
-                    $percent = $loyaltySummary['discount_percentage'] ?? 0;
-                    if ($percent > 0) {
-                        $loyaltyDiscount = round($subtotal * ($percent / 100), 2);
-                    }
-                } catch (\Throwable $e) {
-                    // If loyalty service fails, fallback silently (no discount)
-                    $loyaltyDiscount = 0;
-                }
-            }
-        }
 
         // Add reward discount if applied
         $rewardDiscount = $this->sessions[$this->activeSessionKey]['reward_discount'] ?? 0;
+        $deliveryCharge = max(0, (float) ($this->sessions[$this->activeSessionKey]['delivery_charge'] ?? 0));
 
         $this->sessions[$this->activeSessionKey]['subtotal'] = $subtotal;
         $this->sessions[$this->activeSessionKey]['loyalty_discount'] = $loyaltyDiscount;
         $this->sessions[$this->activeSessionKey]['discount'] = $totalDiscount + $loyaltyDiscount + $rewardDiscount;
         $this->sessions[$this->activeSessionKey]['tax'] = $totalTax;
-        $this->sessions[$this->activeSessionKey]['total'] = $subtotal - ($totalDiscount + $loyaltyDiscount + $rewardDiscount) + $totalTax;
+        $this->sessions[$this->activeSessionKey]['total'] = $subtotal - ($totalDiscount + $loyaltyDiscount + $rewardDiscount) + $totalTax + $deliveryCharge;
     }
 
     /**
@@ -1154,6 +1142,8 @@ class EnhancedPOS extends Page
                 'discount_amount' => $session['discount'],
                 'tax_amount' => $session['tax'],
                 'total_amount' => $session['total'],
+                'delivery_charge' => (float) ($session['delivery_charge'] ?? 0),
+                'delivery_charge_applied' => false,
                 'payment_method' => $paymentMethod,
                 'payment_status' => $paymentStatus,
                 'amount_paid' => $amountPaid,
@@ -1405,6 +1395,20 @@ class EnhancedPOS extends Page
     }
 
     /**
+     * Manual delivery charge input for thin-margin MVP.
+     */
+    public function setDeliveryCharge($amount): void
+    {
+        if (! $this->activeSessionKey || ! isset($this->sessions[$this->activeSessionKey])) {
+            return;
+        }
+
+        $this->sessions[$this->activeSessionKey]['delivery_charge'] = max(0, (float) $amount);
+        $this->recalculateCart();
+        $this->saveCurrentSession();
+    }
+
+    /**
      * Toggle split payment mode
      */
     public function toggleSplitPayment(): void
@@ -1467,6 +1471,7 @@ class EnhancedPOS extends Page
         // Reset payment fields
         $this->sessions[$this->activeSessionKey]['payment_method'] = 'cash';
         $this->sessions[$this->activeSessionKey]['amount_received'] = 0;
+        $this->sessions[$this->activeSessionKey]['delivery_charge'] = 0;
         $this->sessions[$this->activeSessionKey]['notes'] = '';
         
         // Update database session

@@ -425,6 +425,13 @@
                                     <span>Tax:</span>
                                     <span class="font-medium">₹{{ number_format($session['tax'] ?? 0, 2) }}</span>
                                 </div>
+
+                                @if(($session['delivery_charge'] ?? 0) > 0)
+                                    <div class="flex justify-between text-sm text-amber-700 dark:text-amber-300">
+                                        <span>Delivery Charge:</span>
+                                        <span class="font-medium">₹{{ number_format($session['delivery_charge'] ?? 0, 2) }}</span>
+                                    </div>
+                                @endif
                                 
                                 <div class="pt-2 border-t-2 border-gray-200 dark:border-gray-700 flex justify-between text-lg font-bold text-gray-900 dark:text-gray-100">
                                     <span>Total:</span>
@@ -488,6 +495,20 @@
 
                     {{-- Payment Details - Full Width --}}
                     <x-filament::card>
+                        <div class="mb-3">
+                            <label class="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">Delivery Charge (Manual)</label>
+                            <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value="{{ $session['delivery_charge'] ?? 0 }}"
+                                wire:change="setDeliveryCharge($event.target.value)"
+                                placeholder="0.00"
+                                class="w-full px-3 py-2 text-sm rounded-lg border-2 border-amber-300 dark:border-amber-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-amber-500"
+                            />
+                            <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">Add only when needed. Keep 0 for pickup or free delivery.</p>
+                        </div>
+
                         {{-- Cash Amount Received --}}
                         @if($session['payment_method'] === 'cash' && !$showSplitPayment)
                                     <div>
