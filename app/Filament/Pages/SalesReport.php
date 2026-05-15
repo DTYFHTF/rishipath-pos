@@ -101,7 +101,8 @@ class SalesReport extends Page implements HasForms
         $query = Sale::query()
             ->where('organization_id', OrganizationContext::getCurrentOrganizationId() ?? auth()->user()->organization_id)
             ->whereBetween('date', [$this->startDate, $this->endDate])
-            ->where('status', 'completed');
+            ->where('status', 'completed')
+            ->where('payment_status', 'paid');
 
         if ($this->storeId) {
             $query->where('store_id', $this->storeId);
@@ -125,7 +126,8 @@ class SalesReport extends Page implements HasForms
     {
         $query = Sale::query()
             ->whereBetween('date', [$this->startDate, $this->endDate])
-            ->where('status', 'completed');
+            ->where('status', 'completed')
+            ->where('payment_status', 'paid');
 
         if ($this->storeId) {
             $query->where('store_id', $this->storeId);
@@ -142,6 +144,7 @@ class SalesReport extends Page implements HasForms
         $saleIds = Sale::query()
             ->whereBetween('date', [$this->startDate, $this->endDate])
             ->where('status', 'completed')
+            ->where('payment_status', 'paid')
             ->when($this->storeId, fn ($q) => $q->where('store_id', $this->storeId))
             ->pluck('id');
 
@@ -158,7 +161,8 @@ class SalesReport extends Page implements HasForms
     {
         $query = Sale::query()
             ->whereBetween('date', [$this->startDate, $this->endDate])
-            ->where('status', 'completed');
+            ->where('status', 'completed')
+            ->where('payment_status', 'paid');
 
         if ($this->storeId) {
             $query->where('store_id', $this->storeId);

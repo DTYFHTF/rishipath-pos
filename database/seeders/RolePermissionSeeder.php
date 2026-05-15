@@ -51,6 +51,7 @@ class RolePermissionSeeder extends Seeder
             'edit_product_batches',
             'delete_product_batches',
             'adjust_stock',
+            'transfer_stock',
             'view_stock_adjustments',
             'view_inventory_movements',
             
@@ -184,8 +185,18 @@ class RolePermissionSeeder extends Seeder
                     'create_product_batches',
                     'edit_product_batches',
                     'adjust_stock',
+                    'transfer_stock',
                     'view_stock_adjustments',
                     'view_inventory_movements',
+
+                    // Purchasing (managers must be able to run purchases)
+                    'view_purchases',
+                    'create_purchases',
+                    'edit_purchases',
+                    'approve_purchases',
+                    'receive_purchases',
+
+                    // Suppliers
                     'view_suppliers',
                     'create_suppliers',
                     'edit_suppliers',
@@ -195,6 +206,8 @@ class RolePermissionSeeder extends Seeder
                     'create_customers',
                     'edit_customers',
                     'view_customer_purchase_history',
+                    'view_customer_ledger',
+                    'view_supplier_ledger',
 
                     // Reporting
                     'view_sales_reports',
@@ -221,20 +234,20 @@ class RolePermissionSeeder extends Seeder
                     // POS (main function)
                     'access_pos_billing',
                     'create_sales',
+                    'apply_discounts',
                     'view_own_sales_only',
 
                     // Products (view only)
                     'view_products',
                     'view_product_variants',
 
-                    // Inventory (stock lookup only)
-                    'view_inventory',
-                    'view_stock_levels',
-
                     // Customers
                     'view_customers',
                     'create_customers',
                     'view_customer_purchase_history',
+
+                    // Loyalty (apply rewards at checkout)
+                    'view_loyalty_program',
                 ],
                 'is_system_role' => true,
             ],
@@ -251,6 +264,11 @@ class RolePermissionSeeder extends Seeder
                     'edit_customers',
                     'view_customer_purchase_history',
                     'view_sales_reports',
+                    // Loyalty program management
+                    'view_loyalty_program',
+                    'manage_loyalty_tiers',
+                    'manage_loyalty_points',
+                    'manage_rewards',
                 ],
                 'is_system_role' => true,
             ],
@@ -270,6 +288,7 @@ class RolePermissionSeeder extends Seeder
                     'create_product_batches',
                     'edit_product_batches',
                     'adjust_stock',
+                    'transfer_stock',
                     'view_stock_adjustments',
                     'view_inventory_movements',
                     'view_suppliers',
@@ -277,6 +296,7 @@ class RolePermissionSeeder extends Seeder
                     'edit_suppliers',
                     'view_purchases',
                     'create_purchases',
+                    'edit_purchases',
                     'receive_purchases',
                 ],
                 'is_system_role' => true,
@@ -303,11 +323,16 @@ class RolePermissionSeeder extends Seeder
                     'view_stock_levels',
                     'view_product_batches',
                     'view_inventory_movements',
+
+                    // Purchasing (view only — to reconcile supplier invoices)
+                    'view_purchases',
                     'view_suppliers',
 
-                    // Customers
+                    // Customers & Ledgers
                     'view_customers',
                     'view_customer_purchase_history',
+                    'view_customer_ledger',
+                    'view_supplier_ledger',
 
                     // Reporting (full access)
                     'view_sales_reports',
@@ -319,6 +344,36 @@ class RolePermissionSeeder extends Seeder
                     // Settings (view only)
                     'view_settings',
                     'view_stores',
+                ],
+                'is_system_role' => true,
+            ],
+            [
+                'name' => 'Sales Agent',
+                'slug' => 'sales-agent',
+                'permissions' => [
+                    // Dashboard (limited view)
+                    'view_dashboard',
+
+                    // POS — core function
+                    'access_pos_billing',
+                    'create_sales',
+                    'apply_discounts',
+                    'view_own_sales_only',
+
+                    // Products (read-only for POS search)
+                    'view_products',
+                    'view_product_variants',
+                    'view_categories',
+
+                    // Customers (create & manage their own)
+                    'view_customers',
+                    'create_customers',
+                    'edit_customers',
+                    'view_customer_purchase_history',
+                    'view_customer_ledger',
+
+                    // Loyalty (apply rewards at checkout)
+                    'view_loyalty_program',
                 ],
                 'is_system_role' => true,
             ],

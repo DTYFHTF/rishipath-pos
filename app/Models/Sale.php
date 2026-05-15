@@ -81,20 +81,19 @@ class Sale extends Model
             if ($sale->customer_id) {
                 // NOTE: Ledger entry is created in EnhancedPOS::completeSale()
                 // to avoid duplicates and ensure proper context
-                
+
                 // Ensure customer stats update on creation
                 $sale->customer?->recalculateTotals();
             }
-        });// Auto-post commission to SalesAgentLedger when sale is completed and paid
-            if ($sale->wasChanged(['payment_status']) && $sale->payment_status === 'paid' && $sale->sales_agent_id) {
-                self::postCommissionToLedger($sale);
-            }
-
-            
+        });
 
         static::saved(function ($sale) {
             if ($sale->customer_id && $sale->wasChanged(['status', 'total_amount'])) {
                 $sale->customer?->recalculateTotals();
+            }
+
+            if ($sale->wasChanged(['payment_status']) && $sale->payment_status === 'paid' && $sale->sales_agent_id) {
+                self::postCommissionToLedger($sale);
             }
         });
 

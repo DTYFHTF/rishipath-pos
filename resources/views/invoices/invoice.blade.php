@@ -353,12 +353,20 @@
         <div class="payment-info">
             <div class="payment-title">Payment Details</div>
             <div class="payment-content">
-                <strong>Payment Method:</strong> {{ strtoupper($sale->payment_method) }}<br>
-                @if($sale->payment_method === 'cash')
-                    <strong>Amount Paid:</strong> ₹{{ number_format($sale->amount_paid, 2) }}<br>
-                    <strong>Change:</strong> ₹{{ number_format($sale->change_amount, 2) }}
-                @elseif($sale->payment_reference)
-                    <strong>Reference:</strong> {{ $sale->payment_reference }}
+                @if($sale->payment_status === 'unpaid')
+                    <div style="background:#fff3cd;border:1px solid #e07b00;border-radius:6px;padding:8px 12px;margin-bottom:8px;font-weight:700;color:#7a4100;font-size:10pt;">
+                        ⏳ ORDER CONFIRMED — Payment due on delivery
+                    </div>
+                    <strong>Payment Method:</strong> TO BE COLLECTED<br>
+                    <strong>Amount Due:</strong> Rs. {{ number_format($sale->total_amount, 2) }}
+                @else
+                    <strong>Payment Method:</strong> {{ strtoupper($sale->payment_method) }}<br>
+                    @if($sale->payment_method === 'cash')
+                        <strong>Amount Paid:</strong> Rs. {{ number_format($sale->amount_paid, 2) }}<br>
+                        <strong>Change:</strong> Rs. {{ number_format($sale->change_amount, 2) }}
+                    @elseif($sale->payment_reference)
+                        <strong>Reference:</strong> {{ $sale->payment_reference }}
+                    @endif
                 @endif
             </div>
         </div>

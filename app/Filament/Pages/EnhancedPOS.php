@@ -881,16 +881,6 @@ class EnhancedPOS extends Page
         $currentCartQty = ($existingIndex !== false) ? (int)$session['cart'][$existingIndex]['quantity'] : 0;
         $totalNeeded = (int)$currentCartQty + (int)$quantity;
 
-        if ($availableStock < $totalNeeded) {
-            Notification::make()
-                ->warning()
-                ->title('Insufficient Stock')
-                ->body("Available: {$availableStock}, Requested: {$totalNeeded}")
-                ->send();
-
-            return;
-        }
-
         if ($existingIndex !== false) {
             $this->sessions[$this->activeSessionKey]['cart'][$existingIndex]['quantity'] += $quantity;
         } else {
@@ -971,26 +961,6 @@ class EnhancedPOS extends Page
 
         $cartItem = $session['cart'][$index] ?? null;
         if (! $cartItem) {
-            return;
-        }
-
-        // Validate stock availability
-        $storeId = $this->resolveStoreId();
-        $stockLevel = StockLevel::where('product_variant_id', $cartItem['variant_id'])
-            ->where('store_id', $storeId)
-            ->first();
-
-        $totalStock = $stockLevel ? (int) $stockLevel->quantity : 0;
-        $reservedStock = $stockLevel ? (int) $stockLevel->reserved_quantity : 0;
-        $availableStock = max(0, $totalStock - $reservedStock);
-
-        if ($availableStock < $quantity) {
-            Notification::make()
-                ->warning()
-                ->title('Insufficient Stock')
-                ->body("Available: {$availableStock} / Total: {$totalStock}. Cannot set quantity to {$quantity}.")
-                ->send();
-
             return;
         }
 
@@ -1162,22 +1132,26 @@ class EnhancedPOS extends Page
                 $taxAmount = round((($subtotal - $discount) * ($taxRate / 100)), 2);
                 $total = round(($subtotal - $discount) + $taxAmount, 2);
 
-                // Allocate stock with FIFO batch tracking
-                $allocationResult = InventoryService::decreaseStockWithBatchInfo(
-                    $item['variant_id'],
-                    $this->resolveStoreId(),
-                    $item['quantity'],
-                    'sale',
-                    'Sale',
-                    $sale->id,
-                    $item['cost_price'] ?? null,
-                    "Sale {$sale->invoice_number}"
-                );
-                
-                // Get primary batch (first allocated batch for this item)
+                // Allocate stock with FIFO batch tracking only when buffer stock exists.
+                // Procurement-on-demand: if no buffer stock, skip batch allocation and
+                // stock will be reconciled when the purchase is received later.
                 $primaryBatchId = null;
-                if (!empty($allocationResult['allocated_batches'])) {
-                    $primaryBatchId = $allocationResult['allocated_batches'][0]['batch_id'];
+                $currentStock = InventoryService::getStock($item['variant_id'], $this->resolveStoreId());
+                if ($currentStock > 0) {
+                    $allocateQty = min((float) $item['quantity'], $currentStock);
+                    $allocationResult = InventoryService::decreaseStockWithBatchInfo(
+                        $item['variant_id'],
+                        $this->resolveStoreId(),
+                        $allocateQty,
+                        'sale',
+                        'Sale',
+                        $sale->id,
+                        $item['cost_price'] ?? null,
+                        "Sale {$sale->invoice_number}"
+                    );
+                    if (! empty($allocationResult['allocated_batches'])) {
+                        $primaryBatchId = $allocationResult['allocated_batches'][0]['batch_id'];
+                    }
                 }
 
                 SaleItem::create([
