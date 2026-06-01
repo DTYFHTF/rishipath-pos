@@ -7,6 +7,7 @@ LOCK="$HOME/.deploy-rishipath-pos.lock"
 BASE="$HOME/rishipath-pos"
 PHP="/opt/cpanel/ea-php82/root/usr/bin/php"
 COMPOSER="$HOME/.composer/vendor/bin/composer"
+DEPLOY_BRANCH="${DEPLOY_BRANCH:-main}"
 LOG="[$(date '+%Y-%m-%d %H:%M:%S')] [rishipath-pos]"
 
 # ── Phase 1: pull then re-exec for post-pull steps ──────────────────────────
@@ -25,8 +26,8 @@ if [[ "${1:-}" != "--post-pull" ]]; then
     git -C "$BASE" remote set-url origin "https://${GH_PAT}@github.com/DTYFHTF/rishipath-pos.git"
   fi
 
-  git -C "$BASE" fetch --prune origin main
-  git -C "$BASE" reset --hard origin/main
+  git -C "$BASE" fetch --prune origin "$DEPLOY_BRANCH"
+  git -C "$BASE" reset --hard "origin/$DEPLOY_BRANCH"
 
   rm -f "$LOCK"
   echo "$LOG === Phase 1 done – re-executing for post-pull ==="

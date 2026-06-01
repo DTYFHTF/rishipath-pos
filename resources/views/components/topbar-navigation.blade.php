@@ -39,17 +39,19 @@
     </a>
 
     {{-- Inventory --}}
-    <a href="{{ url('/admin/inventory-list') }}" 
-       class="group flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200
-              {{ request()->is('admin/inventory*') 
-                  ? 'bg-primary-50 text-primary-700 dark:bg-primary-500/10 dark:text-primary-400' 
-                  : 'text-gray-700 hover:bg-gray-100 dark:text-white dark:hover:bg-white/5' }}">
-        <x-filament::icon 
-            icon="heroicon-o-cube-transparent" 
-            class="w-5 h-5 {{ request()->is('admin/resources/product-batches*') ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 group-hover:text-gray-700 dark:text-white dark:group-hover:text-white' }}" 
-        />
-        <span>Inventory</span>
-    </a>
+    @if(auth()->user()?->hasPermission('view_inventory'))
+        <a href="{{ url('/admin/inventory-list') }}" 
+           class="group flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200
+                  {{ request()->is('admin/inventory*') 
+                      ? 'bg-primary-50 text-primary-700 dark:bg-primary-500/10 dark:text-primary-400' 
+                      : 'text-gray-700 hover:bg-gray-100 dark:text-white dark:hover:bg-white/5' }}">
+            <x-filament::icon 
+                icon="heroicon-o-cube-transparent" 
+                class="w-5 h-5 {{ request()->is('admin/resources/product-batches*') ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 group-hover:text-gray-700 dark:text-white dark:group-hover:text-white' }}" 
+            />
+            <span>Inventory</span>
+        </a>
+    @endif
 
     {{-- Customers --}}
     <a href="{{ url('/admin/customers') }}" 

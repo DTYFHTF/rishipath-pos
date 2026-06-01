@@ -509,6 +509,20 @@
                             <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">Add only when needed. Keep 0 for pickup or free delivery.</p>
                         </div>
 
+                        <div class="mb-3">
+                            <label class="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">Discount (Manual)</label>
+                            <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value="{{ $session['manual_discount'] ?? 0 }}"
+                                wire:change="setManualDiscount($event.target.value)"
+                                placeholder="0.00"
+                                class="w-full px-3 py-2 text-sm rounded-lg border-2 border-green-300 dark:border-green-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-green-500"
+                            />
+                            <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">Use this for whole-cart markdowns or special adjustments.</p>
+                        </div>
+
                         {{-- Cash Amount Received --}}
                         @if($session['payment_method'] === 'cash' && !$showSplitPayment)
                                     <div>

@@ -330,6 +330,7 @@ class EnhancedPOS extends Page
                 'discount' => $session->discount_amount,
                 'tax' => $session->tax_amount,
                 'total' => $session->total_amount,
+                'manual_discount' => 0,
                 'status' => $session->status,
                 'parked_at' => $session->parked_at,
                 'payment_method' => 'cash',
@@ -629,6 +630,7 @@ class EnhancedPOS extends Page
             'cart' => [],
             'subtotal' => 0,
             'discount' => 0,
+            'manual_discount' => 0,
             'tax' => 0,
             'total' => 0,
             'status' => 'active',
@@ -820,6 +822,10 @@ class EnhancedPOS extends Page
             $session->update([
                 'customer_id' => $sessionData['customer_id'],
                 'notes' => $sessionData['notes'] ?? null,
+                'subtotal' => $sessionData['subtotal'] ?? 0,
+                'discount_amount' => $sessionData['discount'] ?? 0,
+                'tax_amount' => $sessionData['tax'] ?? 0,
+                'total_amount' => $sessionData['total'] ?? 0,
             ]);
         }
     }
@@ -1031,13 +1037,17 @@ class EnhancedPOS extends Page
 
         // Add reward discount if applied
         $rewardDiscount = $this->sessions[$this->activeSessionKey]['reward_discount'] ?? 0;
+        $manualDiscount = max(0, (float) ($this->sessions[$this->activeSessionKey]['manual_discount'] ?? 0));
         $deliveryCharge = max(0, (float) ($this->sessions[$this->activeSessionKey]['delivery_charge'] ?? 0));
+        $maxDiscount = max(0, $subtotal - $loyaltyDiscount - $rewardDiscount);
+        $manualDiscount = min($manualDiscount, $maxDiscount);
 
         $this->sessions[$this->activeSessionKey]['subtotal'] = $subtotal;
         $this->sessions[$this->activeSessionKey]['loyalty_discount'] = $loyaltyDiscount;
-        $this->sessions[$this->activeSessionKey]['discount'] = $totalDiscount + $loyaltyDiscount + $rewardDiscount;
+        $this->sessions[$this->activeSessionKey]['discount'] = $totalDiscount + $loyaltyDiscount + $rewardDiscount + $manualDiscount;
+        $this->sessions[$this->activeSessionKey]['manual_discount'] = $manualDiscount;
         $this->sessions[$this->activeSessionKey]['tax'] = $totalTax;
-        $this->sessions[$this->activeSessionKey]['total'] = $subtotal - ($totalDiscount + $loyaltyDiscount + $rewardDiscount) + $totalTax + $deliveryCharge;
+        $this->sessions[$this->activeSessionKey]['total'] = $subtotal - ($totalDiscount + $loyaltyDiscount + $rewardDiscount + $manualDiscount) + $totalTax + $deliveryCharge;
     }
 
     /**
@@ -1383,6 +1393,20 @@ class EnhancedPOS extends Page
     }
 
     /**
+     * Manual sale-level discount for the whole cart.
+     */
+    public function setManualDiscount($amount): void
+    {
+        if (! $this->activeSessionKey || ! isset($this->sessions[$this->activeSessionKey])) {
+            return;
+        }
+
+        $this->sessions[$this->activeSessionKey]['manual_discount'] = max(0, (float) $amount);
+        $this->recalculateCart();
+        $this->saveCurrentSession();
+    }
+
+    /**
      * Toggle split payment mode
      */
     public function toggleSplitPayment(): void
@@ -1428,6 +1452,7 @@ class EnhancedPOS extends Page
         $this->sessions[$this->activeSessionKey]['cart'] = [];
         $this->sessions[$this->activeSessionKey]['subtotal'] = 0;
         $this->sessions[$this->activeSessionKey]['discount'] = 0;
+        $this->sessions[$this->activeSessionKey]['manual_discount'] = 0;
         $this->sessions[$this->activeSessionKey]['tax'] = 0;
         $this->sessions[$this->activeSessionKey]['total'] = 0;
         
@@ -1446,6 +1471,7 @@ class EnhancedPOS extends Page
         $this->sessions[$this->activeSessionKey]['payment_method'] = 'cash';
         $this->sessions[$this->activeSessionKey]['amount_received'] = 0;
         $this->sessions[$this->activeSessionKey]['delivery_charge'] = 0;
+        $this->sessions[$this->activeSessionKey]['manual_discount'] = 0;
         $this->sessions[$this->activeSessionKey]['notes'] = '';
         
         // Update database session
