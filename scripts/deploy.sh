@@ -8,6 +8,7 @@ BASE="$HOME/rishipath-pos"
 PHP="/opt/cpanel/ea-php82/root/usr/bin/php"
 COMPOSER="$HOME/.composer/vendor/bin/composer"
 DEPLOY_BRANCH="${DEPLOY_BRANCH:-main}"
+export DEPLOY_BRANCH
 LOG="[$(date '+%Y-%m-%d %H:%M:%S')] [rishipath-pos]"
 
 # ── Phase 1: pull then re-exec for post-pull steps ──────────────────────────
