@@ -130,7 +130,7 @@ class DryFruitsSeeder extends Seeder
         ];
 
         foreach ($cats as $data) {
-            Category::firstOrCreate(
+            Category::updateOrCreate(
                 ['organization_id' => $this->org->id, 'slug' => $data['slug']],
                 [
                     'name'         => $data['name'],

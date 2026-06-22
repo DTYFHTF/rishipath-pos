@@ -165,7 +165,7 @@ class SpiceProductSeeder extends Seeder
         ];
 
         foreach ($categories as $data) {
-            Category::firstOrCreate(
+            Category::updateOrCreate(
                 [
                     'organization_id' => $this->org->id,
                     'slug'            => $data['slug'],
