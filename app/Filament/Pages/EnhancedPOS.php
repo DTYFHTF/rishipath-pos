@@ -38,6 +38,15 @@ class EnhancedPOS extends Page
 
     protected static ?int $navigationSort = 1;
 
+    // ── Wholesale (bulk) pricing ────────────────────────────────────────────
+    // Bulk buyers get a percentage off MRP (never a separate price list — the
+    // customer always sees MRP, the bulk discount is applied on top). Auto-armed
+    // when the cart reaches WHOLESALE_MIN_WEIGHT_KG (mixed products, by weight)
+    // OR WHOLESALE_MIN_AMOUNT. The percentage is cashier-adjustable per sale.
+    public const WHOLESALE_DEFAULT_PCT = 15.0;
+    public const WHOLESALE_MIN_WEIGHT_KG = 7.0;
+    public const WHOLESALE_MIN_AMOUNT = 7000.0;
+
     public function getTitle(): string
     {
         $store = StoreContext::getCurrentStore() ?? $this->currentTerminal?->store;
@@ -631,6 +640,11 @@ class EnhancedPOS extends Page
             'subtotal' => 0,
             'discount' => 0,
             'manual_discount' => 0,
+            'wholesale_pct' => self::WHOLESALE_DEFAULT_PCT,
+            'wholesale_enabled' => true,
+            'wholesale_eligible' => false,
+            'wholesale_discount' => 0,
+            'cart_weight_kg' => 0,
             'tax' => 0,
             'total' => 0,
             'status' => 'active',
@@ -897,6 +911,7 @@ class EnhancedPOS extends Page
                 'variant_name' => $variant->pack_size.$variant->unit,
                 'sku' => $variant->sku,
                 'unit' => $variant->unit ?? 'pcs',
+                'pack_size' => (float) ($variant->pack_size ?? 0),
                 'price' => PricingService::getStorePricing($variant, $this->resolveStoreId(), auth()->user()?->organization),
                 'cost_price' => $variant->cost_price ?? 0,
                 'quantity' => $quantity,
@@ -1019,6 +1034,7 @@ class EnhancedPOS extends Page
         $subtotal = 0;
         $totalDiscount = 0;
         $totalTax = 0;
+        $cartWeightKg = 0.0;
 
         foreach ($cart as $item) {
             $lineTotal = $item['price'] * $item['quantity'];
@@ -1029,6 +1045,7 @@ class EnhancedPOS extends Page
             $subtotal += $lineTotal;
             $totalDiscount += $discount;
             $totalTax += $tax;
+            $cartWeightKg += $this->normalizeWeightKg($item['pack_size'] ?? 0, $item['unit'] ?? '', $item['quantity'] ?? 0);
         }
 
         // Loyalty tier automatic discount is intentionally disabled for thin-margin MVP.
@@ -1039,15 +1056,76 @@ class EnhancedPOS extends Page
         $rewardDiscount = $this->sessions[$this->activeSessionKey]['reward_discount'] ?? 0;
         $manualDiscount = max(0, (float) ($this->sessions[$this->activeSessionKey]['manual_discount'] ?? 0));
         $deliveryCharge = max(0, (float) ($this->sessions[$this->activeSessionKey]['delivery_charge'] ?? 0));
+
+        // Wholesale (bulk) discount — % off MRP subtotal, auto-armed by weight/amount.
+        $wholesaleEligible = $cartWeightKg >= self::WHOLESALE_MIN_WEIGHT_KG
+            || $subtotal >= self::WHOLESALE_MIN_AMOUNT;
+        $wholesaleEnabled = (bool) ($this->sessions[$this->activeSessionKey]['wholesale_enabled'] ?? true);
+        $wholesalePct = min(100, max(0, (float) ($this->sessions[$this->activeSessionKey]['wholesale_pct'] ?? self::WHOLESALE_DEFAULT_PCT)));
+        $wholesaleDiscount = ($wholesaleEligible && $wholesaleEnabled)
+            ? round($subtotal * $wholesalePct / 100, 2)
+            : 0;
+
+        // Cap combined discounts so the total never goes negative.
         $maxDiscount = max(0, $subtotal - $loyaltyDiscount - $rewardDiscount);
         $manualDiscount = min($manualDiscount, $maxDiscount);
+        $wholesaleDiscount = min($wholesaleDiscount, max(0, $maxDiscount - $manualDiscount));
+
+        $combinedDiscount = $totalDiscount + $loyaltyDiscount + $rewardDiscount + $manualDiscount + $wholesaleDiscount;
 
         $this->sessions[$this->activeSessionKey]['subtotal'] = $subtotal;
         $this->sessions[$this->activeSessionKey]['loyalty_discount'] = $loyaltyDiscount;
-        $this->sessions[$this->activeSessionKey]['discount'] = $totalDiscount + $loyaltyDiscount + $rewardDiscount + $manualDiscount;
+        $this->sessions[$this->activeSessionKey]['discount'] = $combinedDiscount;
         $this->sessions[$this->activeSessionKey]['manual_discount'] = $manualDiscount;
+        $this->sessions[$this->activeSessionKey]['cart_weight_kg'] = round($cartWeightKg, 3);
+        $this->sessions[$this->activeSessionKey]['wholesale_eligible'] = $wholesaleEligible;
+        $this->sessions[$this->activeSessionKey]['wholesale_pct'] = $wholesalePct;
+        $this->sessions[$this->activeSessionKey]['wholesale_discount'] = $wholesaleDiscount;
         $this->sessions[$this->activeSessionKey]['tax'] = $totalTax;
-        $this->sessions[$this->activeSessionKey]['total'] = $subtotal - ($totalDiscount + $loyaltyDiscount + $rewardDiscount + $manualDiscount) + $totalTax + $deliveryCharge;
+        $this->sessions[$this->activeSessionKey]['total'] = $subtotal - $combinedDiscount + $totalTax + $deliveryCharge;
+    }
+
+    /**
+     * Normalize a pack size + unit + quantity to total kilograms (for the
+     * wholesale weight threshold). Non-weight units contribute 0.
+     */
+    protected function normalizeWeightKg(float $packSize, string $unit, $quantity): float
+    {
+        $qty = (float) $quantity;
+        $u = strtoupper(trim($unit));
+
+        return match ($u) {
+            'KG', 'KGS', 'KILOGRAM', 'KILOGRAMS' => $packSize * $qty,
+            'G', 'GM', 'GMS', 'GRAM', 'GRAMS' => $packSize * $qty / 1000,
+            default => 0.0,
+        };
+    }
+
+    /**
+     * Cashier sets the bulk discount % for the active cart (0–100).
+     */
+    public function setWholesalePct($pct): void
+    {
+        if (! $this->activeSessionKey) {
+            return;
+        }
+        $this->sessions[$this->activeSessionKey]['wholesale_pct'] = min(100, max(0, (float) $pct));
+        $this->recalculateCart();
+        $this->saveCurrentSession();
+    }
+
+    /**
+     * Cashier toggles the bulk discount on/off for the active cart.
+     */
+    public function toggleWholesale(): void
+    {
+        if (! $this->activeSessionKey) {
+            return;
+        }
+        $current = (bool) ($this->sessions[$this->activeSessionKey]['wholesale_enabled'] ?? true);
+        $this->sessions[$this->activeSessionKey]['wholesale_enabled'] = ! $current;
+        $this->recalculateCart();
+        $this->saveCurrentSession();
     }
 
     /**
