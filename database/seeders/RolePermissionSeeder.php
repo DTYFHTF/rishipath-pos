@@ -241,6 +241,10 @@ class RolePermissionSeeder extends Seeder
                     'view_products',
                     'view_product_variants',
 
+                    // Inventory (stock lookup only)
+                    'view_inventory',
+                    'view_stock_levels',
+
                     // Customers
                     'view_customers',
                     'create_customers',
