@@ -22,3 +22,8 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Local SQLite DB and backups (never deploy these)
+*.sqlite
+*.sqlite-journal
+/db_backups/
