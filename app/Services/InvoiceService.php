@@ -5,10 +5,8 @@ namespace App\Services;
 use App\Models\BulkOrderInquiry;
 use App\Models\Invoice;
 use App\Models\InvoiceLine;
-use App\Models\Organization;
 use App\Models\Product;
 use App\Models\Sale;
-use App\Services\OrganizationContext;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -18,8 +16,7 @@ class InvoiceService
     /**
      * Generate PDF invoice for a sale
      *
-     * @param Sale $sale
-     * @param bool $save Whether to save to storage
+     * @param  bool  $save  Whether to save to storage
      * @return \Barryvdh\DomPDF\PDF
      */
     public function generateInvoicePdf(Sale $sale, bool $save = false)
@@ -88,6 +85,7 @@ class InvoiceService
     public function generateAndSaveInvoice(Sale $sale): string
     {
         $result = $this->generateInvoicePdf($sale, true);
+
         return $result['path'];
     }
 
@@ -111,17 +109,15 @@ class InvoiceService
     /**
      * Generate a quotation (Invoice record) from a BulkOrderInquiry.
      *
-     * @param  BulkOrderInquiry  $inquiry
      * @param  array  $quotationData  [
-     *     'products' => [ ['product_id'=>?, 'product_name'=>?, 'quantity'=>?, 'unit_price'=>?, 'tax_rate'=>0, 'discount'=>0] ],
-     *     'discount_amount' => 0,
-     *     'discount_type'   => 'fixed',
-     *     'shipping_amount' => 0,
-     *     'terms_and_conditions' => '',
-     *     'notes' => '',
-     *     'due_days' => 30,
-     * ]
-     * @return Invoice
+     *                                'products' => [ ['product_id'=>?, 'product_name'=>?, 'quantity'=>?, 'unit_price'=>?, 'tax_rate'=>0, 'discount'=>0] ],
+     *                                'discount_amount' => 0,
+     *                                'discount_type'   => 'fixed',
+     *                                'shipping_amount' => 0,
+     *                                'terms_and_conditions' => '',
+     *                                'notes' => '',
+     *                                'due_days' => 30,
+     *                                ]
      */
     public function generateQuotationFromBulkInquiry(BulkOrderInquiry $inquiry, array $quotationData): Invoice
     {

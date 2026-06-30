@@ -11,12 +11,12 @@ class ProductVariantFactory extends Factory
     {
         $packSizes = [10, 20, 30, 50, 60, 100, 200, 250, 500];
         $units = ['tab', 'cap', 'ml', 'gm'];
-        
+
         $packSize = fake()->randomElement($packSizes);
         $unit = fake()->randomElement($units);
-        
+
         $basePrice = fake()->randomFloat(2, 50, 500);
-        
+
         return [
             'product_id' => Product::factory(),
             'sku' => strtoupper(fake()->bothify('???####')),

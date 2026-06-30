@@ -13,6 +13,7 @@ class CreateLoyaltyTier extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $data['organization_id'] = OrganizationContext::getCurrentOrganizationId();
+
         return $data;
     }
 }

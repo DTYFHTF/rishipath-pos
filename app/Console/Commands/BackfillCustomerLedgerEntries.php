@@ -51,7 +51,7 @@ class BackfillCustomerLedgerEntries extends Command
                     $sale->invoice_number ?? $sale->sale_number,
                     $sale->customer?->name ?? 'Unknown',
                     $sale->sale_date ?? $sale->created_at->format('Y-m-d'),
-                    '₹' . number_format($sale->total_amount, 2),
+                    '₹'.number_format($sale->total_amount, 2),
                 ])
             );
 
@@ -80,7 +80,7 @@ class BackfillCustomerLedgerEntries extends Command
             } catch (\Exception $e) {
                 $errors++;
                 $this->newLine();
-                $this->error("Failed for Sale #{$sale->id}: " . $e->getMessage());
+                $this->error("Failed for Sale #{$sale->id}: ".$e->getMessage());
             }
 
             $progressBar->advance();

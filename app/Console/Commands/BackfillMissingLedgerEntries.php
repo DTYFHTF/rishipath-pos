@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 class BackfillMissingLedgerEntries extends Command
 {
     protected $signature = 'ledger:backfill-missing';
+
     protected $description = 'Create missing ledger entries for sales with customers';
 
     public function handle()
@@ -17,7 +18,7 @@ class BackfillMissingLedgerEntries extends Command
         $this->info('Finding sales without ledger entries...');
 
         $salesWithoutEntries = Sale::whereNotNull('customer_id')
-            ->whereNotIn('id', function($query) {
+            ->whereNotIn('id', function ($query) {
                 $query->select('reference_id')
                     ->from('customer_ledger_entries')
                     ->where('reference_type', 'Sale');
@@ -30,6 +31,7 @@ class BackfillMissingLedgerEntries extends Command
 
         if ($salesWithoutEntries->isEmpty()) {
             $this->info('✅ All sales have ledger entries!');
+
             return 0;
         }
 
@@ -40,13 +42,13 @@ class BackfillMissingLedgerEntries extends Command
             foreach ($salesWithoutEntries as $sale) {
                 $customer = $sale->customer;
                 $previousBalance = CustomerLedgerEntry::getCustomerBalance($customer->id);
-                
+
                 // Handle payment method
                 $allowedMethods = ['cash', 'card', 'upi', 'bank_transfer', 'cheque', 'credit'];
                 $paymentMethod = in_array($sale->payment_method, $allowedMethods) ? $sale->payment_method : null;
-                
+
                 $isCredit = $sale->payment_method === 'credit';
-                
+
                 CustomerLedgerEntry::create([
                     'organization_id' => $sale->organization_id,
                     'store_id' => $sale->store_id,
@@ -58,7 +60,7 @@ class BackfillMissingLedgerEntries extends Command
                     'debit_amount' => $sale->total_amount,
                     'credit_amount' => $isCredit ? 0 : $sale->total_amount,
                     'balance' => $isCredit ? ($previousBalance + $sale->total_amount) : $previousBalance,
-                    'description' => ($isCredit ? 'Credit Sale' : 'Sale') . " - Invoice #{$sale->invoice_number}",
+                    'description' => ($isCredit ? 'Credit Sale' : 'Sale')." - Invoice #{$sale->invoice_number}",
                     'transaction_date' => $sale->date,
                     'due_date' => $isCredit ? now()->addDays(30) : null,
                     'payment_method' => $paymentMethod,
@@ -72,10 +74,12 @@ class BackfillMissingLedgerEntries extends Command
 
             DB::commit();
             $this->info("\n✅ Created {$created} ledger entries");
+
             return 0;
         } catch (\Exception $e) {
             DB::rollBack();
             $this->error("Error: {$e->getMessage()}");
+
             return 1;
         }
     }

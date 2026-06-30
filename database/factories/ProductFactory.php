@@ -3,7 +3,6 @@
 namespace Database\Factories;
 
 use App\Models\Organization;
-use App\Models\Product;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class ProductFactory extends Factory
@@ -12,12 +11,12 @@ class ProductFactory extends Factory
     {
         $ayurvedic = ['Ashwagandha', 'Brahmi', 'Triphala', 'Turmeric', 'Neem', 'Tulsi', 'Amla', 'Shatavari'];
         $forms = ['Tablet', 'Capsule', 'Powder', 'Syrup', 'Oil', 'Churna'];
-        
+
         return [
             'organization_id' => Organization::factory(),
             'category_id' => null,
             'sku' => strtoupper(fake()->bothify('PRD-???####')),
-            'name' => fake()->randomElement($ayurvedic) . ' ' . fake()->randomElement($forms),
+            'name' => fake()->randomElement($ayurvedic).' '.fake()->randomElement($forms),
             'name_nepali' => null,
             'name_hindi' => null,
             'name_sanskrit' => null,

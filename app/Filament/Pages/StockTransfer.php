@@ -58,7 +58,7 @@ class StockTransfer extends Page implements HasForms
     {
         $currentStore = StoreContext::getCurrentStoreId();
         $stores = Store::where('active', true)->get();
-        
+
         if ($stores->count() >= 2) {
             $this->fromStoreId = $currentStore ?? $stores->first()->id;
             $this->toStoreId = $stores->where('id', '!=', $this->fromStoreId)->first()?->id;
@@ -157,7 +157,7 @@ class StockTransfer extends Page implements HasForms
         if ($this->quantity > 100) {
             $variant = ProductVariant::with('product')->find($this->productVariantId);
             $variantName = "{$variant->product->name} - {$variant->pack_size}{$variant->unit}";
-            
+
             Notification::make()
                 ->warning()
                 ->title('Large Transfer Confirmation Required')
@@ -175,6 +175,7 @@ class StockTransfer extends Page implements HasForms
                         ->color('gray'),
                 ])
                 ->send();
+
             return;
         }
 

@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Models\ProductBatch;
 use App\Models\StockLevel;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -47,6 +46,7 @@ class SyncStockLevels extends Command
 
         if ($batchSummaries->isEmpty()) {
             $this->warn('No product batches found to sync!');
+
             return self::SUCCESS;
         }
 
@@ -66,7 +66,7 @@ class SyncStockLevels extends Command
                 ->where('store_id', $summary->store_id)
                 ->first();
 
-            if ($stockLevel && !$force) {
+            if ($stockLevel && ! $force) {
                 // Stock level exists and not forcing, skip
                 $skipped++;
             } elseif ($stockLevel) {

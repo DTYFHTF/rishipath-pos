@@ -59,14 +59,14 @@ class FixLedgerAuditTrail extends Command
                     $toFix[] = [
                         'sale' => $sale,
                         'entry' => $entries->first(),
-                        'issue' => 'Credit sale has ' . $entries->count() . ' entries (should be 1 DEBIT receivable)',
+                        'issue' => 'Credit sale has '.$entries->count().' entries (should be 1 DEBIT receivable)',
                     ];
                 }
             } else {
                 // Cash/Card/UPI sale should have 2 entries (DEBIT receivable + CREDIT payment)
                 $receivableEntry = $entries->where('entry_type', 'receivable')->first();
                 $paymentEntry = $entries->where('entry_type', 'payment')->first();
-                
+
                 if ($entries->count() === 2 && $receivableEntry && $receivableEntry->debit_amount > 0 && $paymentEntry && $paymentEntry->credit_amount > 0) {
                     // Correct
                     continue;
@@ -96,17 +96,18 @@ class FixLedgerAuditTrail extends Command
                     $toFix[] = [
                         'sale' => $sale,
                         'entry' => $entries->first(),
-                        'issue' => 'Paid sale has ' . $entries->count() . ' entries (should be 2: DEBIT receivable + CREDIT payment)',
+                        'issue' => 'Paid sale has '.$entries->count().' entries (should be 2: DEBIT receivable + CREDIT payment)',
                     ];
                 }
             }
         }
 
-        $this->info("Found " . count($toFix) . " entries to fix");
-        $this->info("Found " . count($toCreate) . " entries to create");
+        $this->info('Found '.count($toFix).' entries to fix');
+        $this->info('Found '.count($toCreate).' entries to create');
 
         if (empty($toFix) && empty($toCreate)) {
             $this->info('✅ All entries are correct!');
+
             return 0;
         }
 
@@ -118,26 +119,28 @@ class FixLedgerAuditTrail extends Command
             foreach ($toCreate as $item) {
                 $this->line("  - Sale {$item['sale']->invoice_number}: {$item['issue']}");
             }
+
             return 0;
         }
 
-        if (!$this->confirm('Proceed with fixing entries?', true)) {
+        if (! $this->confirm('Proceed with fixing entries?', true)) {
             $this->info('Aborted.');
+
             return 0;
         }
 
         DB::transaction(function () use ($toFix, $toCreate) {
             // Delete all existing entries for these sales
             $saleIds = collect($toFix)->merge($toCreate)->pluck('sale.id')->unique();
-            
+
             $this->info("Deleting existing entries for {$saleIds->count()} sales...");
             CustomerLedgerEntry::where('reference_type', 'Sale')
                 ->whereIn('reference_id', $saleIds)
                 ->delete();
 
             // Recreate entries with correct logic
-            $this->info("Recreating entries...");
-            
+            $this->info('Recreating entries...');
+
             foreach ($saleIds as $saleId) {
                 $sale = Sale::with('customer', 'store')->find($saleId);
                 if ($sale && $sale->customer) {
@@ -145,11 +148,11 @@ class FixLedgerAuditTrail extends Command
                 }
             }
 
-            $this->info("Recalculating balances...");
+            $this->info('Recalculating balances...');
             $this->recalculateBalances();
         });
 
-        $this->info('✅ Fixed ' . (count($toFix) + count($toCreate)) . ' entries');
+        $this->info('✅ Fixed '.(count($toFix) + count($toCreate)).' entries');
         $this->info('✅ All ledger balances recalculated');
 
         return 0;

@@ -53,10 +53,10 @@ class SupplierLedgerEntry extends Model
 
     /**
      * Create a ledger entry for a purchase (increases payable).
-     * 
+     *
      * IMPORTANT: Only creates entries for unpaid/partial purchases (credit purchases).
      * Paid purchases should NOT create ledger entries as they don't create a payable.
-     * 
+     *
      * Supplier Ledger = Accounts Payable (money we OWE suppliers)
      * - We only track purchases where we still owe money
      * - Paid purchases are not payables, so they don't appear in the ledger

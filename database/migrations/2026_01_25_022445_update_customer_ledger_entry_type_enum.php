@@ -37,12 +37,12 @@ return new class extends Migration
                 $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
                 $table->timestamps();
                 $table->softDeletes();
-                
+
                 $table->index(['customer_id', 'transaction_date']);
                 $table->index('reference_type');
                 $table->index('status');
             });
-            
+
             // Copy data with type conversion
             DB::statement("
                 INSERT INTO customer_ledger_entries_temp 
@@ -56,7 +56,7 @@ return new class extends Migration
                     created_at, updated_at, deleted_at
                 FROM customer_ledger_entries
             ");
-            
+
             // Drop old table and rename new one
             Schema::drop('customer_ledger_entries');
             Schema::rename('customer_ledger_entries_temp', 'customer_ledger_entries');
@@ -91,12 +91,12 @@ return new class extends Migration
                 $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
                 $table->timestamps();
                 $table->softDeletes();
-                
+
                 $table->index(['customer_id', 'transaction_date']);
                 $table->index('reference_type');
                 $table->index('status');
             });
-            
+
             DB::statement("
                 INSERT INTO customer_ledger_entries_temp 
                 SELECT 
@@ -109,7 +109,7 @@ return new class extends Migration
                     created_at, updated_at, deleted_at
                 FROM customer_ledger_entries
             ");
-            
+
             Schema::drop('customer_ledger_entries');
             Schema::rename('customer_ledger_entries_temp', 'customer_ledger_entries');
         }

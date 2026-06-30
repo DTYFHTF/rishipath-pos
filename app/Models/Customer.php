@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+
 class Customer extends Model
 {
     protected $fillable = [
@@ -80,7 +81,7 @@ class Customer extends Model
     public function recalculateTotals(): void
     {
         $this->loadMissing('sales');
-        
+
         $this->total_purchases = $this->sales->where('status', 'completed')->count();
         $this->total_spent = $this->sales->where('status', 'completed')->sum('total_amount');
         $this->saveQuietly();
@@ -213,6 +214,7 @@ class Customer extends Model
         if ($agentId) {
             return $query->where('sales_agent_id', $agentId);
         }
+
         return $query;
     }
 }

@@ -108,10 +108,10 @@ class PurchaseResource extends Resource
                                                 $storeId = $get('../../store_id');
                                                 $storePricing = $variant->storePricing->firstWhere('store_id', $storeId);
                                                 $costPrice = $storePricing?->cost_price ?? $variant->cost_price ?? 0;
-                                                
+
                                                 $set('unit_cost', $costPrice);
                                                 $set('unit', $variant->unit);
-                                                $set('product_name', $variant->product->name . ' - ' . $variant->pack_size . $variant->unit);
+                                                $set('product_name', $variant->product->name.' - '.$variant->pack_size.$variant->unit);
                                                 $set('product_sku', $variant->sku);
                                             }
                                         }
@@ -167,9 +167,9 @@ class PurchaseResource extends Resource
                                             return 'This variant is manually locked. Receipt will update cost only, not selling prices.';
                                         }
 
-                                        return 'MRP: ₹' . number_format((float) $suggested['mrp_india'], 2)
-                                            . ' | Nepal: NPR ' . number_format((float) $suggested['selling_price_nepal'], 2)
-                                            . ' | Rule: ' . PricingService::getPricingRuleSummary((float) $variant->pack_size, (string) $variant->unit);
+                                        return 'MRP: ₹'.number_format((float) $suggested['mrp_india'], 2)
+                                            .' | Nepal: NPR '.number_format((float) $suggested['selling_price_nepal'], 2)
+                                            .' | Rule: '.PricingService::getPricingRuleSummary((float) $variant->pack_size, (string) $variant->unit);
                                     })
                                     ->columnSpan(4),
 
@@ -199,15 +199,15 @@ class PurchaseResource extends Resource
                                         $cost = floatval($get('unit_cost') ?? 0);
                                         $tax = floatval($get('tax_rate') ?? 0);
                                         $discount = floatval($get('discount_amount') ?? 0);
-                                        
+
                                         $subtotal = $qty * $cost;
                                         $taxAmount = $subtotal * ($tax / 100);
                                         $total = $subtotal + $taxAmount - $discount;
-                                        
+
                                         $set('tax_amount', round($taxAmount, 2));
                                         $set('line_total', round($total, 2));
-                                        
-                                        return '₹' . number_format($total, 2);
+
+                                        return '₹'.number_format($total, 2);
                                     })
                                     ->columnSpan(2),
 
@@ -245,7 +245,8 @@ class PurchaseResource extends Resource
                             ->label('Subtotal')
                             ->content(function (callable $get) {
                                 $items = $get('items') ?? [];
-                                $subtotal = collect($items)->sum(fn($item) => floatval($item['line_total'] ?? 0));
+                                $subtotal = collect($items)->sum(fn ($item) => floatval($item['line_total'] ?? 0));
+
                                 return '₹'.number_format($subtotal, 2);
                             }),
 
@@ -253,7 +254,8 @@ class PurchaseResource extends Resource
                             ->label('Tax')
                             ->content(function (callable $get) {
                                 $items = $get('items') ?? [];
-                                $tax = collect($items)->sum(fn($item) => floatval($item['tax_amount'] ?? 0));
+                                $tax = collect($items)->sum(fn ($item) => floatval($item['tax_amount'] ?? 0));
+
                                 return '₹'.number_format($tax, 2);
                             }),
 
@@ -261,9 +263,10 @@ class PurchaseResource extends Resource
                             ->label('Total')
                             ->content(function (callable $get) {
                                 $items = $get('items') ?? [];
-                                $subtotal = collect($items)->sum(fn($item) => floatval($item['line_total'] ?? 0));
+                                $subtotal = collect($items)->sum(fn ($item) => floatval($item['line_total'] ?? 0));
                                 $shipping = floatval($get('shipping_cost') ?? 0);
                                 $total = $subtotal + $shipping;
+
                                 return '₹'.number_format($total, 2);
                             }),
 
@@ -285,8 +288,9 @@ class PurchaseResource extends Resource
     {
         return $table
             ->modifyQueryUsing(function ($query) {
-                $orgId = OrganizationContext::getCurrentOrganizationId() 
+                $orgId = OrganizationContext::getCurrentOrganizationId()
                     ?? auth()->user()?->organization_id ?? 1;
+
                 return $query->where('organization_id', $orgId);
             })
             ->columns([
@@ -377,8 +381,10 @@ class PurchaseResource extends Resource
                                     $variant = $item->productVariant;
                                     $packSize = $variant ? $variant->pack_size : 1;
                                     $unit = $item->unit;
+
                                     return "• {$item->product_name} ({$item->product_sku}): {$packSize}{$unit} × {$remaining} qty";
                                 })->implode('<br>');
+
                                 return new \Illuminate\Support\HtmlString($items);
                             }),
                         Forms\Components\Placeholder::make('total')

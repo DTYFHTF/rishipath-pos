@@ -2,13 +2,12 @@
 
 namespace App\Filament\Resources\PurchaseResource\RelationManagers;
 
-use App\Models\ProductBatch;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
-use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
 
 class BatchesRelationManager extends RelationManager
 {
@@ -58,38 +57,38 @@ class BatchesRelationManager extends RelationManager
                     ->sortable()
                     ->copyable()
                     ->icon('heroicon-o-queue-list'),
-                    
+
                 TextColumn::make('productVariant.sku')
                     ->label('SKU')
                     ->searchable()
                     ->sortable(),
-                    
+
                 TextColumn::make('productVariant.product.name')
                     ->label('Product')
                     ->searchable()
                     ->limit(30),
-                    
+
                 TextColumn::make('expiry_date')
                     ->label('Expiry Date')
                     ->date('d/m/Y')
                     ->sortable()
-                    ->color(fn ($record) => $record->expiry_date && $record->expiry_date < now() ? 'danger' : 
+                    ->color(fn ($record) => $record->expiry_date && $record->expiry_date < now() ? 'danger' :
                         ($record->expiry_date && $record->expiry_date < now()->addDays(30) ? 'warning' : 'success'))
-                    ->icon(fn ($record) => $record->expiry_date && $record->expiry_date < now() ? 'heroicon-o-x-circle' : 
+                    ->icon(fn ($record) => $record->expiry_date && $record->expiry_date < now() ? 'heroicon-o-x-circle' :
                         ($record->expiry_date && $record->expiry_date < now()->addDays(30) ? 'heroicon-o-exclamation-triangle' : null)),
-                        
+
                 TextColumn::make('quantity_remaining')
                     ->label('Qty Remaining')
                     ->numeric()
                     ->sortable()
-                    ->color(fn ($record) => $record->quantity_remaining <= 0 ? 'danger' : 
+                    ->color(fn ($record) => $record->quantity_remaining <= 0 ? 'danger' :
                         ($record->quantity_remaining < 10 ? 'warning' : 'success')),
-                        
+
                 TextColumn::make('purchase_price')
                     ->label('Purchase Price')
                     ->money('INR')
                     ->sortable(),
-                    
+
                 TextColumn::make('store.name')
                     ->label('Store')
                     ->toggleable(isToggledHiddenByDefault: true),

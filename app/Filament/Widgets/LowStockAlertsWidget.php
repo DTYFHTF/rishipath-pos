@@ -35,7 +35,7 @@ class LowStockAlertsWidget extends BaseWidget
                     ->join('product_variants', 'stock_levels.product_variant_id', '=', 'product_variants.id')
                     ->join('products', 'product_variants.product_id', '=', 'products.id')
                     ->where('products.organization_id', $organizationId)
-                    ->when($storeId, fn($q) => $q->where('stock_levels.store_id', $storeId))
+                    ->when($storeId, fn ($q) => $q->where('stock_levels.store_id', $storeId))
                     ->whereColumn('stock_levels.quantity', '<=', 'stock_levels.reorder_level')
                     ->select('stock_levels.*')
                     ->orderBy('stock_levels.quantity', 'asc')

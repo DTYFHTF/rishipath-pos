@@ -104,11 +104,11 @@ class RetailVisitPlanner extends Page
             $score += min(20, ($avgOrderValue / 500) * 20); // normalised to ₹500 = 20 pts
 
             return array_merge($store->toArray(), [
-                '_score'          => round($score, 1),
-                '_days_since'     => $daysSince,
-                '_next_visit'     => $nextVisitDate?->format('Y-m-d'),
-                '_avg_order'      => round($avgOrderValue, 0),
-                '_model'          => $store,
+                '_score' => round($score, 1),
+                '_days_since' => $daysSince,
+                '_next_visit' => $nextVisitDate?->format('Y-m-d'),
+                '_avg_order' => round($avgOrderValue, 0),
+                '_model' => $store,
             ]);
         });
 
@@ -138,6 +138,7 @@ class RetailVisitPlanner extends Page
 
         if ($stores->isEmpty()) {
             $this->routeUrl = null;
+
             return;
         }
 
@@ -146,15 +147,15 @@ class RetailVisitPlanner extends Page
         // Google Maps directions URL supports up to 10 waypoints
         $waypoints = $ordered->map(fn ($s) => "{$s->latitude},{$s->longitude}")->toArray();
 
-        $origin      = array_shift($waypoints);
+        $origin = array_shift($waypoints);
         $destination = array_pop($waypoints) ?? $origin;
         $waypointsStr = implode('|', $waypoints);
 
         $this->routeUrl = 'https://www.google.com/maps/dir/?api=1'
-            . '&origin=' . urlencode($origin)
-            . '&destination=' . urlencode($destination)
-            . ($waypointsStr ? '&waypoints=' . urlencode($waypointsStr) : '')
-            . '&travelmode=driving';
+            .'&origin='.urlencode($origin)
+            .'&destination='.urlencode($destination)
+            .($waypointsStr ? '&waypoints='.urlencode($waypointsStr) : '')
+            .'&travelmode=driving';
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────
@@ -170,16 +171,16 @@ class RetailVisitPlanner extends Page
         }
 
         $remaining = $stores->values()->toArray();
-        $ordered   = [array_shift($remaining)];
+        $ordered = [array_shift($remaining)];
 
         while (! empty($remaining)) {
-            $last    = end($ordered);
+            $last = end($ordered);
             $closest = null;
             $minDist = PHP_FLOAT_MAX;
 
             foreach ($remaining as $key => $store) {
                 $dist = $this->haversine(
-                    (float) $last['latitude'],  (float) $last['longitude'],
+                    (float) $last['latitude'], (float) $last['longitude'],
                     (float) $store['latitude'], (float) $store['longitude']
                 );
                 if ($dist < $minDist) {
@@ -200,10 +201,11 @@ class RetailVisitPlanner extends Page
      */
     private function haversine(float $lat1, float $lon1, float $lat2, float $lon2): float
     {
-        $R  = 6371;
+        $R = 6371;
         $dL = deg2rad($lat2 - $lat1);
         $dN = deg2rad($lon2 - $lon1);
-        $a  = sin($dL / 2) ** 2 + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dN / 2) ** 2;
+        $a = sin($dL / 2) ** 2 + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dN / 2) ** 2;
+
         return $R * 2 * asin(sqrt($a));
     }
 

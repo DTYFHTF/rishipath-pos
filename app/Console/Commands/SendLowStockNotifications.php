@@ -9,6 +9,7 @@ use Illuminate\Console\Command;
 class SendLowStockNotifications extends Command
 {
     protected $signature = 'notifications:low-stock';
+
     protected $description = 'Send notifications for low stock items';
 
     public function handle(): int
@@ -22,6 +23,7 @@ class SendLowStockNotifications extends Command
 
         if ($lowStockItems->isEmpty()) {
             $this->info('No low stock items found.');
+
             return Command::SUCCESS;
         }
 
@@ -65,6 +67,7 @@ class SendLowStockNotifications extends Command
         }
 
         $this->info('✅ Low stock notifications completed.');
+
         return Command::SUCCESS;
     }
 }

@@ -14,7 +14,7 @@ class PurchaseItemFactory extends Factory
         $unitCost = fake()->randomFloat(2, 10, 300);
         $taxRate = fake()->randomElement([0, 5, 12, 18]);
         $discount = fake()->optional()->randomFloat(2, 0, $unitCost * $qtyOrdered * 0.1);
-        
+
         $lineTotal = ($qtyOrdered * $unitCost) + (($taxRate / 100) * $qtyOrdered * $unitCost) - ($discount ?? 0);
 
         return [

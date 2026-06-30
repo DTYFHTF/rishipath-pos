@@ -1,6 +1,7 @@
 <?php
-require __DIR__ . '/../vendor/autoload.php';
-$app = require_once __DIR__ . '/../bootstrap/app.php';
+
+require __DIR__.'/../vendor/autoload.php';
+$app = require_once __DIR__.'/../bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 
 $name = 'Abin Maharjan';
@@ -20,7 +21,7 @@ if ($sales->isEmpty()) {
 }
 
 foreach ($sales as $sale) {
-    echo "Sale ID: {$sale->id} Invoice: {$sale->invoice_number} Date: " . ($sale->date?->format('Y-m-d') ?? $sale->created_at->format('Y-m-d')) . "\n";
+    echo "Sale ID: {$sale->id} Invoice: {$sale->invoice_number} Date: ".($sale->date?->format('Y-m-d') ?? $sale->created_at->format('Y-m-d'))."\n";
     echo "  Total: {$sale->total_amount} Payment Method: {$sale->payment_method} Payment Status: {$sale->payment_status}\n";
     // find ledger entry referencing this sale
     $entry = App\Models\CustomerLedgerEntry::where('reference_type', 'Sale')

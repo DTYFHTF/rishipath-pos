@@ -24,7 +24,7 @@ class DatabaseSeeder extends Seeder
             SpiceProductSeeder::class,
             DryFruitsSeeder::class,
             ProductImageSeeder::class,
-                JeeraPowderSeeder::class,
+            JeeraPowderSeeder::class,
         ]);
     }
 }

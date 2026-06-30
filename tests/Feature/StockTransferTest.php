@@ -17,9 +17,13 @@ class StockTransferTest extends TestCase
     use RefreshDatabase;
 
     protected User $user;
+
     protected Organization $org;
+
     protected Store $store1;
+
     protected Store $store2;
+
     protected ProductVariant $variant;
 
     protected function setUp(): void

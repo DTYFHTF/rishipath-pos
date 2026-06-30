@@ -39,8 +39,8 @@ class CustomerLedgerExport implements FromArray, ShouldAutoSize, WithHeadings, W
     {
         return [
             ['Customer Ledger Statement'],
-            ['Customer: ' . $this->customerData['name']],
-            ['Period: ' . ($this->startDate ?? 'N/A') . ' to ' . ($this->endDate ?? 'N/A')],
+            ['Customer: '.$this->customerData['name']],
+            ['Period: '.($this->startDate ?? 'N/A').' to '.($this->endDate ?? 'N/A')],
             [],
             ['Date', 'Reference', 'Description', 'Type', 'Debit (₹)', 'Credit (₹)', 'Balance (₹)', 'Status'],
         ];

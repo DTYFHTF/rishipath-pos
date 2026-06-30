@@ -8,7 +8,6 @@ use App\Models\ProductVariant;
 use App\Models\Purchase;
 use App\Models\PurchaseItem;
 use App\Models\Sale;
-use App\Models\SaleItem;
 use App\Models\Store;
 use App\Models\Supplier;
 use App\Models\User;
@@ -21,9 +20,13 @@ class InventoryFlowTest extends TestCase
     use RefreshDatabase;
 
     protected User $user;
+
     protected Organization $org;
+
     protected Store $store;
+
     protected ProductVariant $variant;
+
     protected Supplier $supplier;
 
     protected function setUp(): void
@@ -33,10 +36,10 @@ class InventoryFlowTest extends TestCase
         $this->org = Organization::factory()->create();
         $this->user = User::factory()->create(['organization_id' => $this->org->id]);
         $this->store = Store::factory()->create(['organization_id' => $this->org->id]);
-        
+
         $product = Product::factory()->create(['organization_id' => $this->org->id]);
         $this->variant = ProductVariant::factory()->create(['product_id' => $product->id]);
-        
+
         $this->supplier = Supplier::factory()->create(['organization_id' => $this->org->id]);
 
         $this->actingAs($this->user);
@@ -46,7 +49,7 @@ class InventoryFlowTest extends TestCase
     public function purchase_receive_increases_stock()
     {
         $inventoryService = app(InventoryService::class);
-        
+
         // Initial stock should be 0
         $initialStock = $inventoryService->getStock($this->variant->id, $this->store->id);
         $this->assertEquals(0, $initialStock);

@@ -4,7 +4,6 @@ namespace App\Notifications;
 
 use App\Models\BulkOrderInquiry;
 use Illuminate\Bus\Queueable;
-use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 class NewBulkOrderInquiry extends Notification
@@ -24,7 +23,7 @@ class NewBulkOrderInquiry extends Notification
     {
         return [
             'title' => 'New Bulk Order Inquiry',
-            'message' => "{$this->inquiry->name} submitted a bulk order inquiry" .
+            'message' => "{$this->inquiry->name} submitted a bulk order inquiry".
                 ($this->inquiry->company_name ? " from {$this->inquiry->company_name}" : ''),
             'inquiry_id' => $this->inquiry->id,
             'products_count' => is_array($this->inquiry->products) ? count($this->inquiry->products) : 0,

@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class PurchaseItem extends Model
 {
     use HasFactory;
+
     protected $fillable = [
         'purchase_id',
         'product_variant_id',
@@ -40,10 +41,10 @@ class PurchaseItem extends Model
 
     protected $attributes = [
         'quantity_received' => 0,
-        'tax_rate'          => 0,
-        'tax_amount'        => 0,
-        'discount_amount'   => 0,
-        'line_total'        => 0,
+        'tax_rate' => 0,
+        'tax_amount' => 0,
+        'discount_amount' => 0,
+        'line_total' => 0,
     ];
 
     protected static function booted(): void

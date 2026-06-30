@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 class CheckInventorySync extends Command
 {
     protected $signature = 'inventory:check-sync {--fix : Automatically fix mismatches}';
-    
+
     protected $description = 'Check if stock_levels matches sum of product_batches quantities';
 
     public function handle()
@@ -40,10 +40,11 @@ class CheckInventorySync extends Command
 
         if (empty($mismatches)) {
             $this->info('✅ All stock levels are in sync with batches!');
+
             return 0;
         }
 
-        $this->error('⚠️  Found ' . count($mismatches) . ' mismatch(es):');
+        $this->error('⚠️  Found '.count($mismatches).' mismatch(es):');
         $this->newLine();
 
         $headers = ['Variant ID', 'Store ID', 'Stock Level', 'Batch Sum', 'Difference'];
@@ -53,7 +54,7 @@ class CheckInventorySync extends Command
                 $m['store_id'],
                 $m['stock_level'],
                 $m['batch_sum'],
-                ($m['difference'] > 0 ? '+' : '') . $m['difference'],
+                ($m['difference'] > 0 ? '+' : '').$m['difference'],
             ];
         }, $mismatches);
 

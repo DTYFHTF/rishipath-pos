@@ -10,22 +10,22 @@ Route::get('/', function () {
 Route::get('/admin/sales/{record}/invoice', function ($recordId) {
     $sale = \App\Models\Sale::findOrFail($recordId);
     $invoiceService = app(\App\Services\InvoiceService::class);
-    
+
     // Generate PDF and stream it inline
     $pdf = $invoiceService->generateInvoicePdf($sale);
-    
+
     return response($pdf->output())
         ->header('Content-Type', 'application/pdf')
-        ->header('Content-Disposition', 'inline; filename="invoice-' . $sale->invoice_number . '.pdf"');
+        ->header('Content-Disposition', 'inline; filename="invoice-'.$sale->invoice_number.'.pdf"');
 })->middleware(['auth'])->name('filament.admin.resources.sales.invoice');
 
 // Pricing calculator - connected to POS products
-Route::get('/price-calculator', fn() => view('pages.price-calculator'))->name('price-calculator');
+Route::get('/price-calculator', fn () => view('pages.price-calculator'))->name('price-calculator');
 
 // Pricing calculator product search API - no hard auth, graceful fallback
 Route::get('/api/price-calculator/products', function (\Illuminate\Http\Request $request) {
     // Must be authenticated to query products
-    if (!auth()->check()) {
+    if (! auth()->check()) {
         return response()->json(['products' => [], 'auth_required' => true], 200);
     }
 
@@ -35,7 +35,7 @@ Route::get('/api/price-calculator/products', function (\Illuminate\Http\Request 
     $orgId = \App\Services\OrganizationContext::getCurrentOrganizationId()
              ?? auth()->user()?->organization_id;
 
-    if (!$orgId) {
+    if (! $orgId) {
         return response()->json(['products' => [], 'error' => 'No organization context']);
     }
 
@@ -52,27 +52,27 @@ Route::get('/api/price-calculator/products', function (\Illuminate\Http\Request 
                     ->orWhere('sku', 'like', "%{$q}%");
             });
         })
-        ->with(['variants' => fn($vq) => $vq->where('active', true)->orderBy('pack_size')])
+        ->with(['variants' => fn ($vq) => $vq->where('active', true)->orderBy('pack_size')])
         ->orderBy('name')
         ->limit(20)
         ->get(['id', 'name', 'name_nepali', 'name_hindi', 'name_romanized', 'sku'])
-        ->map(fn($p) => [
-            'id'       => $p->id,
-            'name'     => $p->name,
-            'display_name' => trim($p->name . ' (' . implode(' / ', array_filter([
+        ->map(fn ($p) => [
+            'id' => $p->id,
+            'name' => $p->name,
+            'display_name' => trim($p->name.' ('.implode(' / ', array_filter([
                 $p->name_nepali,
                 $p->name_romanized,
                 $p->name_hindi,
-            ])) . ')', ' ()'),
-            'sku'      => $p->sku,
-            'variants' => $p->variants->map(fn($v) => [
-                'id'                  => $v->id,
-                'sku'                 => $v->sku,
-                'pack_size'           => (float) $v->pack_size,
-                'unit'                => strtolower($v->unit ?? 'g'),
-                'cost_price'          => (float) $v->cost_price,
-                'base_price'          => (float) $v->base_price,
-                'mrp_india'           => (float) $v->mrp_india,
+            ])).')', ' ()'),
+            'sku' => $p->sku,
+            'variants' => $p->variants->map(fn ($v) => [
+                'id' => $v->id,
+                'sku' => $v->sku,
+                'pack_size' => (float) $v->pack_size,
+                'unit' => strtolower($v->unit ?? 'g'),
+                'cost_price' => (float) $v->cost_price,
+                'base_price' => (float) $v->base_price,
+                'mrp_india' => (float) $v->mrp_india,
                 'selling_price_nepal' => (float) $v->selling_price_nepal,
             ])->values(),
         ]);
@@ -81,4 +81,4 @@ Route::get('/api/price-calculator/products', function (\Illuminate\Http\Request 
 });
 
 // Public helper tools - completely client-side, no auth required
-Route::get('/helper-tools', fn() => view('helper-tools.index'))->name('helper-tools');
+Route::get('/helper-tools', fn () => view('helper-tools.index'))->name('helper-tools');

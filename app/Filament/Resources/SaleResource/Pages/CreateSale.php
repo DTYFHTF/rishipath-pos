@@ -4,8 +4,8 @@ namespace App\Filament\Resources\SaleResource\Pages;
 
 use App\Filament\Resources\SaleResource;
 use App\Services\OrganizationContext;
-use Filament\Resources\Pages\CreateRecord;
 use Filament\Notifications\Notification;
+use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Validation\ValidationException;
 
 class CreateSale extends CreateRecord
@@ -23,13 +23,13 @@ class CreateSale extends CreateRecord
         if ($amountPaid < $totalAmount) {
             Notification::make()
                 ->title('Payment Validation Failed')
-                ->body("Amount paid (₹" . number_format($amountPaid, 2) . ") is less than total amount (₹" . number_format($totalAmount, 2) . "). Please collect full payment.")
+                ->body('Amount paid (₹'.number_format($amountPaid, 2).') is less than total amount (₹'.number_format($totalAmount, 2).'). Please collect full payment.')
                 ->danger()
                 ->persistent()
                 ->send();
 
             throw ValidationException::withMessages([
-                'amount_paid' => "Insufficient payment. Required: ₹" . number_format($totalAmount, 2) . ", Received: ₹" . number_format($amountPaid, 2),
+                'amount_paid' => 'Insufficient payment. Required: ₹'.number_format($totalAmount, 2).', Received: ₹'.number_format($amountPaid, 2),
             ]);
         }
 
@@ -44,9 +44,9 @@ class CreateSale extends CreateRecord
         $sale = $this->getRecord();
         $changeAmount = (float) ($sale->amount_change ?? 0);
 
-        $message = "Sale completed successfully!";
+        $message = 'Sale completed successfully!';
         if ($changeAmount > 0) {
-            $message .= " \n💰 Return Change: ₹" . number_format($changeAmount, 2);
+            $message .= " \n💰 Return Change: ₹".number_format($changeAmount, 2);
         }
 
         return Notification::make()

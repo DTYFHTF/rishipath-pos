@@ -29,7 +29,7 @@ class StockValuationReport extends Page
     public $storeId;
 
     public $categoryId;
-    
+
     public $asOfDate = null;
 
     protected $listeners = [
@@ -191,27 +191,27 @@ class StockValuationReport extends Page
             ->values()
             ->toArray();
     }
-    
+
     public function exportCSV()
     {
         $items = $this->getDetailedBreakdown();
         $summary = $this->getValuationSummary();
-        
-        $filename = 'stock-valuation-' . now()->format('Y-m-d') . '.csv';
+
+        $filename = 'stock-valuation-'.now()->format('Y-m-d').'.csv';
         $headers = [
             'Content-Type' => 'text/csv',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ];
-        
-        $callback = function() use ($items, $summary) {
+
+        $callback = function () use ($items, $summary) {
             $file = fopen('php://output', 'w');
-            
+
             // Summary section
             fputcsv($file, ['Stock Valuation Report']);
             fputcsv($file, ['Generated', now()->format('Y-m-d H:i:s')]);
             fputcsv($file, ['Store', Store::find($this->storeId)?->name ?? 'All Stores']);
             fputcsv($file, []);
-            
+
             fputcsv($file, ['Summary']);
             fputcsv($file, ['Total Items', $summary['total_items']]);
             fputcsv($file, ['Items in Stock', $summary['items_in_stock']]);
@@ -219,9 +219,9 @@ class StockValuationReport extends Page
             fputcsv($file, ['Total Cost Value (₹)', number_format($summary['total_cost_value'], 2)]);
             fputcsv($file, ['Total Sale Value (₹)', number_format($summary['total_sale_value'], 2)]);
             fputcsv($file, ['Potential Profit (₹)', number_format($summary['potential_profit'], 2)]);
-            fputcsv($file, ['Margin %', number_format($summary['margin_percent'], 2) . '%']);
+            fputcsv($file, ['Margin %', number_format($summary['margin_percent'], 2).'%']);
             fputcsv($file, []);
-            
+
             // Detailed breakdown
             fputcsv($file, ['Product', 'Variant', 'SKU', 'Quantity', 'Cost Price', 'Sale Price', 'Cost Value', 'Sale Value']);
             foreach ($items as $item) {
@@ -236,10 +236,10 @@ class StockValuationReport extends Page
                     $item['sale_value'],
                 ]);
             }
-            
+
             fclose($file);
         };
-        
+
         return response()->stream($callback, 200, $headers);
     }
 }

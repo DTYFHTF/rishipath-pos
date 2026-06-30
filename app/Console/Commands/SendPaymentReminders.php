@@ -10,6 +10,7 @@ use Illuminate\Console\Command;
 class SendPaymentReminders extends Command
 {
     protected $signature = 'notifications:payment-reminders';
+
     protected $description = 'Send payment reminder notifications for overdue accounts';
 
     public function handle(): int
@@ -34,7 +35,7 @@ class SendPaymentReminders extends Command
             }
 
             $balance = abs($customer->balance);
-            
+
             Notification::create([
                 'type' => 'payment_reminder',
                 'title' => 'Customer Payment Overdue',
@@ -71,7 +72,7 @@ class SendPaymentReminders extends Command
             }
 
             $balance = abs($supplier->balance);
-            
+
             Notification::create([
                 'type' => 'payment_reminder',
                 'title' => 'Supplier Payment Overdue',
@@ -91,6 +92,7 @@ class SendPaymentReminders extends Command
         }
 
         $this->info('✅ Payment reminders completed.');
+
         return Command::SUCCESS;
     }
 }

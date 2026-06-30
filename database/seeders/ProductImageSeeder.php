@@ -9,6 +9,7 @@ use Illuminate\Support\Str;
 class ProductImageSeeder extends Seeder
 {
     private string $sourceDir = 'images/productv2';
+
     private string $targetDir = 'images/productv2-webp';
 
     private array $aliasMap = [
@@ -37,6 +38,7 @@ class ProductImageSeeder extends Seeder
 
         if (! is_dir($sourcePath)) {
             $this->command->warn("ProductImageSeeder: source folder not found at {$sourcePath}");
+
             return;
         }
 
@@ -47,6 +49,7 @@ class ProductImageSeeder extends Seeder
         $sourceFiles = $this->buildSourceIndex($sourcePath);
         if (empty($sourceFiles)) {
             $this->command->warn('ProductImageSeeder: no source images found in productv2.');
+
             return;
         }
 
@@ -67,18 +70,19 @@ class ProductImageSeeder extends Seeder
                 $sourceFile = $this->resolveSourceFile($product->name, $sourceFiles);
                 if (! $sourceFile) {
                     $missing++;
+
                     continue;
                 }
 
-                $sourceFullPath = $sourcePath . DIRECTORY_SEPARATOR . $sourceFile;
-                $targetFile = Str::slug($product->name) . '.webp';
-                $targetFullPath = $targetPath . DIRECTORY_SEPARATOR . $targetFile;
+                $sourceFullPath = $sourcePath.DIRECTORY_SEPARATOR.$sourceFile;
+                $targetFile = Str::slug($product->name).'.webp';
+                $targetFullPath = $targetPath.DIRECTORY_SEPARATOR.$targetFile;
 
                 if (! $this->convertToWebp($sourceFullPath, $targetFullPath)) {
                     continue;
                 }
 
-                $relativeUrl = '/' . trim($this->targetDir, '/') . '/' . $targetFile;
+                $relativeUrl = '/'.trim($this->targetDir, '/').'/'.$targetFile;
                 if ($product->image_url !== $relativeUrl) {
                     $product->image_url = $relativeUrl;
                     $product->save();
@@ -96,7 +100,7 @@ class ProductImageSeeder extends Seeder
         $files = scandir($sourcePath) ?: [];
 
         foreach ($files as $file) {
-            $full = $sourcePath . DIRECTORY_SEPARATOR . $file;
+            $full = $sourcePath.DIRECTORY_SEPARATOR.$file;
             if (! is_file($full)) {
                 continue;
             }
@@ -183,8 +187,8 @@ class ProductImageSeeder extends Seeder
 
         $image = match ($ext) {
             'jpg', 'jpeg' => @imagecreatefromjpeg($source),
-            'png'         => @imagecreatefrompng($source),
-            default       => null,
+            'png' => @imagecreatefrompng($source),
+            default => null,
         };
 
         if (! $image) {

@@ -70,7 +70,7 @@ class CustomerResource extends Resource
                 Forms\Components\TextInput::make('city')
                     ->maxLength(100)
                     ->datalist([
-                        'Mumbai', 'Delhi', 'Bangalore', 'Kolkata', 'Chennai', 'Pune', 'Hyderabad', 'Ahmedabad', 'Jaipur', 'Lucknow'
+                        'Mumbai', 'Delhi', 'Bangalore', 'Kolkata', 'Chennai', 'Pune', 'Hyderabad', 'Ahmedabad', 'Jaipur', 'Lucknow',
                     ])
                     ->helperText('Start typing for suggestions'),
                 Forms\Components\DatePicker::make('date_of_birth')
@@ -90,8 +90,9 @@ class CustomerResource extends Resource
     {
         return $table
             ->modifyQueryUsing(function ($query) {
-                $orgId = OrganizationContext::getCurrentOrganizationId() 
+                $orgId = OrganizationContext::getCurrentOrganizationId()
                     ?? auth()->user()?->organization_id ?? 1;
+
                 return $query->where('organization_id', $orgId);
             })
             ->columns([
@@ -125,26 +126,26 @@ class CustomerResource extends Resource
                 Tables\Actions\ActionGroup::make([
                     Tables\Actions\ViewAction::make(),
                     Tables\Actions\EditAction::make(),
-                    
+
                     Tables\Actions\Action::make('view_ledger')
                         ->label('View Ledger')
                         ->icon('heroicon-o-document-text')
                         ->color('info')
                         ->url(fn ($record) => route('filament.admin.pages.customer-ledger-report', ['customer_id' => $record->id]))
                         ->openUrlInNewTab(),
-                    
+
                     Tables\Actions\Action::make('view_sales')
                         ->label('View Sales')
                         ->icon('heroicon-o-shopping-cart')
                         ->color('success')
                         ->url(fn ($record) => route('filament.admin.resources.sales.index', ['tableFilters[customer_id][value]' => $record->id]))
                         ->openUrlInNewTab(),
-                    
+
                     Tables\Actions\Action::make('send_message')
                         ->label('Send SMS/WhatsApp')
                         ->icon('heroicon-o-chat-bubble-left-right')
                         ->color('warning')
-                        ->visible(fn ($record) => !empty($record->phone))
+                        ->visible(fn ($record) => ! empty($record->phone))
                         ->form([
                             Forms\Components\Textarea::make('message')
                                 ->label('Message')

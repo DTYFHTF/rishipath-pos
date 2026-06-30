@@ -43,7 +43,7 @@ class CategoryDistributionChart extends ChartWidget
             ->join('categories', 'products.category_id', '=', 'categories.id')
             ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
             ->where('products.organization_id', $organizationId)
-            ->when($storeId, fn($q) => $q->where('sales.store_id', $storeId))
+            ->when($storeId, fn ($q) => $q->where('sales.store_id', $storeId))
             ->whereBetween('sale_items.created_at', [$startDate, $endDate])
             ->select(
                 'categories.name as category_name',

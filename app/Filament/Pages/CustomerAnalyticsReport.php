@@ -49,7 +49,7 @@ class CustomerAnalyticsReport extends Page
     public function getCustomerMetrics(): array
     {
         $orgId = OrganizationContext::getCurrentOrganizationId() ?? auth()->user()?->organization_id ?? 1;
-        
+
         $query = Sale::where('organization_id', $orgId)
             ->whereBetween('created_at', [$this->startDate, $this->endDate])
             ->when($this->storeId, fn ($q) => $q->where('store_id', $this->storeId));
@@ -88,7 +88,7 @@ class CustomerAnalyticsReport extends Page
     public function getRfmAnalysis(): array
     {
         $orgId = OrganizationContext::getCurrentOrganizationId() ?? auth()->user()?->organization_id ?? 1;
-        
+
         $customers = Customer::where('organization_id', $orgId)
             ->with(['sales' => function ($query) use ($orgId) {
                 $query->where('organization_id', $orgId)

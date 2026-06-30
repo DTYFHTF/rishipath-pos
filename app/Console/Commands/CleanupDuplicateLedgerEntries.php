@@ -59,7 +59,7 @@ class CleanupDuplicateLedgerEntries extends Command
                     $entriesToDelete = array_merge($entriesToDelete, $paymentEntries->slice(1)->pluck('id')->toArray());
                 }
 
-                if (!empty($entriesToDelete)) {
+                if (! empty($entriesToDelete)) {
                     $removed = CustomerLedgerEntry::whereIn('id', $entriesToDelete)->delete();
                     $totalRemoved += $removed;
                     $this->warn("  Removed {$removed} duplicate entries");
@@ -85,6 +85,7 @@ class CleanupDuplicateLedgerEntries extends Command
         } catch (\Exception $e) {
             DB::rollBack();
             $this->error("❌ Error during cleanup: {$e->getMessage()}");
+
             return 1;
         }
 

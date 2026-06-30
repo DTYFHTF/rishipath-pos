@@ -3,9 +3,9 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\UserResource\Pages;
+use App\Models\Organization;
 use App\Models\Role;
 use App\Models\User;
-use App\Models\Organization;
 use App\Services\OrganizationContext;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -207,6 +207,7 @@ class UserResource extends Resource
                             return 'All Stores';
                         }
                         $stores = \App\Models\Store::whereIn('id', $ids)->pluck('name');
+
                         return $stores->join(', ');
                     })
                     ->color(fn ($state) => empty($state) ? 'success' : 'info')

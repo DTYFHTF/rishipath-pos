@@ -158,30 +158,30 @@ class CustomerLedgerEntry extends Model
     public static function createSaleEntry(Sale $sale): ?self
     {
         $customer = $sale->customer;
-        if (!$customer) {
+        if (! $customer) {
             return null;
         }
-        
+
         // IMPORTANT: Customer Ledger (Accounts Receivable) should ONLY track CREDIT SALES
         // Cash/Card/UPI sales are not "receivables" - customer doesn't owe us anything
         // Those are recorded in Sales table for history, but not in AR ledger
-        
+
         $isCredit = $sale->payment_method === 'credit';
-        
+
         // Only create ledger entry for CREDIT sales
-        if (!$isCredit) {
+        if (! $isCredit) {
             // Cash/Card/UPI sale - no ledger entry needed
             // Customer paid immediately, no receivable to track
             return null;
         }
-        
+
         // Credit sale: Customer OWES us - create receivable entry
         $previousBalance = self::getLedgerableBalance($customer);
-        
+
         // Normalize payment method to allowed values
         $allowedMethods = ['cash', 'card', 'upi', 'bank_transfer', 'cheque', 'credit'];
         $paymentMethod = in_array($sale->payment_method, $allowedMethods) ? $sale->payment_method : null;
-        
+
         return self::create([
             'organization_id' => $sale->organization_id,
             'store_id' => $sale->store_id,
@@ -276,7 +276,7 @@ class CustomerLedgerEntry extends Model
         // Supplier Ledger (Accounts Payable) - inverted logic:
         // - CREDIT = We OWE supplier (increases our debt)
         // - DEBIT = We PAY supplier (decreases our debt)
-        
+
         return self::create([
             'organization_id' => $data['organization_id'],
             'store_id' => $data['store_id'] ?? null,
@@ -304,12 +304,12 @@ class CustomerLedgerEntry extends Model
      */
     public static function createSupplierPurchaseEntry($purchase): ?self
     {
-        if (!$purchase->supplier_id) {
+        if (! $purchase->supplier_id) {
             return null;
         }
 
         $supplier = Supplier::find($purchase->supplier_id);
-        if (!$supplier) {
+        if (! $supplier) {
             return null;
         }
 

@@ -4,16 +4,17 @@ namespace App\Models;
 
 use App\Services\InventoryService;
 use App\Services\PricingService;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Purchase extends Model
 {
     use HasFactory;
+
     protected $fillable = [
         'organization_id',
         'store_id',
@@ -67,12 +68,12 @@ class Purchase extends Model
 
         static::updated(function ($purchase) {
             // Auto-receive when status changes to 'received' and no batches exist yet
-            if ($purchase->status === 'received' && 
-                $purchase->wasChanged('status') && 
+            if ($purchase->status === 'received' &&
+                $purchase->wasChanged('status') &&
                 $purchase->batches()->count() === 0) {
                 $purchase->receive();
             }
-            
+
             // Update ledger entry if payment status changed directly (e.g. from Filament admin)
             if ($purchase->supplier_id && $purchase->wasChanged('payment_status')) {
                 if ($purchase->payment_status === 'paid' && $purchase->getOriginal('payment_status') !== 'paid') {
@@ -218,7 +219,7 @@ class Purchase extends Model
 
                     // Link batch to purchase item for reference
                     $item->batch_id = $batch->id;
-                    
+
                     // Observer automatically syncs StockLevel from batch
                     // No need to call InventoryService::increaseStock() - that's for adjustments only
 
@@ -267,8 +268,8 @@ class Purchase extends Model
             }
 
             // Update status based on received quantities
-            $allReceived = $this->items->every(fn($item) => $item->quantity_received >= $item->quantity_ordered);
-            $anyReceived = $this->items->some(fn($item) => $item->quantity_received > 0);
+            $allReceived = $this->items->every(fn ($item) => $item->quantity_received >= $item->quantity_ordered);
+            $anyReceived = $this->items->some(fn ($item) => $item->quantity_received > 0);
 
             if ($allReceived) {
                 $this->status = 'received';
@@ -294,21 +295,21 @@ class Purchase extends Model
     {
         $variant = $item->productVariant;
         $date = now()->format('Ymd');
-        
+
         // Format: PUR-YYYYMMDD-SKU-XXX
         $prefix = "PUR-{$date}-{$variant->sku}";
-        
+
         $lastBatch = ProductBatch::where('batch_number', 'like', "{$prefix}%")
             ->orderByDesc('id')
             ->first();
-        
+
         $sequence = 1;
         if ($lastBatch) {
             preg_match('/-(\d+)$/', $lastBatch->batch_number, $matches);
-            $sequence = isset($matches[1]) ? (int)$matches[1] + 1 : 1;
+            $sequence = isset($matches[1]) ? (int) $matches[1] + 1 : 1;
         }
-        
-        return $prefix . '-' . str_pad($sequence, 3, '0', STR_PAD_LEFT);
+
+        return $prefix.'-'.str_pad($sequence, 3, '0', STR_PAD_LEFT);
     }
 
     /**
@@ -347,8 +348,6 @@ class Purchase extends Model
      * Process a return for this purchase.
      *
      * @param  array<int, int>  $returnItems  Map of purchase_item_id => quantity_to_return
-     * @param  string  $reason
-     * @param  string|null  $notes
      * @return array<int, array{quantity_returned: int, return_amount: float}>
      */
     public function processReturn(array $returnItems, string $reason, ?string $notes): array
@@ -378,23 +377,23 @@ class Purchase extends Model
                 $returnAmount = round($unitCost * $qty, 2);
 
                 $return = PurchaseReturn::create([
-                    'organization_id'   => $this->organization_id,
-                    'purchase_id'       => $this->id,
-                    'purchase_item_id'  => $item->id,
+                    'organization_id' => $this->organization_id,
+                    'purchase_id' => $this->id,
+                    'purchase_item_id' => $item->id,
                     'product_variant_id' => $item->product_variant_id,
-                    'batch_id'          => $item->batch_id,
-                    'store_id'          => $this->store_id,
+                    'batch_id' => $item->batch_id,
+                    'store_id' => $this->store_id,
                     'quantity_returned' => $qty,
-                    'unit_cost'         => $unitCost,
-                    'return_amount'     => $returnAmount,
-                    'reason'            => $reason,
-                    'notes'             => $notes,
-                    'status'            => 'pending',
+                    'unit_cost' => $unitCost,
+                    'return_amount' => $returnAmount,
+                    'reason' => $reason,
+                    'notes' => $notes,
+                    'status' => 'pending',
                 ]);
 
                 $processed[] = [
                     'quantity_returned' => $return->quantity_returned,
-                    'return_amount'     => $return->return_amount,
+                    'return_amount' => $return->return_amount,
                 ];
             }
         });

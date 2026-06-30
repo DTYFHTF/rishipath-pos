@@ -36,8 +36,9 @@ class FixCustomerLedgerEntries extends Command
         } else {
             $this->warn('⚠️  This will delete ledger entries for paid sales (cash/card/UPI).');
             $this->warn('    Ledger should only track credit sales, not immediate payments.');
-            if (!$this->confirm('Do you want to continue?')) {
+            if (! $this->confirm('Do you want to continue?')) {
                 $this->info('Operation cancelled.');
+
                 return 0;
             }
         }
@@ -68,6 +69,7 @@ class FixCustomerLedgerEntries extends Command
             if ($entriesToDelete->isEmpty()) {
                 $this->info('✅ No entries to delete. Ledger only contains credit sales!');
                 DB::commit();
+
                 return 0;
             }
 
@@ -78,14 +80,15 @@ class FixCustomerLedgerEntries extends Command
                 try {
                     $sale = Sale::find($entry->reference_id);
 
-                    if (!$sale) {
+                    if (! $sale) {
                         $errors[] = "Entry ID {$entry->id}: Sale not found (ID: {$entry->reference_id})";
+
                         continue;
                     }
 
                     $this->line("Deleting Entry ID {$entry->id}: Invoice {$sale->invoice_number} - Payment: {$sale->payment_method} - Amount: ₹{$sale->total_amount}");
 
-                    if (!$dryRun) {
+                    if (! $dryRun) {
                         $entry->delete();
                     }
 
@@ -96,14 +99,14 @@ class FixCustomerLedgerEntries extends Command
             }
 
             $this->newLine();
-            
+
             if ($dryRun) {
                 $this->info("✅ Would delete {$deletedCount} entries");
             } else {
                 $this->info("✅ Deleted {$deletedCount} entries");
             }
 
-            if (!empty($errors)) {
+            if (! empty($errors)) {
                 $this->newLine();
                 $this->warn('⚠️  Errors encountered:');
                 foreach ($errors as $error) {
@@ -125,19 +128,10 @@ class FixCustomerLedgerEntries extends Command
             return 0;
         } catch (\Exception $e) {
             DB::rollBack();
-            $this->error('Error: ' . $e->getMessage());
+            $this->error('Error: '.$e->getMessage());
             $this->error($e->getTraceAsString());
+
             return 1;
         }
     }
-
-    /**
-     * Recalculate running balance for a customer's ledger entries
-     */
-    protected function recalculateCustomerBalance(int $customerId): void
-    {
-        $this->line("  Recalculating balance for customer ID: {$customerId}");
-
-        $entries = CustomerLedgerEntry::where('customer_id', $customerId)
-            ->orderBy('transaction_date')
-            ->orderBy('id')
+}

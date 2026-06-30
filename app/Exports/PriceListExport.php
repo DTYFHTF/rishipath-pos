@@ -29,7 +29,7 @@ class PriceListExport implements FromArray, ShouldAutoSize, WithHeadings, WithSt
 
     public function title(): string
     {
-        return 'Price List ' . date('d-M-Y', strtotime($this->generatedAt));
+        return 'Price List '.date('d-M-Y', strtotime($this->generatedAt));
     }
 
     public function headings(): array
@@ -55,8 +55,8 @@ class PriceListExport implements FromArray, ShouldAutoSize, WithHeadings, WithSt
     {
         return [
             1 => [
-                'font'      => ['bold' => true, 'size' => 11, 'color' => ['rgb' => 'FFFFFF']],
-                'fill'      => ['fillType' => 'solid', 'startColor' => ['rgb' => '2C6E49']],
+                'font' => ['bold' => true, 'size' => 11, 'color' => ['rgb' => 'FFFFFF']],
+                'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => '2C6E49']],
                 'alignment' => ['horizontal' => 'center'],
             ],
         ];

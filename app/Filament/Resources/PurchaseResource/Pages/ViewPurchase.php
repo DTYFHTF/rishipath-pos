@@ -5,10 +5,10 @@ namespace App\Filament\Resources\PurchaseResource\Pages;
 use App\Filament\Resources\PurchaseResource;
 use App\Models\PurchaseReturn;
 use Filament\Actions;
-use Filament\Resources\Pages\ViewRecord;
 use Filament\Infolists;
 use Filament\Infolists\Infolist;
 use Filament\Notifications\Notification;
+use Filament\Resources\Pages\ViewRecord;
 
 class ViewPurchase extends ViewRecord
 {
@@ -38,7 +38,7 @@ class ViewPurchase extends ViewRecord
                         ->prefix('₹')
                         ->default(fn () => $this->record->outstanding_amount),
 
-                        \Filament\Forms\Components\Select::make('payment_method')
+                    \Filament\Forms\Components\Select::make('payment_method')
                         ->options([
                             'cash' => 'Cash',
                             'bank_transfer' => 'Bank Transfer',
@@ -74,7 +74,7 @@ class ViewPurchase extends ViewRecord
                         ->get();
 
                     $itemFields = [];
-                    
+
                     foreach ($items as $item) {
                         $alreadyReturned = PurchaseReturn::where('purchase_item_id', $item->id)
                             ->sum('quantity_returned');
@@ -146,24 +146,25 @@ class ViewPurchase extends ViewRecord
                             ->title('No items to return')
                             ->body('Please enter at least one item quantity to return.')
                             ->send();
+
                         return;
                     }
 
                     try {
                         $returns = $this->record->processReturn($returnItems, $reason, $notes);
-                        
+
                         $totalQty = array_sum(array_column($returns, 'quantity_returned'));
                         $totalAmount = array_sum(array_column($returns, 'return_amount'));
 
                         Notification::make()
                             ->success()
                             ->title('Return Processed Successfully')
-                            ->body("Returned {$totalQty} items worth ₹" . number_format($totalAmount, 2))
+                            ->body("Returned {$totalQty} items worth ₹".number_format($totalAmount, 2))
                             ->send();
 
                         // Refresh the page to show updated data
                         $this->refreshFormData(['mountedActionsData']);
-                        
+
                     } catch (\Exception $e) {
                         Notification::make()
                             ->danger()
@@ -233,6 +234,7 @@ class ViewPurchase extends ViewRecord
                                         $variant = $record->productVariant;
                                         $packSize = $variant ? $variant->pack_size : 1;
                                         $unit = $record->unit;
+
                                         return "{$packSize}{$unit} × {$record->quantity_ordered} qty";
                                     }),
                                 Infolists\Components\TextEntry::make('quantity_received')
@@ -241,6 +243,7 @@ class ViewPurchase extends ViewRecord
                                         $variant = $record->productVariant;
                                         $packSize = $variant ? $variant->pack_size : 1;
                                         $unit = $record->unit;
+
                                         return "{$packSize}{$unit} × {$record->quantity_received} qty";
                                     }),
                                 Infolists\Components\TextEntry::make('unit_cost')

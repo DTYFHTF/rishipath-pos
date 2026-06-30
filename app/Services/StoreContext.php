@@ -14,15 +14,15 @@ class StoreContext
     public static function getCurrentStoreId(): ?int
     {
         $currentOrgId = OrganizationContext::getCurrentOrganizationId();
-        
+
         // If no organization context, can't determine store
-        if (!$currentOrgId || !Auth::check()) {
+        if (! $currentOrgId || ! Auth::check()) {
             return null;
         }
-        
+
         // Check session for stored store ID
         $storeId = Session::get('current_store_id');
-        
+
         // Validate that the stored storeId belongs to current organization
         if ($storeId) {
             $store = Store::find($storeId);
@@ -33,26 +33,26 @@ class StoreContext
             self::clearCurrentStore();
             $storeId = null;
         }
-        
+
         // If no valid store in session, find one for current organization
-        if (!$storeId) {
+        if (! $storeId) {
             // Fall back to user's first assigned store (within current organization)
             $userStores = Auth::user()->stores ?? [];
-            if (!empty($userStores)) {
+            if (! empty($userStores)) {
                 // Find first store that belongs to current organization
                 $validStore = Store::whereIn('id', $userStores)
                     ->where('organization_id', $currentOrgId)
                     ->where('active', true)
                     ->first();
-                    
+
                 if ($validStore) {
                     $storeId = $validStore->id;
                     self::setCurrentStoreId($storeId);
                 }
             }
-            
+
             // If still no store, fall back to first active store in current organization
-            if (!$storeId) {
+            if (! $storeId) {
                 $firstStore = Store::where('organization_id', $currentOrgId)
                     ->where('active', true)
                     ->first();
@@ -62,7 +62,7 @@ class StoreContext
                 }
             }
         }
-        
+
         return $storeId;
     }
 
@@ -88,6 +88,7 @@ class StoreContext
     public static function getCurrentStore(): ?Store
     {
         $storeId = self::getCurrentStoreId();
+
         return $storeId ? Store::find($storeId) : null;
     }
 
@@ -96,18 +97,18 @@ class StoreContext
      */
     public static function getAccessibleStores()
     {
-        if (!Auth::check()) {
+        if (! Auth::check()) {
             return collect();
         }
 
         $user = Auth::user();
         $currentOrgId = OrganizationContext::getCurrentOrganizationId();
-        
+
         // If no organization context, return empty
-        if (!$currentOrgId) {
+        if (! $currentOrgId) {
             return collect();
         }
-        
+
         // Super admin sees all stores for current organization
         if ($user->hasRole('super-admin')) {
             return Store::where('active', true)
@@ -117,7 +118,7 @@ class StoreContext
 
         // Get user's assigned stores for current organization
         $userStoreIds = $user->stores ?? [];
-        
+
         if (empty($userStoreIds)) {
             return Store::where('active', true)
                 ->where('organization_id', $currentOrgId)
@@ -135,17 +136,18 @@ class StoreContext
      */
     public static function hasAccessToStore(int $storeId): bool
     {
-        if (!Auth::check()) {
+        if (! Auth::check()) {
             return false;
         }
 
         $user = Auth::user();
-        
+
         if ($user->hasRole('super-admin')) {
             return true;
         }
 
         $userStoreIds = $user->stores ?? [];
+
         return in_array($storeId, $userStoreIds);
     }
 }

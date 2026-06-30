@@ -37,7 +37,7 @@ class StoreResource extends Resource
                 Forms\Components\TextInput::make('city')
                     ->maxLength(100)
                     ->datalist([
-                        'Mumbai', 'Delhi', 'Bangalore', 'Kolkata', 'Chennai', 'Pune'
+                        'Mumbai', 'Delhi', 'Bangalore', 'Kolkata', 'Chennai', 'Pune',
                     ]),
                 Forms\Components\Select::make('state')
                     ->options([

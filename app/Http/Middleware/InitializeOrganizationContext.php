@@ -18,7 +18,7 @@ class InitializeOrganizationContext
         // Initialize organization context if user is authenticated
         if (Auth::check()) {
             OrganizationContext::initialize();
-            
+
             // Debug logging to verify middleware is running
             \Log::info('OrganizationContext Middleware', [
                 'session_org_id' => session('current_organization_id'),

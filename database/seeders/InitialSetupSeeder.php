@@ -2,12 +2,12 @@
 
 namespace Database\Seeders;
 
+use App\Models\LoyaltyTier;
 use App\Models\Organization;
 use App\Models\Role;
 use App\Models\Store;
 use App\Models\Terminal;
 use App\Models\User;
-use App\Models\LoyaltyTier;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -66,7 +66,7 @@ class InitialSetupSeeder extends Seeder
                     'view_pos_stats',
                     'view_inventory_overview',
                     'view_low_stock_alerts',
-                    
+
                     // POS Operations
                     'access_pos_billing',
                     'create_sales',
@@ -74,7 +74,7 @@ class InitialSetupSeeder extends Seeder
                     'apply_discounts',
                     'process_refunds',
                     'view_sales',
-                    
+
                     // Product Management
                     'view_products',
                     'create_products',
@@ -88,7 +88,7 @@ class InitialSetupSeeder extends Seeder
                     'create_categories',
                     'edit_categories',
                     'delete_categories',
-                    
+
                     // Inventory Management
                     'view_inventory',
                     'view_stock_levels',
@@ -99,7 +99,7 @@ class InitialSetupSeeder extends Seeder
                     'adjust_stock',
                     'view_stock_adjustments',
                     'view_inventory_movements',
-                    
+
                     // Purchase Management
                     'view_purchases',
                     'create_purchases',
@@ -107,20 +107,20 @@ class InitialSetupSeeder extends Seeder
                     'delete_purchases',
                     'approve_purchases',
                     'receive_purchases',
-                    
+
                     // Supplier Management
                     'view_suppliers',
                     'create_suppliers',
                     'edit_suppliers',
                     'delete_suppliers',
-                    
+
                     // Customer Management
                     'view_customers',
                     'create_customers',
                     'edit_customers',
                     'delete_customers',
                     'view_customer_purchase_history',
-                    
+
                     // Reporting
                     'view_sales_reports',
                     'view_inventory_reports',
@@ -129,26 +129,26 @@ class InitialSetupSeeder extends Seeder
                     'view_supplier_ledger',
                     'export_reports',
                     'email_reports',
-                    
+
                     // Loyalty Program
                     'view_loyalty_program',
                     'manage_loyalty_tiers',
                     'manage_loyalty_points',
                     'manage_rewards',
-                    
+
                     // User Management
                     'view_users',
                     'create_users',
                     'edit_users',
                     'delete_users',
                     'manage_user_permissions',
-                    
+
                     // Role Management
                     'view_roles',
                     'create_roles',
                     'edit_roles',
                     'delete_roles',
-                    
+
                     // Settings & Configuration
                     'view_settings',
                     'edit_settings',
@@ -162,7 +162,7 @@ class InitialSetupSeeder extends Seeder
                     'create_terminals',
                     'edit_terminals',
                     'delete_terminals',
-                    
+
                     // System Administration
                     'access_system_logs',
                     'manage_backups',
@@ -182,15 +182,15 @@ class InitialSetupSeeder extends Seeder
                     'access_pos_billing',
                     'create_sales',
                     'view_own_sales_only',
-                    
+
                     // Product Management (read-only)
                     'view_products',
                     'view_product_variants',
-                    
+
                     // Customer Management
                     'view_customers',
                     'create_customers',
-                    
+
                     // Basic Inventory
                     'view_inventory',
                     'view_stock_levels',

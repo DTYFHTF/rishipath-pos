@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -14,19 +14,19 @@ return new class extends Migration
     {
         // SQLite doesn't support adding columns with CHECK constraints directly
         // So we need to recreate the table
-        
+
         // Create new table with polymorphic columns
         Schema::create('customer_ledger_entries_new', function (Blueprint $table) {
             $table->id();
             $table->foreignId('organization_id')->constrained()->cascadeOnDelete();
             $table->foreignId('store_id')->nullable()->constrained()->nullOnDelete();
-            
+
             // Polymorphic relationship - can be Customer or Supplier
             $table->morphs('ledgerable'); // Creates ledgerable_type and ledgerable_id
-            
+
             // Keep customer_id temporarily for migration (will be nullable)
             $table->foreignId('customer_id')->nullable()->constrained()->cascadeOnDelete();
-            
+
             $table->enum('entry_type', ['receivable', 'payment', 'credit_note', 'debit_note', 'adjustment', 'opening_balance']);
             $table->string('reference_type')->nullable();
             $table->unsignedBigInteger('reference_id')->nullable();
@@ -44,12 +44,12 @@ return new class extends Migration
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
             $table->softDeletes();
-            
+
             // Indexes for performance (morphs() already creates index for ledgerable)
             $table->index('transaction_date');
             $table->index('reference_number');
         });
-        
+
         // Copy data from old table, setting ledgerable to Customer
         DB::statement("
             INSERT INTO customer_ledger_entries_new (
@@ -67,10 +67,10 @@ return new class extends Migration
                 status, created_by, created_at, updated_at, deleted_at
             FROM customer_ledger_entries
         ");
-        
+
         // Drop old table
         Schema::dropIfExists('customer_ledger_entries');
-        
+
         // Rename new table
         Schema::rename('customer_ledger_entries_new', 'customer_ledger_entries');
     }
@@ -104,7 +104,7 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
         });
-        
+
         // Copy data back (only Customer entries)
         DB::statement("
             INSERT INTO customer_ledger_entries_old (
@@ -123,7 +123,7 @@ return new class extends Migration
             FROM customer_ledger_entries
             WHERE ledgerable_type = 'App\\\\Models\\\\Customer'
         ");
-        
+
         Schema::dropIfExists('customer_ledger_entries');
         Schema::rename('customer_ledger_entries_old', 'customer_ledger_entries');
     }

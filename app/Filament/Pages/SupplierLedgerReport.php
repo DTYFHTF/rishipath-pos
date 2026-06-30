@@ -2,9 +2,9 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\Purchase;
 use App\Models\Supplier;
 use App\Models\SupplierLedgerEntry;
-use App\Models\Purchase;
 use App\Services\OrganizationContext;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Section;
@@ -56,14 +56,14 @@ class SupplierLedgerReport extends Page implements HasForms
     {
         // Get supplier_id from URL query parameter
         $supplierId = request()->query('supplier_id');
-        
+
         $this->form->fill([
             'supplier_id' => $supplierId,
             'show_transactions' => request()->query('show_transactions') ? true : false,
             'start_date' => now()->startOfMonth()->format('Y-m-d'),
             'end_date' => now()->addDay()->format('Y-m-d'),
         ]);
-        
+
         // If supplier_id is provided, automatically load the ledger
         if ($supplierId) {
             $this->supplier_id = (int) $supplierId;
@@ -218,7 +218,7 @@ class SupplierLedgerReport extends Page implements HasForms
             $query->where('created_at', '>=', $this->start_date);
         }
         if ($this->end_date) {
-            $query->where('created_at', '<=', $this->end_date . ' 23:59:59');
+            $query->where('created_at', '<=', $this->end_date.' 23:59:59');
         }
 
         if ($this->entry_type) {
@@ -229,6 +229,7 @@ class SupplierLedgerReport extends Page implements HasForms
 
         $this->ledgerEntries = $query->get()->map(function ($entry) {
             $isPayable = $entry->type === 'purchase';
+
             return [
                 'id' => $entry->id,
                 'date' => $entry->created_at->format('d-M-Y'),
@@ -239,7 +240,7 @@ class SupplierLedgerReport extends Page implements HasForms
                 'description' => $entry->notes,
                 // For suppliers: positive amount = purchase (we owe more), negative = payment/return (we owe less)
                 'payable' => $isPayable ? abs($entry->amount) : 0,
-                'paid' => !$isPayable ? abs($entry->amount) : 0,
+                'paid' => ! $isPayable ? abs($entry->amount) : 0,
                 'balance' => $entry->balance_after,
                 'status' => $isPayable ? 'pending' : 'completed',
                 'payment_method' => $entry->payment_method,
@@ -251,7 +252,7 @@ class SupplierLedgerReport extends Page implements HasForms
 
         // Load transactions (purchases) if requested
         $this->transactions = [];
-        if (!empty($this->show_transactions)) {
+        if (! empty($this->show_transactions)) {
             $purchasesQuery = Purchase::where('supplier_id', $this->supplier_id)
                 ->orderBy('purchase_date', 'desc')
                 ->orderBy('created_at', 'desc');
@@ -312,10 +313,10 @@ class SupplierLedgerReport extends Page implements HasForms
             'endDate' => $this->end_date,
         ]);
 
-        $filename = 'supplier-ledger-' . str_replace(' ', '-', strtolower($this->supplierData['name'])) . '-' . now()->format('Y-m-d') . '.pdf';
+        $filename = 'supplier-ledger-'.str_replace(' ', '-', strtolower($this->supplierData['name'])).'-'.now()->format('Y-m-d').'.pdf';
 
         return response()->streamDownload(
-            fn () => print($pdf->output()),
+            fn () => print ($pdf->output()),
             $filename
         );
     }
@@ -339,7 +340,7 @@ class SupplierLedgerReport extends Page implements HasForms
             $this->end_date
         );
 
-        $filename = 'supplier-ledger-' . str_replace(' ', '-', strtolower($this->supplierData['name'])) . '-' . now()->format('Y-m-d') . '.xlsx';
+        $filename = 'supplier-ledger-'.str_replace(' ', '-', strtolower($this->supplierData['name'])).'-'.now()->format('Y-m-d').'.xlsx';
 
         return \Maatwebsite\Excel\Facades\Excel::download($export, $filename);
     }

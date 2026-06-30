@@ -48,9 +48,10 @@ class StockAdjustment extends Page implements HasForms
     public $notes;
 
     public $currentStock = 0;
-    
+
     // Filters for audit view
     public $filterProductId = null;
+
     public $filterDays = 30;
 
     protected $listeners = [
@@ -184,7 +185,7 @@ class StockAdjustment extends Page implements HasForms
 
         try {
             $inventoryService = app(InventoryService::class);
-            
+
             // Get current stock level
             $currentStock = $inventoryService->getStock($this->productVariantId, $this->storeId);
             $newQuantity = $this->getNewStockLevel();
@@ -246,11 +247,11 @@ class StockAdjustment extends Page implements HasForms
         $query = InventoryMovement::with(['productVariant.product', 'user', 'store'])
             ->where('type', 'adjustment')
             ->where('created_at', '>=', now()->subDays($this->filterDays));
-            
+
         if ($this->filterProductId) {
             $query->where('product_variant_id', $this->filterProductId);
         }
-            
+
         return $query->orderBy('created_at', 'desc')
             ->limit(20)
             ->get();

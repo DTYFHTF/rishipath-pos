@@ -2,10 +2,10 @@
 
 namespace App\Filament\Pages;
 
-use App\Services\OrganizationContext;
 use App\Models\Customer;
 use App\Models\LoyaltyPoint;
 use App\Models\LoyaltyTier;
+use App\Services\OrganizationContext;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\DB;
 

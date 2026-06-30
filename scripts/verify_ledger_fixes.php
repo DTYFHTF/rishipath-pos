@@ -1,16 +1,17 @@
 <?php
+
 /**
  * End-to-end verification of all ledger fixes.
  */
-require_once __DIR__ . '/../vendor/autoload.php';
-$app = require_once __DIR__ . '/../bootstrap/app.php';
+require_once __DIR__.'/../vendor/autoload.php';
+$app = require_once __DIR__.'/../bootstrap/app.php';
 $app->make('Illuminate\Contracts\Console\Kernel')->bootstrap();
 
 use App\Models\Customer;
-use App\Models\Supplier;
-use App\Models\Sale;
-use App\Models\Purchase;
 use App\Models\CustomerLedgerEntry;
+use App\Models\Purchase;
+use App\Models\Sale;
+use App\Models\Supplier;
 use App\Models\SupplierLedgerEntry;
 
 $errors = [];
@@ -81,9 +82,9 @@ foreach ($suppliers as $supplier) {
         ->orderBy('id', 'desc')
         ->first();
     $expectedBalance = $lastEntry ? $lastEntry->balance_after : 0;
-    
+
     echo "  Supplier '{$supplier->name}': DB balance = {$supplier->current_balance}, Ledger balance = {$expectedBalance}\n";
-    if (abs((float)$supplier->current_balance - (float)$expectedBalance) < 0.01) {
+    if (abs((float) $supplier->current_balance - (float) $expectedBalance) < 0.01) {
         echo "  ✅ PASS\n";
     } else {
         echo "  ❌ MISMATCH!\n";
@@ -115,7 +116,7 @@ if ($purchase) {
     echo "  Purchase #{$purchase->id}: total = {$purchase->total}\n";
     // Check that the old bug (total_amount) would return null
     $totalAmount = $purchase->getAttribute('total_amount');
-    echo "  Purchase total_amount (should be null/undefined): " . var_export($totalAmount, true) . "\n";
+    echo '  Purchase total_amount (should be null/undefined): '.var_export($totalAmount, true)."\n";
     if ($purchase->total !== null) {
         echo "  ✅ PASS: Purchase uses 'total' column correctly\n";
         $passes[] = 'TEST 7';
@@ -136,18 +137,18 @@ if ($abin) {
     foreach ($sales as $s) {
         echo "    #{$s->id}: {$s->invoice_number} - method={$s->payment_method}, total={$s->total_amount}, date={$s->created_at}\n";
     }
-    
+
     $creditSales = $sales->where('payment_method', 'credit');
     $nonCreditSales = $sales->where('payment_method', '!=', 'credit');
-    
+
     echo "  Credit sales: {$creditSales->count()} (should create ledger entries)\n";
     echo "  Non-credit sales: {$nonCreditSales->count()} (cash/UPI - no ledger entries by design)\n";
-    
+
     $ledgerEntries = CustomerLedgerEntry::where('ledgerable_type', Customer::class)
         ->where('ledgerable_id', $abin->id)
         ->count();
     echo "  Customer ledger entries: {$ledgerEntries}\n";
-    
+
     if ($creditSales->count() == 0 && $ledgerEntries == 0) {
         echo "  ✅ PASS: No credit sales = no ledger entries (correct behavior)\n";
         echo "  ℹ️  NOTE: All of Abin's purchases were cash/UPI, so they don't appear in the AR ledger.\n";
@@ -165,8 +166,8 @@ if ($abin) {
 echo "\n========================================\n";
 echo " RESULTS\n";
 echo "========================================\n";
-echo " Passed: " . count($passes) . "\n";
-echo " Failed: " . count($errors) . "\n";
+echo ' Passed: '.count($passes)."\n";
+echo ' Failed: '.count($errors)."\n";
 
 if (count($errors) > 0) {
     echo "\n ERRORS:\n";

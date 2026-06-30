@@ -29,8 +29,8 @@ class OrganizationContext
     public static function getCurrentOrganization(): ?Organization
     {
         $organizationId = self::getCurrentOrganizationId();
-        
-        if (!$organizationId) {
+
+        if (! $organizationId) {
             return null;
         }
 
@@ -66,6 +66,7 @@ class OrganizationContext
     public static function hasAccessToOrganization(int $organizationId): bool
     {
         $accessibleOrgs = self::getAccessibleOrganizations();
+
         return $accessibleOrgs->contains('id', $organizationId);
     }
 
@@ -75,18 +76,18 @@ class OrganizationContext
     public static function initialize(): void
     {
         $user = Auth::user();
-        
-        if (!$user) {
+
+        if (! $user) {
             return;
         }
 
         // If no organization is set in session, default to user's organization
-        if (!self::getCurrentOrganizationId() && $user->organization_id) {
+        if (! self::getCurrentOrganizationId() && $user->organization_id) {
             self::setCurrentOrganizationId($user->organization_id);
         }
 
         // If still no organization, use the first accessible one
-        if (!self::getCurrentOrganizationId()) {
+        if (! self::getCurrentOrganizationId()) {
             $firstOrg = self::getAccessibleOrganizations()->first();
             if ($firstOrg) {
                 self::setCurrentOrganizationId($firstOrg->id);

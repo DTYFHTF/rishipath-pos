@@ -34,7 +34,7 @@ class ReceiptService
         $lines = [];
 
         // Header
-        $lines[] = "*" . ($org->name ?? 'Store') . "*";
+        $lines[] = '*'.($org->name ?? 'Store').'*';
         $addr = trim(($sale->store->address ?? ''));
         if ($addr) {
             $lines[] = $addr;
@@ -43,13 +43,13 @@ class ReceiptService
             $lines[] = "Phone: {$sale->store->phone}";
         }
         if ($sale->store->tax_number) {
-            $lines[] = $this->getTaxNumberLabel($org) . ": {$sale->store->tax_number}";
+            $lines[] = $this->getTaxNumberLabel($org).": {$sale->store->tax_number}";
         }
-        $lines[] = "";
+        $lines[] = '';
 
         // Sale info
         $lines[] = "*Receipt:* {$sale->receipt_number}    *Invoice:* {$sale->invoice_number}";
-        $lines[] = "*Date:* {$sale->date->format('d-M-Y')}    *Time:* " . date('h:i A', strtotime($sale->time));
+        $lines[] = "*Date:* {$sale->date->format('d-M-Y')}    *Time:* ".date('h:i A', strtotime($sale->time));
         $lines[] = "*Cashier:* {$sale->cashier->name}";
         if ($sale->customer_name) {
             $lines[] = "*Customer:* {$sale->customer_name}";
@@ -57,37 +57,37 @@ class ReceiptService
         if ($sale->customer_phone) {
             $lines[] = "*Phone:* {$sale->customer_phone}";
         }
-        $lines[] = "";
+        $lines[] = '';
 
         // Items header
-        $lines[] = "Item | SKU | Qty | Amount";
-        $lines[] = "--- | --- | ---: | ---:";
+        $lines[] = 'Item | SKU | Qty | Amount';
+        $lines[] = '--- | --- | ---: | ---:';
         foreach ($sale->items as $item) {
             $sku = $item->product_sku ?? ($item->productVariant->sku ?? '-');
             $name = $this->truncate($item->product_name, 30);
             $qty = ((int) $item->quantity == $item->quantity) ? (int) $item->quantity : number_format($item->quantity, 2);
-            $amount = '₹' . number_format($item->total, 2);
+            $amount = '₹'.number_format($item->total, 2);
             $lines[] = "{$name} | {$sku} | {$qty} | {$amount}";
         }
 
-        $lines[] = "";
+        $lines[] = '';
         // Totals
-        $lines[] = "*Subtotal:* ₹" . number_format($sale->subtotal, 2);
+        $lines[] = '*Subtotal:* ₹'.number_format($sale->subtotal, 2);
         if ($sale->discount_amount > 0) {
-            $lines[] = "*Discount:* -₹" . number_format($sale->discount_amount, 2);
+            $lines[] = '*Discount:* -₹'.number_format($sale->discount_amount, 2);
         }
-        $lines[] = "*Tax (" . PricingService::getTaxLabel($org) . "):* ₹" . number_format($sale->tax_amount, 2);
-        $lines[] = "*TOTAL:* *₹" . number_format($sale->total_amount, 2) . "*";
+        $lines[] = '*Tax ('.PricingService::getTaxLabel($org).'):* ₹'.number_format($sale->tax_amount, 2);
+        $lines[] = '*TOTAL:* *₹'.number_format($sale->total_amount, 2).'*';
 
-        $lines[] = "";
-        $lines[] = "Payment: " . strtoupper($sale->payment_method);
+        $lines[] = '';
+        $lines[] = 'Payment: '.strtoupper($sale->payment_method);
         if ($sale->payment_method === 'cash') {
-            $lines[] = "Amount Paid: ₹" . number_format($sale->amount_paid, 2);
-            $lines[] = "Change: ₹" . number_format($sale->amount_change, 2);
+            $lines[] = 'Amount Paid: ₹'.number_format($sale->amount_paid, 2);
+            $lines[] = 'Change: ₹'.number_format($sale->amount_change, 2);
         }
 
-        $lines[] = "";
-        $lines[] = "Thank you for your purchase!";
+        $lines[] = '';
+        $lines[] = 'Thank you for your purchase!';
 
         return implode("\n", $lines);
     }
@@ -100,7 +100,7 @@ class ReceiptService
         $text .= $this->center("{$store->city}, {$store->state}")."\n";
         $text .= $this->center("Phone: {$store->phone}")."\n";
         if ($store->tax_number) {
-            $text .= $this->center($this->getTaxNumberLabel($org) . ": {$store->tax_number}")."\n";
+            $text .= $this->center($this->getTaxNumberLabel($org).": {$store->tax_number}")."\n";
         }
         $text .= "========================================\n\n";
 
@@ -140,7 +140,7 @@ class ReceiptService
             // Show price and tax details
             $details = "  @₹{$item->price_per_unit}";
             if ($item->tax_rate > 0) {
-                $details .= " + " . PricingService::getTaxLabel($org) . " {$item->tax_rate}%";
+                $details .= ' + '.PricingService::getTaxLabel($org)." {$item->tax_rate}%";
             }
             $text .= $details."\n";
         }
@@ -158,7 +158,7 @@ class ReceiptService
             $text .= sprintf("%25s: %12s\n", 'Discount', '-₹'.number_format($sale->discount_amount, 2));
         }
 
-        $taxLabel = 'Tax (' . PricingService::getTaxLabel($org) . ')';
+        $taxLabel = 'Tax ('.PricingService::getTaxLabel($org).')';
         $text .= sprintf("%25s: %12s\n", $taxLabel, '₹'.number_format($sale->tax_amount, 2));
         $text .= "----------------------------------------\n";
         $text .= sprintf("%25s: %12s\n", 'TOTAL', '₹'.number_format($sale->total_amount, 2));

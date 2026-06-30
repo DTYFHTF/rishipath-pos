@@ -5,7 +5,6 @@ namespace App\Filament\Pages;
 use App\Models\InventoryMovement;
 use App\Services\OrganizationContext;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Pages\Page;
@@ -81,9 +80,8 @@ class InventoryAuditLog extends Page implements HasForms, HasTable
                 TextColumn::make('quantity')
                     ->label('Quantity')
                     ->sortable()
-                    ->formatStateUsing(fn ($state, $record) => 
-                        ($record->from_quantity > $record->to_quantity ? '-' : '+') . 
-                        number_format($state, 3) . ' ' . $record->unit
+                    ->formatStateUsing(fn ($state, $record) => ($record->from_quantity > $record->to_quantity ? '-' : '+').
+                        number_format($state, 3).' '.$record->unit
                     ),
 
                 TextColumn::make('from_quantity')
@@ -101,8 +99,7 @@ class InventoryAuditLog extends Page implements HasForms, HasTable
 
                 TextColumn::make('reference_type')
                     ->label('Reference')
-                    ->formatStateUsing(fn ($state, $record) => 
-                        $state ? "{$state} #{$record->reference_id}" : '—'
+                    ->formatStateUsing(fn ($state, $record) => $state ? "{$state} #{$record->reference_id}" : '—'
                     ),
 
                 TextColumn::make('user.name')

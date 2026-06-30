@@ -132,22 +132,22 @@ class WhatsAppService
     /**
      * Send a pre-approved WhatsApp template message
      * Used for business-initiated conversations
-     * 
-     * @param string $phoneNumber Recipient phone
-     * @param string $contentSid Template content SID (HX...)
-     * @param array $variables Template variables ['1' => 'value', '2' => 'value']
-     * @param string|null $fallbackBody Fallback text body
+     *
+     * @param  string  $phoneNumber  Recipient phone
+     * @param  string  $contentSid  Template content SID (HX...)
+     * @param  array  $variables  Template variables ['1' => 'value', '2' => 'value']
+     * @param  string|null  $fallbackBody  Fallback text body
      * @return array ['success' => bool, 'sid' => string|null, 'error' => string|null]
      */
     public function sendTemplate(
-        string $phoneNumber, 
-        string $contentSid, 
+        string $phoneNumber,
+        string $contentSid,
         array $variables = [],
         ?string $fallbackBody = null
     ): array {
         try {
             $formattedPhone = $this->formatPhoneNumber($phoneNumber);
-            
+
             if (! $formattedPhone) {
                 return [
                     'success' => false,
@@ -162,7 +162,7 @@ class WhatsAppService
                     'contentSid' => $contentSid,
                     'variables' => $variables,
                 ]);
-                
+
                 return [
                     'success' => true,
                     'sid' => 'dev-mode-'.uniqid(),
@@ -242,7 +242,7 @@ class WhatsAppService
     {
         try {
             $formattedPhone = $this->formatPhoneNumber($phoneNumber);
-            
+
             if (! $formattedPhone) {
                 return [
                     'success' => false,
@@ -257,7 +257,7 @@ class WhatsAppService
                     'phone' => $formattedPhone,
                     'pdf_url' => $pdfUrl,
                 ]);
-                
+
                 return [
                     'success' => true,
                     'sid' => 'dev-mode-'.uniqid(),
@@ -265,10 +265,10 @@ class WhatsAppService
                 ];
             }
 
-            $defaultMessage = "📄 *Invoice - {$sale->invoice_number}*\n\n" .
-                            "Thank you for your purchase!\n" .
-                            "Total: ₹" . number_format($sale->total_amount, 2) . "\n\n" .
-                            "Please find your detailed invoice attached.";
+            $defaultMessage = "📄 *Invoice - {$sale->invoice_number}*\n\n".
+                            "Thank you for your purchase!\n".
+                            'Total: ₹'.number_format($sale->total_amount, 2)."\n\n".
+                            'Please find your detailed invoice attached.';
 
             $payload = [
                 'From' => 'whatsapp:'.config('services.twilio.whatsapp_from'),

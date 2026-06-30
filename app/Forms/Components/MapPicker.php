@@ -8,40 +8,40 @@ class MapPicker extends Field
 {
     protected string $view = 'forms.components.map-picker';
 
-    protected string | \Closure | null $mapHeight = '400px';
+    protected string|\Closure|null $mapHeight = '400px';
 
-    protected array | \Closure $defaultLocation = [
+    protected array|\Closure $defaultLocation = [
         'lat' => 27.7172,
         'lng' => 85.3240,
     ];
 
-    protected bool | \Closure $draggable = true;
+    protected bool|\Closure $draggable = true;
 
-    protected int | \Closure $defaultZoom = 13;
+    protected int|\Closure $defaultZoom = 13;
 
-    protected bool | \Closure $showGeolocationButton = true;
+    protected bool|\Closure $showGeolocationButton = true;
 
-    protected bool | \Closure $autocomplete = false;
+    protected bool|\Closure $autocomplete = false;
 
-    protected string | \Closure | null $latitudeField = null;
+    protected string|\Closure|null $latitudeField = null;
 
-    protected string | \Closure | null $longitudeField = null;
+    protected string|\Closure|null $longitudeField = null;
 
-    protected string | \Closure | null $addressField = null;
+    protected string|\Closure|null $addressField = null;
 
-    protected string | \Closure | null $areaField = null;
+    protected string|\Closure|null $areaField = null;
 
-    protected string | \Closure | null $landmarkField = null;
+    protected string|\Closure|null $landmarkField = null;
 
-    protected string | \Closure | null $cityField = null;
+    protected string|\Closure|null $cityField = null;
 
-    protected string | \Closure | null $stateField = null;
+    protected string|\Closure|null $stateField = null;
 
-    protected string | \Closure | null $countryField = null;
+    protected string|\Closure|null $countryField = null;
 
-    protected string | \Closure | null $pincodeField = null;
+    protected string|\Closure|null $pincodeField = null;
 
-    public function mapHeight(string | \Closure $height): static
+    public function mapHeight(string|\Closure $height): static
     {
         $this->mapHeight = $height;
 
@@ -53,7 +53,7 @@ class MapPicker extends Field
         return $this->evaluate($this->mapHeight) ?? '400px';
     }
 
-    public function defaultLocation(array | \Closure $location): static
+    public function defaultLocation(array|\Closure $location): static
     {
         $this->defaultLocation = $location;
 
@@ -68,7 +68,7 @@ class MapPicker extends Field
         ];
     }
 
-    public function draggable(bool | \Closure $draggable = true): static
+    public function draggable(bool|\Closure $draggable = true): static
     {
         $this->draggable = $draggable;
 
@@ -80,7 +80,7 @@ class MapPicker extends Field
         return $this->evaluate($this->draggable);
     }
 
-    public function defaultZoom(int | \Closure $zoom): static
+    public function defaultZoom(int|\Closure $zoom): static
     {
         $this->defaultZoom = $zoom;
 
@@ -92,7 +92,7 @@ class MapPicker extends Field
         return $this->evaluate($this->defaultZoom);
     }
 
-    public function showGeolocationButton(bool | \Closure $show = true): static
+    public function showGeolocationButton(bool|\Closure $show = true): static
     {
         $this->showGeolocationButton = $show;
 
@@ -104,7 +104,7 @@ class MapPicker extends Field
         return $this->evaluate($this->showGeolocationButton);
     }
 
-    public function autocomplete(bool | \Closure $autocomplete = true): static
+    public function autocomplete(bool|\Closure $autocomplete = true): static
     {
         $this->autocomplete = $autocomplete;
 

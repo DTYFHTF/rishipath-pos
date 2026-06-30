@@ -180,7 +180,7 @@ class RetailStore extends Model
         $customer->active = $this->status !== 'inactive';
         $customer->notes = str_contains($existingNotes, $linkNote)
             ? $customer->notes
-            : trim($existingNotes === '' ? $linkNote : $existingNotes . "\n" . $linkNote);
+            : trim($existingNotes === '' ? $linkNote : $existingNotes."\n".$linkNote);
 
         if (blank($customer->customer_code)) {
             $customer->customer_code = Customer::generateNextCustomerCode();

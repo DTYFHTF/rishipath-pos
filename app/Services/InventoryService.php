@@ -80,7 +80,7 @@ class InventoryService
 
         // Sync Product Batches: update sum of remaining quantities
         // Skip sync when batches were already allocated (e.g., from decreaseStock with FIFO)
-        if (!$skipBatchSync) {
+        if (! $skipBatchSync) {
             self::syncBatchQuantities($productVariantId, $storeId);
         }
 
@@ -115,16 +115,16 @@ class InventoryService
             ->where('store_id', $storeId)
             ->first();
 
-        if (!$stock) {
+        if (! $stock) {
             return;
         }
 
         $batches = ProductBatch::where('product_variant_id', $productVariantId)
             ->where('store_id', $storeId)
             ->where('quantity_remaining', '>', 0)
-            ->where(function($q) {
+            ->where(function ($q) {
                 $q->whereNull('expiry_date')
-                  ->orWhere('expiry_date', '>=', now());
+                    ->orWhere('expiry_date', '>=', now());
             })
             ->orderBy('expiry_date', 'asc')
             ->get();
@@ -198,7 +198,7 @@ class InventoryService
             if (in_array($type, ['sale', 'transfer'], true)) {
                 self::allocateFromBatches($productVariantId, $storeId, $quantity, $referenceType, $referenceId, $notes, $userId);
             }
-            
+
             // Update stock_levels (skip batch sync since we already allocated via FIFO)
             // Use internal method to avoid nested transactions
             return self::adjustStockInternal(
@@ -215,7 +215,7 @@ class InventoryService
             );
         });
     }
-    
+
     /**
      * Decrease stock and return allocated batch information.
      * Useful when you need to know which batches were used (e.g., for sale_items.batch_id).
@@ -233,12 +233,12 @@ class InventoryService
     ): array {
         return DB::transaction(function () use ($productVariantId, $storeId, $quantity, $type, $referenceType, $referenceId, $costPrice, $notes, $userId) {
             $allocatedBatches = [];
-            
+
             // For sales and transfers, allocate from batches using FIFO (oldest expiring first)
             if (in_array($type, ['sale', 'transfer'], true)) {
                 $allocatedBatches = self::allocateFromBatches($productVariantId, $storeId, $quantity, $referenceType, $referenceId, $notes, $userId);
             }
-            
+
             // Update stock_levels (skip batch sync since we already allocated via FIFO)
             // Use internal method to avoid nested transactions
             $stockLevel = self::adjustStockInternal(
@@ -253,7 +253,7 @@ class InventoryService
                 $userId,
                 true // skipBatchSync = true (batches already allocated above)
             );
-            
+
             return [
                 'stock_level' => $stockLevel,
                 'allocated_batches' => $allocatedBatches,
@@ -277,14 +277,14 @@ class InventoryService
     ): array {
         $remaining = $quantity;
         $allocatedBatches = [];
-        
+
         // Get batches ordered by expiry (FIFO), then by ID (oldest first)
         $batches = ProductBatch::where('product_variant_id', $productVariantId)
             ->where('store_id', $storeId)
             ->where('quantity_remaining', '>', 0)
             ->where(function ($q) {
                 $q->whereNull('expiry_date')
-                  ->orWhere('expiry_date', '>=', now());
+                    ->orWhere('expiry_date', '>=', now());
             })
             ->orderBy('expiry_date', 'asc')
             ->orderBy('id', 'asc')
@@ -300,14 +300,14 @@ class InventoryService
                 }
 
                 $allocate = min($remaining, $batch->quantity_remaining);
-                
+
                 // Track allocated batch
                 $allocatedBatches[] = [
                     'batch_id' => $batch->id,
                     'batch_number' => $batch->batch_number,
                     'quantity' => $allocate,
                 ];
-                
+
                 // Update batch quantities
                 $batch->quantity_remaining -= $allocate;
                 $batch->quantity_sold += $allocate;
@@ -337,9 +337,9 @@ class InventoryService
         });
 
         if ($remaining > 0) {
-            throw new \Exception("Insufficient batch stock. Needed {$quantity}, allocated " . ($quantity - $remaining));
+            throw new \Exception("Insufficient batch stock. Needed {$quantity}, allocated ".($quantity - $remaining));
         }
-        
+
         return $allocatedBatches;
     }
 
@@ -401,7 +401,7 @@ class InventoryService
                 'purchase_id' => null,
                 'product_variant_id' => $productVariantId,
                 'store_id' => $toStoreId,
-                'batch_number' => 'TRF-' . now()->format('YmdHis') . '-' . ($fromStoreId) . '-' . ($toStoreId),
+                'batch_number' => 'TRF-'.now()->format('YmdHis').'-'.($fromStoreId).'-'.($toStoreId),
                 'manufactured_date' => null,
                 'expiry_date' => null,
                 'purchase_date' => now(),
@@ -412,7 +412,7 @@ class InventoryService
                 'quantity_sold' => 0,
                 'quantity_damaged' => 0,
                 'quantity_returned' => 0,
-                'notes' => "Transfer from store {$fromStoreId}" . ($notes ? ": {$notes}" : ''),
+                'notes' => "Transfer from store {$fromStoreId}".($notes ? ": {$notes}" : ''),
             ]);
 
             // Now increase stock at destination (this will sync batch quantities)

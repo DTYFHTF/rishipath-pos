@@ -18,6 +18,7 @@ class StaffUserSeeder extends Seeder
 
         if (! $organization || ! $store) {
             $this->command?->error('Organization or main store missing. Run InitialSetupSeeder first.');
+
             return;
         }
 
@@ -52,6 +53,7 @@ class StaffUserSeeder extends Seeder
             $role = $roles[$userData['role']] ?? null;
             if (! $role) {
                 $this->command?->warn("Role {$userData['role']} not found, skipping {$userData['email']}");
+
                 continue;
             }
 

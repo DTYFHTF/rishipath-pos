@@ -2,14 +2,14 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 use App\Models\Organization;
-use App\Models\Store;
-use App\Models\Supplier;
 use App\Models\ProductVariant;
 use App\Models\Purchase;
+use App\Models\Store;
+use App\Models\Supplier;
 use Carbon\Carbon;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 
 class CreateBulkPurchaseOrder extends Command
 {
@@ -40,6 +40,7 @@ class CreateBulkPurchaseOrder extends Command
             $org = $org ?: Organization::first();
             if (! $org) {
                 $this->error('No Organization found. Please create one or pass --organization-id.');
+
                 return 1;
             }
 
@@ -76,6 +77,7 @@ class CreateBulkPurchaseOrder extends Command
             if ($variants->isEmpty()) {
                 $this->error('No product variants found. Nothing to add.');
                 DB::rollBack();
+
                 return 1;
             }
 
@@ -125,13 +127,14 @@ class CreateBulkPurchaseOrder extends Command
             DB::commit();
 
             $this->info("Created purchase {$purchase->purchase_number} (ID: {$purchase->id}) with {$variants->count()} items.");
-            $this->info('Subtotal: ₹' . number_format($purchase->subtotal, 2));
-            $this->info('Total: ₹' . number_format($purchase->total, 2));
+            $this->info('Subtotal: ₹'.number_format($purchase->subtotal, 2));
+            $this->info('Total: ₹'.number_format($purchase->total, 2));
 
             return 0;
         } catch (\Exception $e) {
             DB::rollBack();
-            $this->error('Error creating purchase: ' . $e->getMessage());
+            $this->error('Error creating purchase: '.$e->getMessage());
+
             return 1;
         }
     }

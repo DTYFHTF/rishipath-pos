@@ -2,11 +2,11 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Product extends Model
 {
@@ -86,14 +86,14 @@ class Product extends Model
     {
         // Remove parentheses and their content
         $text = preg_replace('/\([^)]*\)/', '', $text);
-        
+
         // Remove common words
         $text = preg_replace('/\b(the|and|for|with|oil|powder|tea|capsule|choorna|tailam)\b/i', '', $text);
         $text = trim($text);
 
         // Split into words
         $words = preg_split('/[\s\-_]+/', $text);
-        $words = array_filter($words, fn($w) => strlen($w) > 0);
+        $words = array_filter($words, fn ($w) => strlen($w) > 0);
 
         if (count($words) > 1) {
             // Use first letters of each word
@@ -106,6 +106,7 @@ class Product extends Model
                     break;
                 }
             }
+
             return substr($abbr, 0, $length);
         }
 
@@ -158,9 +159,9 @@ class Product extends Model
      */
     protected static function generateSkuFromProduct(Product $product): string
     {
-        $categoryName = $product->category?->name ?? 
+        $categoryName = $product->category?->name ??
             Category::find($product->category_id)?->name;
-        
+
         return static::generateSemanticSku(
             $categoryName,
             $product->product_type,

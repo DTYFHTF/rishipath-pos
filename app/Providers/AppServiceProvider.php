@@ -4,11 +4,11 @@ namespace App\Providers;
 
 use App\Models\ProductBatch;
 use App\Observers\ProductBatchObserver;
+use Illuminate\Auth\Events\Login;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Auth\Events\Login;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -52,7 +52,7 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(Login::class, function (Login $event) {
             try {
                 $event->user?->update(['last_login_at' => now()]);
-                
+
                 // Initialize organization context for the session
                 \App\Services\OrganizationContext::initialize();
             } catch (\Throwable $e) {
@@ -71,7 +71,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         \Illuminate\Support\Facades\Blade::directive('currency', function () {
-            return "<?php echo \\App\\Services\\PricingService::getCurrencySymbol(auth()->user()?->organization); ?>";
+            return '<?php echo \\App\\Services\\PricingService::getCurrencySymbol(auth()->user()?->organization); ?>';
         });
     }
 }

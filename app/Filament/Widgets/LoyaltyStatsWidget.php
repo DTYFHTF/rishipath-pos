@@ -41,7 +41,7 @@ class LoyaltyStatsWidget extends BaseWidget
             ->whereNotNull('loyalty_enrolled_at')
             ->whereHas('sales', function ($q) use ($storeId) {
                 $q->where('created_at', '>=', now()->subDays(90))
-                    ->when($storeId, fn($query) => $query->where('store_id', $storeId));
+                    ->when($storeId, fn ($query) => $query->where('store_id', $storeId));
             })
             ->count();
 

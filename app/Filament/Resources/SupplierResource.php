@@ -76,7 +76,7 @@ class SupplierResource extends Resource
                     ->helperText('Address helps distinguish multiple suppliers with same name. Include street, area, and postal code.'),
                 Forms\Components\TextInput::make('city')
                     ->datalist([
-                        'Mumbai', 'Delhi', 'Bangalore', 'Kolkata', 'Chennai', 'Kathmandu', 'Pokhara'
+                        'Mumbai', 'Delhi', 'Bangalore', 'Kolkata', 'Chennai', 'Kathmandu', 'Pokhara',
                     ])
                     ->helperText('City/region where supplier is located'),
                 Forms\Components\TextInput::make('email')
@@ -85,7 +85,7 @@ class SupplierResource extends Resource
                     ->columnSpanFull(),
                 Forms\Components\TextInput::make('city')
                     ->datalist([
-                        'Mumbai', 'Delhi', 'Bangalore', 'Kolkata', 'Chennai'
+                        'Mumbai', 'Delhi', 'Bangalore', 'Kolkata', 'Chennai',
                     ]),
                 Forms\Components\Select::make('state')
                     ->options([
@@ -114,8 +114,9 @@ class SupplierResource extends Resource
     {
         return $table
             ->modifyQueryUsing(function ($query) {
-                $orgId = OrganizationContext::getCurrentOrganizationId() 
+                $orgId = OrganizationContext::getCurrentOrganizationId()
                     ?? auth()->user()?->organization_id ?? 1;
+
                 return $query->where('organization_id', $orgId);
             })
             ->columns([
@@ -158,14 +159,14 @@ class SupplierResource extends Resource
                 Tables\Actions\ActionGroup::make([
                     Tables\Actions\ViewAction::make(),
                     Tables\Actions\EditAction::make(),
-                    
+
                     Tables\Actions\Action::make('view_ledger')
                         ->label('View Ledger')
                         ->icon('heroicon-o-document-text')
                         ->color('info')
                         ->url(fn ($record) => route('filament.admin.pages.supplier-ledger-report', ['supplier_id' => $record->id]))
                         ->openUrlInNewTab(),
-                    
+
                     Tables\Actions\Action::make('view_purchases')
                         ->label('View Purchases')
                         ->icon('heroicon-o-shopping-bag')

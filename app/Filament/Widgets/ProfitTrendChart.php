@@ -45,7 +45,7 @@ class ProfitTrendChart extends ChartWidget
             $dateStr = $date->format('Y-m-d');
 
             $sales = Sale::where('organization_id', $organizationId)
-                ->when($storeId, fn($q) => $q->where('store_id', $storeId))
+                ->when($storeId, fn ($q) => $q->where('store_id', $storeId))
                 ->whereDate('created_at', $dateStr)
                 ->get();
             $revenue = $sales->sum('final_total');

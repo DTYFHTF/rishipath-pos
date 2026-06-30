@@ -19,9 +19,13 @@ class PurchaseWorkflowTest extends TestCase
     use RefreshDatabase;
 
     protected User $user;
+
     protected Organization $org;
+
     protected Store $store;
+
     protected Supplier $supplier;
+
     protected ProductVariant $variant;
 
     protected function setUp(): void

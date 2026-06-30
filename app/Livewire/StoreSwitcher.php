@@ -9,7 +9,9 @@ use Livewire\Component;
 class StoreSwitcher extends Component
 {
     public $currentStoreId;
+
     public $availableStores;
+
     public $showDropdown = false;
 
     protected $listeners = [
@@ -26,7 +28,7 @@ class StoreSwitcher extends Component
     {
         // Refresh available stores for the new organization
         $this->availableStores = StoreContext::getAccessibleStores();
-        
+
         // If no stores available for this organization, clear the current store
         if ($this->availableStores->isEmpty()) {
             $this->currentStoreId = null;
@@ -34,7 +36,7 @@ class StoreSwitcher extends Component
             // Update to the current store ID (which was set by OrganizationSwitcher)
             $this->currentStoreId = StoreContext::getCurrentStoreId();
         }
-        
+
         // Force component refresh
         $this->dispatch('$refresh');
     }
@@ -45,23 +47,23 @@ class StoreSwitcher extends Component
             StoreContext::setCurrentStoreId($storeId);
             $this->currentStoreId = $storeId;
             $this->showDropdown = false;
-            
+
             // Refresh the component data
             $this->availableStores = StoreContext::getAccessibleStores();
-            
+
             // Get store name for toast
             $storeName = $this->availableStores->firstWhere('id', $storeId)?->name ?? 'Store';
-            
+
             // Show toast notification
             Notification::make()
                 ->success()
                 ->title('Store Switched')
                 ->body("Now viewing data for {$storeName}")
                 ->send();
-            
+
             // Broadcast event to all listening components
             $this->dispatch('store-switched', storeId: $storeId);
-            
+
             // Refresh the page to update all components
             $this->redirect(request()->header('Referer') ?: url()->current());
         }
@@ -74,10 +76,10 @@ class StoreSwitcher extends Component
         if ($this->currentStoreId && $this->availableStores && $this->availableStores->isNotEmpty()) {
             $currentStore = StoreContext::getCurrentStore();
         }
-        
+
         return view('livewire.store-switcher', [
             'currentStore' => $currentStore,
-            'stores' => $this->availableStores ?? collect()
+            'stores' => $this->availableStores ?? collect(),
         ]);
     }
 }

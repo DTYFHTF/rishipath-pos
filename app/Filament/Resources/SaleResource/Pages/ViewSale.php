@@ -3,11 +3,11 @@
 namespace App\Filament\Resources\SaleResource\Pages;
 
 use App\Filament\Resources\SaleResource;
-use App\Services\WhatsAppService;
 use App\Services\InvoiceService;
+use App\Services\WhatsAppService;
 use Filament\Actions;
-use Filament\Resources\Pages\ViewRecord;
 use Filament\Notifications\Notification;
+use Filament\Resources\Pages\ViewRecord;
 
 class ViewSale extends ViewRecord
 {
@@ -17,7 +17,7 @@ class ViewSale extends ViewRecord
     {
         return [
             Actions\EditAction::make(),
-            
+
             Actions\Action::make('sendWhatsApp')
                 ->label('Send Receipt (Text)')
                 ->icon('heroicon-o-chat-bubble-left-right')
@@ -47,14 +47,14 @@ class ViewSale extends ViewRecord
                             ->send();
                     }
                 }),
-            
+
             Actions\Action::make('viewInvoice')
                 ->label('View Invoice')
                 ->icon('heroicon-o-document-text')
                 ->color('info')
                 ->url(fn ($record) => route('filament.admin.resources.sales.invoice', ['record' => $record->id]))
                 ->openUrlInNewTab(),
-            
+
             Actions\Action::make('sendInvoiceWhatsApp')
                 ->label('Send Invoice via WhatsApp')
                 ->icon('heroicon-o-paper-airplane')
@@ -70,7 +70,7 @@ class ViewSale extends ViewRecord
 
                         // Generate invoice and get public URL
                         $pdfPath = $invoice->generateAndSaveInvoice($record);
-                        $publicUrl = asset('storage/' . $pdfPath);
+                        $publicUrl = asset('storage/'.$pdfPath);
 
                         $result = $whatsapp->sendInvoicePdf($record, $record->customer_phone, $publicUrl);
 
@@ -90,6 +90,7 @@ class ViewSale extends ViewRecord
                                         ->title('Receipt Sent (Text Only)')
                                         ->body('Invoice PDF requires public URL. Text receipt sent instead.')
                                         ->send();
+
                                     return;
                                 }
                             }

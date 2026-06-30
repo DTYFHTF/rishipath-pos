@@ -44,7 +44,7 @@ class SalesTrendChart extends ChartWidget
                 DB::raw('COUNT(*) as transaction_count')
             )
             ->where('organization_id', $organizationId)
-            ->when($storeId, fn($q) => $q->where('store_id', $storeId))
+            ->when($storeId, fn ($q) => $q->where('store_id', $storeId))
             ->whereBetween('created_at', [$startDate, $endDate])
             ->groupBy(DB::raw('DATE(created_at)'))
             ->orderBy(DB::raw('DATE(created_at)'))

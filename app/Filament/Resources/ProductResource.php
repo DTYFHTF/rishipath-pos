@@ -153,7 +153,7 @@ class ProductResource extends Resource
                                     : Storage::disk('public')->url($record->image_url);
 
                                 return new HtmlString(
-                                    '<img src="' . e($src) . '" style="max-height:200px;border-radius:10px;border:1px solid #e5e7eb;box-shadow:0 1px 4px rgba(0,0,0,.12)">'
+                                    '<img src="'.e($src).'" style="max-height:200px;border-radius:10px;border:1px solid #e5e7eb;box-shadow:0 1px 4px rgba(0,0,0,.12)">'
                                 );
                             })
                             ->visible(fn ($record) => $record !== null),
@@ -217,8 +217,9 @@ class ProductResource extends Resource
     {
         return $table
             ->modifyQueryUsing(function ($query) {
-                $orgId = OrganizationContext::getCurrentOrganizationId() 
+                $orgId = OrganizationContext::getCurrentOrganizationId()
                     ?? auth()->user()?->organization_id ?? 1;
+
                 return $query->where('organization_id', $orgId);
             })
             ->columns([
@@ -282,7 +283,7 @@ class ProductResource extends Resource
                     ->label('Details')
                     ->icon('heroicon-o-information-circle')
                     ->color('info')
-                    ->modalHeading(fn ($record) => $record->name . ' - Inventory Details')
+                    ->modalHeading(fn ($record) => $record->name.' - Inventory Details')
                     ->modalWidth('7xl')
                     ->modalContent(fn ($record) => view('filament.pages.product-detail-modal', ['product' => $record]))
                     ->slideOver(),

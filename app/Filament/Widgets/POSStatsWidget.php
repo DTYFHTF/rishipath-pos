@@ -29,13 +29,13 @@ class POSStatsWidget extends BaseWidget
         $storeId = StoreContext::getCurrentStoreId();
 
         $todaySales = Sale::where('organization_id', $organizationId)
-            ->when($storeId, fn($q) => $q->where('store_id', $storeId))
+            ->when($storeId, fn ($q) => $q->where('store_id', $storeId))
             ->whereDate('date', today())
             ->where('status', 'completed')
             ->sum('total_amount');
 
         $monthSales = Sale::where('organization_id', $organizationId)
-            ->when($storeId, fn($q) => $q->where('store_id', $storeId))
+            ->when($storeId, fn ($q) => $q->where('store_id', $storeId))
             ->whereMonth('date', now()->month)
             ->whereYear('date', now()->year)
             ->where('status', 'completed')
@@ -53,7 +53,7 @@ class POSStatsWidget extends BaseWidget
             ->join('product_variants', 'stock_levels.product_variant_id', '=', 'product_variants.id')
             ->join('products', 'product_variants.product_id', '=', 'products.id')
             ->where('products.organization_id', $organizationId)
-            ->when($storeId, fn($q) => $q->where('stock_levels.store_id', $storeId))
+            ->when($storeId, fn ($q) => $q->where('stock_levels.store_id', $storeId))
             ->whereColumn('stock_levels.quantity', '<=', 'stock_levels.reorder_level')
             ->count();
 

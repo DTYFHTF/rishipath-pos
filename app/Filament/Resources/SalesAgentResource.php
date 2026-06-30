@@ -86,6 +86,7 @@ class SalesAgentResource extends Resource
         return $table
             ->modifyQueryUsing(function ($query) {
                 $orgId = OrganizationContext::getCurrentOrganizationId() ?? auth()->user()?->organization_id ?? 1;
+
                 return $query->where('organization_id', $orgId);
             })
             ->columns([
@@ -98,7 +99,7 @@ class SalesAgentResource extends Resource
                 Tables\Columns\TextColumn::make('min_wholesale_amount')->label('Min Wholesale')->money('NPR'),
                 Tables\Columns\TextColumn::make('current_balance')
                     ->label('Current Balance')
-                    ->formatStateUsing(fn ($record) => 'NPR ' . number_format((float) $record->current_balance, 2)),
+                    ->formatStateUsing(fn ($record) => 'NPR '.number_format((float) $record->current_balance, 2)),
                 Tables\Columns\IconColumn::make('active')->boolean(),
             ])
             ->actions([

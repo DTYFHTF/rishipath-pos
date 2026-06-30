@@ -78,7 +78,7 @@ class SalesAgent extends Model
     public function getTodayMetrics(): array
     {
         $today = now()->toDateString();
-        
+
         $totalSales = (float) $this->sales()
             ->where('date', $today)
             ->sum('total_amount');

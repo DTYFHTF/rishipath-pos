@@ -1,8 +1,8 @@
 <?php
 
-require __DIR__ . '/../vendor/autoload.php';
+require __DIR__.'/../vendor/autoload.php';
 
-$app = require __DIR__ . '/../bootstrap/app.php';
+$app = require __DIR__.'/../bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 
 use App\Models\Role;
@@ -20,7 +20,7 @@ $role = Role::where('organization_id', $orgId)
     ->first();
 
 if (! $role) {
-    echo "ERROR: cashier role not found for org {$orgId}" . PHP_EOL;
+    echo "ERROR: cashier role not found for org {$orgId}".PHP_EOL;
     exit(1);
 }
 
@@ -37,14 +37,14 @@ if (! $user) {
         'active' => true,
     ]);
 
-    echo "USER_CREATED|id={$user->id}|email={$email}|password={$password}" . PHP_EOL;
+    echo "USER_CREATED|id={$user->id}|email={$email}|password={$password}".PHP_EOL;
 } else {
     $user->update([
         'phone' => $phone,
         'active' => true,
     ]);
 
-    echo "USER_EXISTS|id={$user->id}|email={$email}" . PHP_EOL;
+    echo "USER_EXISTS|id={$user->id}|email={$email}".PHP_EOL;
 }
 
 $agent = SalesAgent::where('organization_id', $orgId)
@@ -64,7 +64,7 @@ if (! $agent) {
         'active' => true,
     ]);
 
-    echo "AGENT_CREATED|id={$agent->id}|code={$agent->agent_code}" . PHP_EOL;
+    echo "AGENT_CREATED|id={$agent->id}|code={$agent->agent_code}".PHP_EOL;
 } else {
-    echo "AGENT_EXISTS|id={$agent->id}|code={$agent->agent_code}" . PHP_EOL;
+    echo "AGENT_EXISTS|id={$agent->id}|code={$agent->agent_code}".PHP_EOL;
 }

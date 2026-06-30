@@ -32,7 +32,7 @@ class InventoryOverviewWidget extends BaseWidget
             ->join('product_variants', 'stock_levels.product_variant_id', '=', 'product_variants.id')
             ->join('products', 'product_variants.product_id', '=', 'products.id')
             ->where('products.organization_id', $organizationId)
-            ->when($storeId, fn($q) => $q->where('stock_levels.store_id', $storeId))
+            ->when($storeId, fn ($q) => $q->where('stock_levels.store_id', $storeId))
             ->select(DB::raw('SUM(stock_levels.quantity * COALESCE(product_variants.cost_price, product_variants.base_price * 0.6)) as total_value'))
             ->value('total_value') ?? 0;
 
@@ -41,7 +41,7 @@ class InventoryOverviewWidget extends BaseWidget
             ->join('product_variants', 'stock_levels.product_variant_id', '=', 'product_variants.id')
             ->join('products', 'product_variants.product_id', '=', 'products.id')
             ->where('products.organization_id', $organizationId)
-            ->when($storeId, fn($q) => $q->where('stock_levels.store_id', $storeId))
+            ->when($storeId, fn ($q) => $q->where('stock_levels.store_id', $storeId))
             ->whereColumn('stock_levels.quantity', '<=', 'stock_levels.reorder_level')
             ->count();
 
@@ -50,7 +50,7 @@ class InventoryOverviewWidget extends BaseWidget
             ->join('product_variants', 'product_batches.product_variant_id', '=', 'product_variants.id')
             ->join('products', 'product_variants.product_id', '=', 'products.id')
             ->where('products.organization_id', $organizationId)
-            ->when($storeId, fn($q) => $q->where('product_batches.store_id', $storeId))
+            ->when($storeId, fn ($q) => $q->where('product_batches.store_id', $storeId))
             ->where('product_batches.expiry_date', '<', now())
             ->where('product_batches.quantity_remaining', '>', 0)
             ->count();
@@ -60,7 +60,7 @@ class InventoryOverviewWidget extends BaseWidget
             ->join('product_variants', 'product_batches.product_variant_id', '=', 'product_variants.id')
             ->join('products', 'product_variants.product_id', '=', 'products.id')
             ->where('products.organization_id', $organizationId)
-            ->when($storeId, fn($q) => $q->where('product_batches.store_id', $storeId))
+            ->when($storeId, fn ($q) => $q->where('product_batches.store_id', $storeId))
             ->whereBetween('product_batches.expiry_date', [now(), now()->addDays(30)])
             ->where('product_batches.quantity_remaining', '>', 0)
             ->count();
@@ -70,7 +70,7 @@ class InventoryOverviewWidget extends BaseWidget
             ->join('product_variants', 'stock_levels.product_variant_id', '=', 'product_variants.id')
             ->join('products', 'product_variants.product_id', '=', 'products.id')
             ->where('products.organization_id', $organizationId)
-            ->when($storeId, fn($q) => $q->where('stock_levels.store_id', $storeId))
+            ->when($storeId, fn ($q) => $q->where('stock_levels.store_id', $storeId))
             ->where('stock_levels.quantity', '<=', 0)
             ->count();
 
@@ -79,7 +79,7 @@ class InventoryOverviewWidget extends BaseWidget
             ->join('product_variants', 'product_batches.product_variant_id', '=', 'product_variants.id')
             ->join('products', 'product_variants.product_id', '=', 'products.id')
             ->where('products.organization_id', $organizationId)
-            ->when($storeId, fn($q) => $q->where('product_batches.store_id', $storeId))
+            ->when($storeId, fn ($q) => $q->where('product_batches.store_id', $storeId))
             ->exists();
 
         $stats = [

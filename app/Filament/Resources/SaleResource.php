@@ -12,7 +12,6 @@ use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Support\Colors\Color;
 use Illuminate\Database\Eloquent\Builder;
 
 class SaleResource extends Resource
@@ -150,7 +149,7 @@ class SaleResource extends Resource
                             ->readOnly()
                             ->helperText('Change to be given back to customer')
                             ->extraAttributes(['class' => 'font-bold'])
-                            ->suffix(fn (Forms\Get $get) => (float)($get('amount_change') ?? 0) > 0 ? '💰 Return this amount' : ''),
+                            ->suffix(fn (Forms\Get $get) => (float) ($get('amount_change') ?? 0) > 0 ? '💰 Return this amount' : ''),
                         Forms\Components\Select::make('payment_status')
                             ->required()
                             ->options([
@@ -177,8 +176,9 @@ class SaleResource extends Resource
     {
         return $table
             ->modifyQueryUsing(function ($query) {
-                $orgId = OrganizationContext::getCurrentOrganizationId() 
+                $orgId = OrganizationContext::getCurrentOrganizationId()
                     ?? auth()->user()?->organization_id ?? 1;
+
                 return $query->where('organization_id', $orgId);
             })
             ->columns([
@@ -227,7 +227,7 @@ class SaleResource extends Resource
                     ->relationship('customer', 'name')
                     ->searchable()
                     ->preload(),
-                    
+
                 Tables\Filters\SelectFilter::make('store')
                     ->relationship('store', 'name'),
                 Tables\Filters\SelectFilter::make('payment_method')
@@ -267,7 +267,7 @@ class SaleResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
-                ->defaultSort('created_at', 'desc');
+            ->defaultSort('created_at', 'desc');
     }
 
     public static function infolist(Infolist $infolist): Infolist

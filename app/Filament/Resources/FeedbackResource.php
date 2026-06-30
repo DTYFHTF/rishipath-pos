@@ -7,7 +7,6 @@ use App\Filament\Traits\HasPermissionCheck;
 use App\Models\BulkOrderInquiry;
 use App\Models\Feedback;
 use App\Models\RetailStore;
-use App\Models\User;
 use App\Services\OrganizationContext;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -28,7 +27,7 @@ class FeedbackResource extends Resource
 
     protected static ?int $navigationSort = 10;
 
-    protected static?string $navigationLabel = 'All Feedback';
+    protected static ?string $navigationLabel = 'All Feedback';
 
     public static function getNavigationBadge(): ?string
     {
@@ -71,7 +70,7 @@ class FeedbackResource extends Resource
                             ->searchable()
                             ->getSearchResultsUsing(function (string $search, Forms\Get $get) {
                                 $type = $get('feedbackable_type');
-                                if (!$type) {
+                                if (! $type) {
                                     return [];
                                 }
 
@@ -104,7 +103,7 @@ class FeedbackResource extends Resource
                             })
                             ->getOptionLabelUsing(function ($value, Forms\Get $get) {
                                 $type = $get('feedbackable_type');
-                                if (!$type || !$value) {
+                                if (! $type || ! $value) {
                                     return '';
                                 }
 
@@ -114,6 +113,7 @@ class FeedbackResource extends Resource
 
                                 if ($type === BulkOrderInquiry::class) {
                                     $item = BulkOrderInquiry::find($value);
+
                                     return $item ? "{$item->company_name} ({$item->name})" : '';
                                 }
 
@@ -367,7 +367,7 @@ class FeedbackResource extends Resource
                 Tables\Actions\Action::make('resolve')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
-                    ->visible(fn (Feedback $record) => !$record->is_resolved)
+                    ->visible(fn (Feedback $record) => ! $record->is_resolved)
                     ->requiresConfirmation()
                     ->action(fn (Feedback $record) => $record->markResolved()),
 

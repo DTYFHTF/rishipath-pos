@@ -39,8 +39,8 @@ class SupplierLedgerExport implements FromArray, ShouldAutoSize, WithHeadings, W
     {
         return [
             ['Supplier Ledger Statement'],
-            ['Supplier: ' . $this->supplierData['name']],
-            ['Period: ' . ($this->startDate ?? 'N/A') . ' to ' . ($this->endDate ?? 'N/A')],
+            ['Supplier: '.$this->supplierData['name']],
+            ['Period: '.($this->startDate ?? 'N/A').' to '.($this->endDate ?? 'N/A')],
             [],
             ['Date', 'Reference', 'Description', 'Type', 'Paid (₹)', 'Payable (₹)', 'Balance (₹)', 'Status'],
         ];

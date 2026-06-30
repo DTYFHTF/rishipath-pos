@@ -57,11 +57,11 @@ class PurchaseReturn extends Model
         if ($storeId) {
             $store = Store::find($storeId);
             if ($store && $store->code) {
-                $prefix = $store->code . '-RET';
+                $prefix = $store->code.'-RET';
             }
         }
 
-        $lastReturn = self::where('return_number', 'like', $prefix . '%')
+        $lastReturn = self::where('return_number', 'like', $prefix.'%')
             ->orderByDesc('id')
             ->first();
 
@@ -71,7 +71,7 @@ class PurchaseReturn extends Model
             $lastNumber = (int) ($matches[1] ?? 0);
         }
 
-        return $prefix . '-' . str_pad($lastNumber + 1, 6, '0', STR_PAD_LEFT);
+        return $prefix.'-'.str_pad($lastNumber + 1, 6, '0', STR_PAD_LEFT);
     }
 
     public function organization(): BelongsTo

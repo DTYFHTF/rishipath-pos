@@ -21,11 +21,11 @@ class CategoryResource extends Resource
     {
         return $form
             ->schema([
-                                Forms\Components\Select::make('organization_id')
-                                    ->relationship('organization', 'name')
-                                    ->default(fn () => OrganizationContext::getCurrentOrganizationId() ?? auth()->user()?->organization_id)
-                                    ->required()
-                                    ->hidden(),
+                Forms\Components\Select::make('organization_id')
+                    ->relationship('organization', 'name')
+                    ->default(fn () => OrganizationContext::getCurrentOrganizationId() ?? auth()->user()?->organization_id)
+                    ->required()
+                    ->hidden(),
                 Forms\Components\TextInput::make('name')
                     ->required()
                     ->maxLength(255)
@@ -44,9 +44,10 @@ class CategoryResource extends Resource
     {
         return $table
             ->modifyQueryUsing(function ($query) {
-                $orgId = OrganizationContext::getCurrentOrganizationId() 
-                    ?? auth()->user()?->organization_id 
+                $orgId = OrganizationContext::getCurrentOrganizationId()
+                    ?? auth()->user()?->organization_id
                     ?? 1;
+
                 return $query->where('organization_id', $orgId);
             })
             ->columns([

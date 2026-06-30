@@ -125,12 +125,12 @@ class MandatoryPackVariantSeeder extends Seeder
 
     private function generateUniqueSku(Product $product, float|int $packSize, string $unit): string
     {
-        $base = strtoupper(($product->sku ?? 'PROD') . '-' . $packSize . $unit);
+        $base = strtoupper(($product->sku ?? 'PROD').'-'.$packSize.$unit);
         $candidate = $base;
         $suffix = 1;
 
         while (ProductVariant::query()->where('sku', $candidate)->exists()) {
-            $candidate = $base . '-' . $suffix;
+            $candidate = $base.'-'.$suffix;
             $suffix++;
         }
 

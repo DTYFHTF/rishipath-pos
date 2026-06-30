@@ -82,11 +82,12 @@ class PriceListPage extends Page
         // Discard any cache written by an older code version (missing keys).
         if (($data['version'] ?? 0) !== self::CACHE_VERSION) {
             Storage::delete(self::CACHE_FILE);
+
             return;
         }
 
         $this->generatedAt = $data['generated_at'] ?? null;
-        $this->priceList   = $data['price_list'] ?? [];
+        $this->priceList = $data['price_list'] ?? [];
 
         if ($this->generatedAt) {
             $age = now()->diffInHours($this->generatedAt);
@@ -134,7 +135,7 @@ class PriceListPage extends Page
 
                 $displayName = $product->name;
                 if (! empty($nameParts)) {
-                    $displayName .= ' (' . implode(' / ', $nameParts) . ')';
+                    $displayName .= ' ('.implode(' / ', $nameParts).')';
                 }
 
                 $variantMeta = $displayVariants
@@ -179,7 +180,7 @@ class PriceListPage extends Page
                     $packGrams = $this->toGrams((float) $variant->pack_size, (string) $variant->unit);
                     $packCode = $this->packCode($packGrams);
 
-                    $rowKey = $product->id . ':' . $variant->id;
+                    $rowKey = $product->id.':'.$variant->id;
                     $previous = $previousIndex[$rowKey] ?? null;
                     $priceChanged = $previous
                         && ((float) $previous['mrp'] !== $mrp
@@ -224,13 +225,13 @@ class PriceListPage extends Page
         $this->isStale = false;
 
         Storage::makeDirectory('price-lists');
-        Storage::put(self::CACHE_FILE, json_encode([            'version'      => self::CACHE_VERSION,            'generated_at' => $this->generatedAt,
+        Storage::put(self::CACHE_FILE, json_encode(['version' => self::CACHE_VERSION,            'generated_at' => $this->generatedAt,
             'price_list' => $priceList,
         ]));
 
         Notification::make()
             ->title('Price list generated successfully')
-            ->body($this->getChangedPriceCount() . ' variants changed since last generation')
+            ->body($this->getChangedPriceCount().' variants changed since last generation')
             ->success()
             ->send();
     }
@@ -268,7 +269,7 @@ class PriceListPage extends Page
             }
         }
 
-        $filename = 'price-list-' . date('Y-m-d') . '.xlsx';
+        $filename = 'price-list-'.date('Y-m-d').'.xlsx';
 
         return Excel::download(new PriceListExport(
             $rows,
@@ -349,6 +350,7 @@ class PriceListPage extends Page
             ->groupBy('product_id')
             ->filter(function ($rows) {
                 $missing = $rows->first()['missing_mandatory_packs'] ?? [];
+
                 return ! empty($missing);
             })
             ->count();
@@ -417,7 +419,7 @@ class PriceListPage extends Page
             default => $normalizedUnit,
         };
 
-        return $displaySize . ' ' . $displayUnit;
+        return $displaySize.' '.$displayUnit;
     }
 
     private function variantSizeKey($variant): string
@@ -425,13 +427,13 @@ class PriceListPage extends Page
         $grams = $this->toGrams((float) $variant->pack_size, (string) $variant->unit);
 
         if ($grams !== null) {
-            return 'GRAMS:' . number_format($grams, 3, '.', '');
+            return 'GRAMS:'.number_format($grams, 3, '.', '');
         }
 
         $normalizedUnit = strtoupper(trim((string) $variant->unit));
         $size = number_format((float) $variant->pack_size, 3, '.', '');
 
-        return $normalizedUnit . ':' . $size;
+        return $normalizedUnit.':'.$size;
     }
 
     private function packCode(?float $grams): string
@@ -443,11 +445,11 @@ class PriceListPage extends Page
         $key = (int) round($grams);
 
         if ($key > 0 && $key < 1000) {
-            return $key . 'g';
+            return $key.'g';
         }
 
         if ($key > 1000) {
-            return rtrim(rtrim(number_format($key / 1000, 2, '.', ''), '0'), '.') . 'kg';
+            return rtrim(rtrim(number_format($key / 1000, 2, '.', ''), '0'), '.').'kg';
         }
 
         return match ($key) {

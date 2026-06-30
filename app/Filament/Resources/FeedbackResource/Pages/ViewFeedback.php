@@ -40,7 +40,7 @@ class ViewFeedback extends ViewRecord
             Actions\Action::make('resolve')
                 ->icon('heroicon-o-check-circle')
                 ->color('success')
-                ->visible(fn () => !$this->record->is_resolved)
+                ->visible(fn () => ! $this->record->is_resolved)
                 ->requiresConfirmation()
                 ->action(function () {
                     $this->record->markResolved();
@@ -160,14 +160,15 @@ class ViewFeedback extends ViewRecord
                             ->formatStateUsing(function ($state) {
                                 if (is_array($state)) {
                                     return collect($state)->map(function ($file) {
-                                        return "<a href='/storage/{$file}' target='_blank' class='text-primary-600 hover:underline'>" . basename($file) . "</a>";
+                                        return "<a href='/storage/{$file}' target='_blank' class='text-primary-600 hover:underline'>".basename($file).'</a>';
                                     })->join('<br>');
                                 }
+
                                 return '—';
                             })
                             ->html(),
                     ])
-                    ->visible(fn () => !empty($this->record->attachments)),
+                    ->visible(fn () => ! empty($this->record->attachments)),
 
                 Infolists\Components\Section::make("Replies ({$this->record->replies->count()})")
                     ->schema([

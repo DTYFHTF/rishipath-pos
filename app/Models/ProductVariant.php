@@ -3,14 +3,15 @@
 namespace App\Models;
 
 use App\Services\PricingService;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class ProductVariant extends Model
 {
     use HasFactory;
+
     protected $fillable = [
         'product_id',
         'sku',
@@ -81,13 +82,13 @@ class ProductVariant extends Model
         ?string $unit
     ): string {
         $base = $productSku ?? 'PROD';
-        
+
         // Format size (remove decimals if whole number)
         $size = is_numeric($packSize) ? (int) $packSize : $packSize;
-        
+
         // Abbreviate unit
         $unitCode = static::abbreviateUnit($unit ?? 'PCS');
-        
+
         return strtoupper("{$base}-{$size}{$unitCode}");
     }
 
@@ -105,6 +106,7 @@ class ProductVariant extends Model
         ];
 
         $upper = strtoupper($unit);
+
         return $map[$upper] ?? substr($upper, 0, 2);
     }
 
@@ -135,9 +137,9 @@ class ProductVariant extends Model
      */
     protected static function generateSkuFromVariant(ProductVariant $variant): string
     {
-        $productSku = $variant->product?->sku ?? 
+        $productSku = $variant->product?->sku ??
             Product::find($variant->product_id)?->sku;
-        
+
         return static::generateVariantSku(
             $productSku,
             $variant->pack_size,
@@ -188,6 +190,7 @@ class ProductVariant extends Model
     public function getFormattedPrice(?\App\Models\Organization $organization = null, int $decimals = 2): string
     {
         $price = $this->getSellingPrice($organization);
+
         return \App\Services\PricingService::formatPrice($price, $organization, $decimals);
     }
 }

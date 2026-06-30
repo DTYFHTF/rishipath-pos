@@ -21,6 +21,7 @@ class CustomerLedgerReport extends Page implements HasForms
         'customer_id' => ['except' => null],
         'show_transactions' => ['except' => false],
     ];
+
     protected static ?string $navigationIcon = 'heroicon-o-book-open';
 
     protected static ?string $navigationGroup = 'Reports';
@@ -44,7 +45,7 @@ class CustomerLedgerReport extends Page implements HasForms
     public $customerData = null;
 
     public $summary = [];
-    
+
     public bool $show_transactions = false;
 
     public $transactions = [];
@@ -53,14 +54,14 @@ class CustomerLedgerReport extends Page implements HasForms
     {
         // Get customer_id from URL query parameter
         $customerId = request()->query('customer_id');
-        
+
         $this->form->fill([
             'customer_id' => $customerId,
             'show_transactions' => request()->query('show_transactions') ? true : false,
             'start_date' => now()->startOfMonth()->format('Y-m-d'),
             'end_date' => now()->addDay()->format('Y-m-d'),
         ]);
-        
+
         // If customer_id is provided, automatically load the ledger
         if ($customerId) {
             $this->customer_id = $customerId;
@@ -254,15 +255,15 @@ class CustomerLedgerReport extends Page implements HasForms
 
         // Load transactions (sales) if requested
         $this->transactions = [];
-        if (!empty($this->show_transactions)) {
+        if (! empty($this->show_transactions)) {
             $salesQuery = \App\Models\Sale::where('customer_id', $this->customer_id)
                 ->orderBy('created_at', 'desc');
 
             if ($this->start_date && $this->end_date) {
                 // Filter by created_at since 'date' column may be null for some sales
                 $salesQuery->whereBetween('created_at', [
-                    $this->start_date . ' 00:00:00',
-                    $this->end_date . ' 23:59:59'
+                    $this->start_date.' 00:00:00',
+                    $this->end_date.' 23:59:59',
                 ]);
             }
 
@@ -299,10 +300,10 @@ class CustomerLedgerReport extends Page implements HasForms
             'endDate' => $this->end_date,
         ]);
 
-        $filename = 'customer-ledger-' . str_replace(' ', '-', strtolower($this->customerData['name'])) . '-' . now()->format('Y-m-d') . '.pdf';
+        $filename = 'customer-ledger-'.str_replace(' ', '-', strtolower($this->customerData['name'])).'-'.now()->format('Y-m-d').'.pdf';
 
         return response()->streamDownload(
-            fn () => print($pdf->output()),
+            fn () => print ($pdf->output()),
             $filename
         );
     }
@@ -326,7 +327,7 @@ class CustomerLedgerReport extends Page implements HasForms
             $this->end_date
         );
 
-        $filename = 'customer-ledger-' . str_replace(' ', '-', strtolower($this->customerData['name'])) . '-' . now()->format('Y-m-d') . '.xlsx';
+        $filename = 'customer-ledger-'.str_replace(' ', '-', strtolower($this->customerData['name'])).'-'.now()->format('Y-m-d').'.xlsx';
 
         return \Maatwebsite\Excel\Facades\Excel::download($export, $filename);
     }

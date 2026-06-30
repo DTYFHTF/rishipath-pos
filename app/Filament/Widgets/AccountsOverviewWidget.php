@@ -5,7 +5,6 @@ namespace App\Filament\Widgets;
 use App\Models\Customer;
 use App\Models\CustomerLedgerEntry;
 use App\Models\Supplier;
-use App\Models\SupplierLedgerEntry;
 use App\Services\OrganizationContext;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -54,19 +53,19 @@ class AccountsOverviewWidget extends BaseWidget
         $netPosition = $totalReceivables - $totalPayables;
 
         return [
-            Stat::make('Total Receivables', '₹' . number_format($totalReceivables, 2))
-                ->description($overdueReceivables > 0 ? number_format($overdueReceivables, 2) . ' overdue' : 'All current')
+            Stat::make('Total Receivables', '₹'.number_format($totalReceivables, 2))
+                ->description($overdueReceivables > 0 ? number_format($overdueReceivables, 2).' overdue' : 'All current')
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
                 ->color($overdueReceivables > 0 ? 'warning' : 'success')
                 ->chart([7, 4, 5, 2, 3, 4, 5]),
 
-            Stat::make('Total Payables', '₹' . number_format($totalPayables, 2))
-                ->description($overduePayables > 0 ? number_format($overduePayables, 2) . ' overdue' : 'All current')
+            Stat::make('Total Payables', '₹'.number_format($totalPayables, 2))
+                ->description($overduePayables > 0 ? number_format($overduePayables, 2).' overdue' : 'All current')
                 ->descriptionIcon('heroicon-m-arrow-trending-down')
                 ->color($overduePayables > 0 ? 'danger' : 'info')
                 ->chart([3, 4, 5, 2, 1, 3, 4]),
 
-            Stat::make('Net Position', '₹' . number_format($netPosition, 2))
+            Stat::make('Net Position', '₹'.number_format($netPosition, 2))
                 ->description($netPosition > 0 ? 'Positive cash position' : 'Negative cash position')
                 ->descriptionIcon($netPosition > 0 ? 'heroicon-m-arrow-up' : 'heroicon-m-arrow-down')
                 ->color($netPosition > 0 ? 'success' : 'warning')

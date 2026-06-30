@@ -11,7 +11,6 @@ use App\Services\InvoiceService;
 use App\Services\OrganizationContext;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -219,7 +218,7 @@ class BulkOrderInquiryResource extends Resource
                                     ->minValue(BulkOrderInquiry::MIN_QUANTITY)
                                     ->default(BulkOrderInquiry::MIN_QUANTITY)
                                     ->suffix('units')
-                                    ->helperText('Min: ' . BulkOrderInquiry::MIN_QUANTITY)
+                                    ->helperText('Min: '.BulkOrderInquiry::MIN_QUANTITY)
                                     ->columnSpan(1),
 
                                 Forms\Components\TextInput::make('unit_price')
@@ -457,14 +456,15 @@ class BulkOrderInquiryResource extends Resource
                             foreach ($quotations as $q) {
                                 $html .= '<div class="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">';
                                 $html .= '<div class="flex justify-between items-center">';
-                                $html .= '<span class="font-semibold">' . e($q->invoice_number) . '</span>';
-                                $html .= '<span class="text-sm px-2 py-1 rounded bg-primary-100 text-primary-700 dark:bg-primary-800 dark:text-primary-300">' . e(ucfirst($q->status)) . '</span>';
+                                $html .= '<span class="font-semibold">'.e($q->invoice_number).'</span>';
+                                $html .= '<span class="text-sm px-2 py-1 rounded bg-primary-100 text-primary-700 dark:bg-primary-800 dark:text-primary-300">'.e(ucfirst($q->status)).'</span>';
                                 $html .= '</div>';
-                                $html .= '<div class="text-sm text-gray-500 mt-1">Total: Rs. ' . number_format($q->total_amount, 2) . ' | Items: ' . $q->lines->count() . '</div>';
-                                $html .= '<div class="text-xs text-gray-400 mt-1">Created: ' . $q->created_at->format('M d, Y') . '</div>';
+                                $html .= '<div class="text-sm text-gray-500 mt-1">Total: Rs. '.number_format($q->total_amount, 2).' | Items: '.$q->lines->count().'</div>';
+                                $html .= '<div class="text-xs text-gray-400 mt-1">Created: '.$q->created_at->format('M d, Y').'</div>';
                                 $html .= '</div>';
                             }
                             $html .= '</div>';
+
                             return new \Illuminate\Support\HtmlString($html);
                         })
                         ->modalSubmitAction(false)

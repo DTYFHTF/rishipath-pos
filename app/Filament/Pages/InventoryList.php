@@ -6,15 +6,12 @@ use App\Models\InventoryMovement;
 use App\Models\ProductVariant;
 use App\Models\StockLevel;
 use App\Models\Store;
-use App\Services\InventoryService;
 use App\Services\PricingService;
 use App\Services\StoreContext;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Schema;
 
 class InventoryList extends Page implements HasForms
 {
@@ -67,19 +64,19 @@ class InventoryList extends Page implements HasForms
     {
         // Get store with actual stock, prioritizing current organization
         $storeId = StoreContext::getCurrentStoreId();
-        
-        if (!$storeId) {
+
+        if (! $storeId) {
             $orgId = auth()->user()->organization_id;
             $storeId = Store::where('organization_id', $orgId)
                 ->whereHas('stockLevels')
                 ->first()?->id;
         }
-        
+
         // Fallback to any store with stock
-        if (!$storeId) {
+        if (! $storeId) {
             $storeId = Store::whereHas('stockLevels')->first()?->id;
         }
-        
+
         $this->storeId = $storeId ?? Store::first()?->id;
     }
 

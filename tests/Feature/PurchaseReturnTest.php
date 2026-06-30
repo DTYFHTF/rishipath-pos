@@ -2,19 +2,18 @@
 
 namespace Tests\Feature;
 
+use App\Models\InventoryMovement;
 use App\Models\Organization;
 use App\Models\Product;
 use App\Models\ProductBatch;
+use App\Models\ProductVariant;
 use App\Models\Purchase;
 use App\Models\PurchaseItem;
-use App\Models\PurchaseReturn;
-use App\Models\ProductVariant;
+use App\Models\StockLevel;
 use App\Models\Store;
 use App\Models\Supplier;
 use App\Models\SupplierLedgerEntry;
 use App\Models\User;
-use App\Models\StockLevel;
-use App\Models\InventoryMovement;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -23,10 +22,15 @@ class PurchaseReturnTest extends TestCase
     use RefreshDatabase;
 
     private Organization $organization;
+
     private User $user;
+
     private Store $store;
+
     private Supplier $supplier;
+
     private ProductVariant $variant1;
+
     private ProductVariant $variant2;
 
     protected function setUp(): void
@@ -38,11 +42,11 @@ class PurchaseReturnTest extends TestCase
         $this->user = User::factory()->create(['organization_id' => $this->organization->id]);
         $this->store = Store::factory()->create(['organization_id' => $this->organization->id]);
         $this->supplier = Supplier::factory()->create(['organization_id' => $this->organization->id]);
-        
+
         // Create product variants for testing (must create products with our organization first)
         $product1 = Product::factory()->create(['organization_id' => $this->organization->id]);
         $product2 = Product::factory()->create(['organization_id' => $this->organization->id]);
-        
+
         $this->variant1 = ProductVariant::factory()->create(['product_id' => $product1->id]);
         $this->variant2 = ProductVariant::factory()->create(['product_id' => $product2->id]);
 
@@ -88,7 +92,7 @@ class PurchaseReturnTest extends TestCase
 
         // Process return
         $returns = $purchase->processReturn([
-            $purchase->items->first()->id => 20
+            $purchase->items->first()->id => 20,
         ], 'Defective', 'Test return notes');
 
         // Verify return records created
@@ -160,7 +164,7 @@ class PurchaseReturnTest extends TestCase
         $this->expectExceptionMessage('Cannot return 60 units');
 
         $purchase->processReturn([
-            $purchase->items->first()->id => 60
+            $purchase->items->first()->id => 60,
         ], 'Defective');
     }
 
@@ -193,7 +197,7 @@ class PurchaseReturnTest extends TestCase
 
         // First return: 70 units
         $purchase->processReturn([
-            $purchase->items->first()->id => 70
+            $purchase->items->first()->id => 70,
         ], 'Defective');
 
         // Second return: Try to return 40 more (total would be 110, exceeds 100)
@@ -201,7 +205,7 @@ class PurchaseReturnTest extends TestCase
         $this->expectExceptionMessage('Only 30 units available for return');
 
         $purchase->processReturn([
-            $purchase->items->first()->id => 40
+            $purchase->items->first()->id => 40,
         ], 'Damaged');
     }
 
@@ -251,7 +255,7 @@ class PurchaseReturnTest extends TestCase
         // Now we have 80 total units (50 + 30)
         // Return 60 units - should take 50 from first batch, 10 from second
         $returns = $purchase->processReturn([
-            $purchase->items->first()->id => 60
+            $purchase->items->first()->id => 60,
         ], 'Overstocked');
 
         // Should create 2 return records (one per batch)
@@ -363,7 +367,7 @@ class PurchaseReturnTest extends TestCase
         $purchase->receive();
 
         $returns = $purchase->processReturn([
-            $purchase->items->first()->id => 10
+            $purchase->items->first()->id => 10,
         ], 'Test');
 
         $returnRecord = $returns[0];

@@ -109,8 +109,8 @@ class PricingService
     public static function getSellingPrice(ProductVariant $variant, ?Organization $organization = null): float
     {
         $organization = $organization ?? self::getCurrentOrganization();
-        
-        if (!$organization) {
+
+        if (! $organization) {
             // Fallback if no organization context
             return $variant->selling_price_nepal ?? $variant->base_price ?? 0;
         }
@@ -128,8 +128,8 @@ class PricingService
     public static function getPriceFieldName(?Organization $organization = null): string
     {
         $organization = $organization ?? self::getCurrentOrganization();
-        
-        if (!$organization) {
+
+        if (! $organization) {
             return 'selling_price_nepal'; // Default fallback
         }
 
@@ -146,8 +146,8 @@ class PricingService
     public static function getCurrencySymbol(?Organization $organization = null): string
     {
         $organization = $organization ?? self::getCurrentOrganization();
-        
-        if (!$organization) {
+
+        if (! $organization) {
             return '₹'; // Default fallback
         }
 
@@ -159,7 +159,7 @@ class PricingService
                 'USD' => '$',
                 'EUR' => '€',
                 'GBP' => '£',
-                default => $organization->currency . ' ',
+                default => $organization->currency.' ',
             };
         }
 
@@ -176,8 +176,8 @@ class PricingService
     public static function getCurrencyCode(?Organization $organization = null): string
     {
         $organization = $organization ?? self::getCurrentOrganization();
-        
-        if (!$organization) {
+
+        if (! $organization) {
             return 'NPR'; // Default fallback
         }
 
@@ -199,7 +199,8 @@ class PricingService
     public static function formatPrice(float $price, ?Organization $organization = null, int $decimals = 2): string
     {
         $symbol = self::getCurrencySymbol($organization);
-        return $symbol . number_format($price, $decimals);
+
+        return $symbol.number_format($price, $decimals);
     }
 
     /**
@@ -230,7 +231,7 @@ class PricingService
     {
         // Check for store-specific custom pricing first
         $storePricing = $variant->storePricing()->where('store_id', $storeId)->first();
-        
+
         if ($storePricing && $storePricing->custom_price) {
             return $storePricing->custom_price;
         }
