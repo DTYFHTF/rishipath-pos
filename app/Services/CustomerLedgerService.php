@@ -44,9 +44,12 @@ class CustomerLedgerService
      */
     protected function allocatePaymentToSales(Customer $customer, float $amount): void
     {
+        // Credit sales are recorded as 'receivable' entries (see
+        // CustomerLedgerEntry::createSaleEntry). Historical/backfilled data may
+        // use 'sale', so match both.
         $pendingEntries = CustomerLedgerEntry::forCustomer($customer->id)
             ->where('status', 'pending')
-            ->where('entry_type', 'sale')
+            ->whereIn('entry_type', ['receivable', 'sale'])
             ->orderBy('transaction_date', 'asc')
             ->get();
 
@@ -58,13 +61,32 @@ class CustomerLedgerService
             }
 
             if ($remainingAmount >= $entry->debit_amount) {
-                // Full payment
+                // Full payment — close the receivable and mark the linked sale paid
                 $entry->update(['status' => 'completed']);
+                $this->markSalePaid($entry);
                 $remainingAmount -= $entry->debit_amount;
             } else {
                 // Partial payment - still pending
                 $remainingAmount = 0;
             }
+        }
+    }
+
+    /**
+     * When a receivable ledger entry is fully settled, flip the originating
+     * sale to "paid" so it counts toward revenue reports.
+     */
+    protected function markSalePaid(CustomerLedgerEntry $entry): void
+    {
+        if ($entry->reference_type !== 'Sale' || ! $entry->reference_id) {
+            return;
+        }
+
+        $sale = Sale::find($entry->reference_id);
+        if ($sale && $sale->payment_status !== 'paid') {
+            $sale->payment_status = 'paid';
+            $sale->amount_paid = $sale->total_amount;
+            $sale->saveQuietly();
         }
     }
 
@@ -124,7 +146,7 @@ class CustomerLedgerService
     {
         $entries = CustomerLedgerEntry::forCustomer($customerId)
             ->where('status', 'pending')
-            ->where('entry_type', 'sale')
+            ->whereIn('entry_type', ['receivable', 'sale'])
             ->get();
 
         $aging = [
