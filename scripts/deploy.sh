@@ -22,11 +22,7 @@ if [[ "${1:-}" != "--post-pull" ]]; then
 
   echo "$LOG === Deploy started (phase 1: pull) ==="
 
-  # Set authenticated remote if GH_PAT provided
-  if [ -n "${GH_PAT:-}" ]; then
-    git -C "$BASE" remote set-url origin "https://${GH_PAT}@github.com/DTYFHTF/rishipath-pos.git"
-  fi
-
+  # Repo is public — no credentials needed to fetch/pull.
   git -C "$BASE" fetch --prune origin "$DEPLOY_BRANCH"
   git -C "$BASE" reset --hard "origin/$DEPLOY_BRANCH"
 

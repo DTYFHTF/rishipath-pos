@@ -1,6 +1,13 @@
 <?php
 
+use App\Http\Controllers\DeployWebhookController;
 use Illuminate\Support\Facades\Route;
+
+// GitHub Actions deploy webhooks (no CSRF; verified via X-Hub-Signature-256 HMAC)
+Route::post('/webhook/deploy', [DeployWebhookController::class, 'deploy'])
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class]);
+Route::post('/webhook/assets', [DeployWebhookController::class, 'assets'])
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class]);
 
 Route::get('/', function () {
     return view('welcome');
