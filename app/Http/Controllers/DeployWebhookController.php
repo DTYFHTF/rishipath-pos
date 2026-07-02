@@ -78,7 +78,7 @@ class DeployWebhookController extends Controller
 
     private function verifySignature(Request $request): bool
     {
-        $secret = env('DEPLOY_WEBHOOK_SECRET', '');
+        $secret = config('services.deploy_webhook.secret', '');
 
         if (empty($secret)) {
             Log::error('deploy-webhook: DEPLOY_WEBHOOK_SECRET not configured');

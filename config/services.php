@@ -45,4 +45,8 @@ return [
         'api_key' => env('GOOGLE_MAPS_API_KEY'),
     ],
 
+    'deploy_webhook' => [
+        'secret' => env('DEPLOY_WEBHOOK_SECRET'),
+    ],
+
 ];
