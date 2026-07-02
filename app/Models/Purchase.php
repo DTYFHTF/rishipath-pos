@@ -15,6 +15,15 @@ class Purchase extends Model
 {
     use HasFactory;
 
+    /**
+     * Guards against re-entrant receive() calls: receive() sets status to
+     * 'received' and saves, which fires the `updated` hook's auto-receive
+     * check below — without this guard, that check calls receive() again
+     * (infinitely, if no batches end up created, e.g. quantity_received
+     * was already fully set before receive() ran).
+     */
+    protected bool $isReceiving = false;
+
     protected $fillable = [
         'organization_id',
         'store_id',
@@ -68,7 +77,8 @@ class Purchase extends Model
 
         static::updated(function ($purchase) {
             // Auto-receive when status changes to 'received' and no batches exist yet
-            if ($purchase->status === 'received' &&
+            if (! $purchase->isReceiving &&
+                $purchase->status === 'received' &&
                 $purchase->wasChanged('status') &&
                 $purchase->batches()->count() === 0) {
                 $purchase->receive();
@@ -191,6 +201,21 @@ class Purchase extends Model
      * This is the PRIMARY entry point for inventory - creates ProductBatches with full traceability.
      */
     public function receive(?int $quantity = null, ?int $userId = null): void
+    {
+        if ($this->isReceiving) {
+            return;
+        }
+
+        $this->isReceiving = true;
+
+        try {
+            $this->doReceive($quantity, $userId);
+        } finally {
+            $this->isReceiving = false;
+        }
+    }
+
+    private function doReceive(?int $quantity, ?int $userId): void
     {
         DB::transaction(function () use ($quantity, $userId) {
             foreach ($this->items as $item) {
@@ -350,11 +375,21 @@ class Purchase extends Model
      * @param  array<int, int>  $returnItems  Map of purchase_item_id => quantity_to_return
      * @return array<int, array{quantity_returned: int, return_amount: float}>
      */
-    public function processReturn(array $returnItems, string $reason, ?string $notes): array
+    /**
+     * Process a return for one or more purchase items, allocating the
+     * returned quantity across that item's batches FIFO (oldest first).
+     * Creates one PurchaseReturn record per batch touched.
+     *
+     * @param  array<int, int>  $returnItems  purchase_item_id => quantity
+     * @return PurchaseReturn[]
+     */
+    public function processReturn(array $returnItems, string $reason, ?string $notes = null): array
     {
         $processed = [];
 
         DB::transaction(function () use ($returnItems, $reason, $notes, &$processed) {
+            $totalReturnAmount = 0.0;
+
             foreach ($returnItems as $itemId => $qty) {
                 $qty = (int) $qty;
                 if ($qty <= 0) {
@@ -366,35 +401,85 @@ class Purchase extends Model
                     throw new \InvalidArgumentException("Purchase item #{$itemId} not found.");
                 }
 
-                $maxReturnable = $item->quantity_received ?? $item->quantity_ordered;
-                if ($qty > $maxReturnable) {
+                $batches = ProductBatch::where('purchase_id', $this->id)
+                    ->where('product_variant_id', $item->product_variant_id)
+                    ->orderBy('created_at')
+                    ->lockForUpdate()
+                    ->get();
+
+                $available = (int) $batches->sum('quantity_remaining');
+                if ($qty > $available) {
                     throw new \InvalidArgumentException(
-                        "Cannot return {$qty} units of {$item->product_name}. Only {$maxReturnable} received."
+                        "Cannot return {$qty} units of {$item->product_name}. Only {$available} units available for return."
                     );
                 }
 
                 $unitCost = (float) $item->unit_cost;
-                $returnAmount = round($unitCost * $qty, 2);
+                $remainingToReturn = $qty;
 
-                $return = PurchaseReturn::create([
-                    'organization_id' => $this->organization_id,
-                    'purchase_id' => $this->id,
-                    'purchase_item_id' => $item->id,
-                    'product_variant_id' => $item->product_variant_id,
-                    'batch_id' => $item->batch_id,
-                    'store_id' => $this->store_id,
-                    'quantity_returned' => $qty,
-                    'unit_cost' => $unitCost,
-                    'return_amount' => $returnAmount,
-                    'reason' => $reason,
-                    'notes' => $notes,
-                    'status' => 'pending',
-                ]);
+                foreach ($batches as $batch) {
+                    if ($remainingToReturn <= 0) {
+                        break;
+                    }
+                    if ($batch->quantity_remaining <= 0) {
+                        continue;
+                    }
 
-                $processed[] = [
-                    'quantity_returned' => $return->quantity_returned,
-                    'return_amount' => $return->return_amount,
-                ];
+                    $take = min($remainingToReturn, $batch->quantity_remaining);
+                    $returnAmount = round($unitCost * $take, 2);
+
+                    $stockBefore = (int) (StockLevel::where('product_variant_id', $item->product_variant_id)
+                        ->where('store_id', $this->store_id)
+                        ->value('quantity') ?? 0);
+
+                    $batch->quantity_remaining -= $take;
+                    $batch->quantity_returned += $take;
+                    $batch->save(); // ProductBatchObserver re-syncs StockLevel from batches
+
+                    $return = PurchaseReturn::create([
+                        'organization_id' => $this->organization_id,
+                        'purchase_id' => $this->id,
+                        'purchase_item_id' => $item->id,
+                        'product_variant_id' => $item->product_variant_id,
+                        'batch_id' => $batch->id,
+                        'store_id' => $this->store_id,
+                        'quantity_returned' => $take,
+                        'unit_cost' => $unitCost,
+                        'return_amount' => $returnAmount,
+                        'reason' => $reason,
+                        'notes' => $notes,
+                        'status' => 'approved',
+                    ]);
+
+                    InventoryMovement::create([
+                        'organization_id' => $this->organization_id,
+                        'store_id' => $this->store_id,
+                        'product_variant_id' => $item->product_variant_id,
+                        'batch_id' => $batch->id,
+                        'type' => 'return',
+                        'quantity' => -$take,
+                        'unit' => $item->unit,
+                        'from_quantity' => $stockBefore,
+                        'to_quantity' => $stockBefore - $take,
+                        'reference_type' => 'PurchaseReturn',
+                        'reference_id' => $return->id,
+                        'cost_price' => $unitCost,
+                        'user_id' => Auth::id(),
+                        'notes' => "Return: {$reason}",
+                    ]);
+
+                    $processed[] = $return;
+                    $totalReturnAmount += $returnAmount;
+                    $remainingToReturn -= $take;
+                }
+            }
+
+            if ($totalReturnAmount > 0 && $this->supplier_id) {
+                SupplierLedgerEntry::createReturnEntry(
+                    $this,
+                    $totalReturnAmount,
+                    $notes ?? "Return ({$reason}) for {$this->purchase_number}"
+                );
             }
         });
 

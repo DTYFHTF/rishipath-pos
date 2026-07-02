@@ -40,7 +40,7 @@ class PurchaseReturnTest extends TestCase
         // Create test data
         $this->organization = Organization::factory()->create();
         $this->user = User::factory()->create(['organization_id' => $this->organization->id]);
-        $this->store = Store::factory()->create(['organization_id' => $this->organization->id]);
+        $this->store = Store::factory()->create(['organization_id' => $this->organization->id, 'code' => 'MAIN']);
         $this->supplier = Supplier::factory()->create(['organization_id' => $this->organization->id]);
 
         // Create product variants for testing (must create products with our organization first)
@@ -73,7 +73,6 @@ class PurchaseReturnTest extends TestCase
             'product_name' => 'Test Product 1',
             'product_sku' => 'TEST-001',
             'quantity_ordered' => 100,
-            'quantity_received' => 100,
             'unit_cost' => 10.00,
             'line_total' => 1000.00,
             'unit' => 'kg',
@@ -151,7 +150,6 @@ class PurchaseReturnTest extends TestCase
             'product_name' => 'Test Product 1',
             'product_sku' => 'TEST-001',
             'quantity_ordered' => 50,
-            'quantity_received' => 50,
             'unit_cost' => 10.00,
             'line_total' => 500.00,
             'unit' => 'kg',
@@ -187,7 +185,6 @@ class PurchaseReturnTest extends TestCase
             'product_name' => 'Test Product 1',
             'product_sku' => 'TEST-001',
             'quantity_ordered' => 100,
-            'quantity_received' => 100,
             'unit_cost' => 10.00,
             'line_total' => 1000.00,
             'unit' => 'kg',
@@ -229,7 +226,6 @@ class PurchaseReturnTest extends TestCase
             'product_name' => 'Test Product 1',
             'product_sku' => 'TEST-001',
             'quantity_ordered' => 50,
-            'quantity_received' => 50,
             'unit_cost' => 10.00,
             'line_total' => 500.00,
             'unit' => 'kg',
@@ -293,7 +289,6 @@ class PurchaseReturnTest extends TestCase
             'product_name' => 'Test Product 1',
             'product_sku' => 'TEST-001',
             'quantity_ordered' => 100,
-            'quantity_received' => 100,
             'unit_cost' => 10.00,
             'line_total' => 1000.00,
             'unit' => 'kg',
@@ -305,7 +300,6 @@ class PurchaseReturnTest extends TestCase
             'product_name' => 'Test Product 2',
             'product_sku' => 'TEST-002',
             'quantity_ordered' => 50,
-            'quantity_received' => 50,
             'unit_cost' => 20.00,
             'line_total' => 1000.00,
             'unit' => 'kg',
@@ -358,7 +352,6 @@ class PurchaseReturnTest extends TestCase
             'product_name' => 'Test Product 1',
             'product_sku' => 'TEST-001',
             'quantity_ordered' => 100,
-            'quantity_received' => 100,
             'unit_cost' => 10.00,
             'line_total' => 1000.00,
             'unit' => 'kg',
