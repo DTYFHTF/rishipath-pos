@@ -421,34 +421,6 @@
                                     </div>
                                 @endif
                                 
-                                {{-- Wholesale / bulk discount (auto-armed at 7kg or ₹7000; % is editable) --}}
-                                @if(!empty($session['wholesale_eligible']))
-                                    <div class="rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-sm">
-                                        <div class="flex justify-between items-center">
-                                            <span class="font-medium text-amber-800 dark:text-amber-300">
-                                                📦 Bulk order ({{ number_format($session['cart_weight_kg'] ?? 0, 2) }} kg)
-                                            </span>
-                                            <button type="button" wire:click="toggleWholesale"
-                                                class="text-xs px-2 py-0.5 rounded-full font-semibold {{ ($session['wholesale_enabled'] ?? true) ? 'bg-amber-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300' }}">
-                                                {{ ($session['wholesale_enabled'] ?? true) ? 'Applied' : 'Off' }}
-                                            </button>
-                                        </div>
-                                        @if($session['wholesale_enabled'] ?? true)
-                                            <div class="flex justify-between items-center mt-1.5">
-                                                <div class="flex items-center gap-1 text-amber-800 dark:text-amber-300">
-                                                    <span>Discount off MRP:</span>
-                                                    <input type="number" min="0" max="100" step="0.5"
-                                                        value="{{ $session['wholesale_pct'] ?? 15 }}"
-                                                        wire:change="setWholesalePct($event.target.value)"
-                                                        class="w-14 text-right rounded border-amber-300 dark:border-amber-700 bg-white dark:bg-gray-800 px-1 py-0.5 text-sm" />
-                                                    <span>%</span>
-                                                </div>
-                                                <span class="font-semibold text-amber-800 dark:text-amber-300">-₹{{ number_format($session['wholesale_discount'] ?? 0, 2) }}</span>
-                                            </div>
-                                        @endif
-                                    </div>
-                                @endif
-
                                 <div class="flex justify-between text-sm text-gray-600 dark:text-gray-400">
                                     <span>Tax:</span>
                                     <span class="font-medium">₹{{ number_format($session['tax'] ?? 0, 2) }}</span>

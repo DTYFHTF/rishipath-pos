@@ -8,6 +8,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      DEPLOY_BRANCH: ${{ github.ref_name }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -22,25 +24,25 @@ jobs:
           if [ -f package-lock.json ]; then npm ci; else npm install; fi
           npm run build
 
-      - name: Upload built assets to server
+      - name: Git pull + composer + migrate on server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          envs: GH_PAT
+          script_stop: true
+          script: bash ~/rishipath-pos/scripts/deploy.sh
         env:
-          DEPLOY_WEBHOOK_SECRET: ${{ secrets.DEPLOY_WEBHOOK_SECRET }}
-        run: |
-          tar -czf assets.tar.gz -C public build
-          SIG="sha256=$(openssl dgst -sha256 -hmac "$DEPLOY_WEBHOOK_SECRET" assets.tar.gz | awk '{print $2}')"
-          curl -f -s -X POST https://pos.shuddhidham.com/webhook/assets \
-            -H "Content-Type: application/octet-stream" \
-            -H "X-Hub-Signature-256: $SIG" \
-            --data-binary "@assets.tar.gz"
+          GH_PAT: ${{ secrets.GH_PAT }}
+          DEPLOY_BRANCH: ${{ github.ref_name }}
 
-      - name: Trigger server deploy
-        env:
-          DEPLOY_WEBHOOK_SECRET: ${{ secrets.DEPLOY_WEBHOOK_SECRET }}
-          BRANCH_REF: ${{ github.ref_name }}
-        run: |
-          BODY="{\"ref\":\"${BRANCH_REF}\"}"
-          SIG="sha256=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$DEPLOY_WEBHOOK_SECRET" | awk '{print $2}')"
-          curl -f -s -X POST https://pos.shuddhidham.com/webhook/deploy \
-            -H "Content-Type: application/json" \
-            -H "X-Hub-Signature-256: $SIG" \
-            -d "$BODY"
+      - name: Upload built assets to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "public/build"
+          target: "~/rishipath-pos/public/"
+          strip_components: 1

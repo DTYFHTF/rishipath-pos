@@ -54,7 +54,7 @@ class RolePermissionSeeder extends Seeder
             'transfer_stock',
             'view_stock_adjustments',
             'view_inventory_movements',
-
+            
             // Purchase Management
             'view_purchases',
             'create_purchases',
@@ -62,7 +62,7 @@ class RolePermissionSeeder extends Seeder
             'delete_purchases',
             'approve_purchases',
             'receive_purchases',
-
+            
             // Supplier Management
             'view_suppliers',
             'create_suppliers',
@@ -84,7 +84,7 @@ class RolePermissionSeeder extends Seeder
             'view_supplier_ledger',
             'export_reports',
             'email_reports',
-
+            
             // Loyalty Program
             'view_loyalty_program',
             'manage_loyalty_tiers',
@@ -240,10 +240,6 @@ class RolePermissionSeeder extends Seeder
                     // Products (view only)
                     'view_products',
                     'view_product_variants',
-
-                    // Inventory (stock lookup only)
-                    'view_inventory',
-                    'view_stock_levels',
 
                     // Customers
                     'view_customers',

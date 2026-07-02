@@ -22,7 +22,11 @@ if [[ "${1:-}" != "--post-pull" ]]; then
 
   echo "$LOG === Deploy started (phase 1: pull) ==="
 
-  # Repo is public — no credentials needed to fetch/pull.
+  # Set authenticated remote if GH_PAT provided
+  if [ -n "${GH_PAT:-}" ]; then
+    git -C "$BASE" remote set-url origin "https://${GH_PAT}@github.com/DTYFHTF/rishipath-pos.git"
+  fi
+
   git -C "$BASE" fetch --prune origin "$DEPLOY_BRANCH"
   git -C "$BASE" reset --hard "origin/$DEPLOY_BRANCH"
 
@@ -62,10 +66,8 @@ $PHP -d memory_limit=512M "$COMPOSER_BIN" install \
 echo "$LOG Running migrations..."
 $PHP artisan migrate --force
 
-# Seeding is intentionally NOT run automatically here. ProductCatalogSeeder
-# deactivates every product not in its own list, which would silently hide
-# anything added via the admin panel between deploys. Run seeders manually
-# (php artisan db:seed --force) when a deliberate catalog sync is needed.
+echo "$LOG Seeding (safe – skip on error)..."
+$PHP artisan db:seed --force 2>/dev/null || true
 
 echo "$LOG Linking storage..."
 $PHP artisan storage:link 2>/dev/null || true

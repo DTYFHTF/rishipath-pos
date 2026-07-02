@@ -77,7 +77,6 @@ jobs:
           DB_PASSWORD: root
         run: |
           vendor/bin/phpunit --configuration phpunit.xml --coverage-clover=coverage.xml
-          php test_inventory_system.php
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4

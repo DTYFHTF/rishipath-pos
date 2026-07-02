@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agent Panel — Manual Test Cases | Shuddhidham POS</title>
+  <style>
+    :root {
+      --brand: #2d6a4f;
+      --brand-light: #52b788;
+      --brand-pale: #d8f3dc;
+      --warn: #d97706;
+      --warn-pale: #fef3c7;
+      --danger: #dc2626;
+      --danger-pale: #fee2e2;
+      --pass: #16a34a;
+      --pass-pale: #dcfce7;
+      --info: #2563eb;
+      --info-pale: #dbeafe;
+      --neutral: #1e293b;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --surface: #f8fafc;
+      --font: 'Segoe UI', system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font); background: #f0f4f1; color: var(--neutral); line-height: 1.6; }
+
+    /* HEADER */
+    .page-header { background: var(--brand); color: #fff; padding: 36px 48px 28px; }
+    .page-header h1 { font-size: 1.9rem; font-weight: 700; }
+    .page-header .subtitle { opacity: .8; margin-top: 6px; font-size: .95rem; }
+    .meta { display: flex; gap: 28px; margin-top: 18px; font-size: .83rem; opacity: .75; flex-wrap: wrap; }
+
+    /* LAYOUT */
+    main { max-width: 1060px; margin: 0 auto; padding: 36px 20px 80px; display: flex; flex-direction: column; gap: 36px; }
+
+    /* SECTION */
+    section { background: #fff; border-radius: 12px; border: 1px solid var(--border); overflow: hidden; }
+    .sec-head { background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 26px; display: flex; align-items: center; gap: 10px; }
+    .sec-head h2 { font-size: 1.05rem; font-weight: 700; color: var(--brand); }
+    .sec-head .icon { font-size: 1.2rem; }
+    .sec-body { padding: 26px; }
+
+    /* CREDENTIALS BOX */
+    .creds { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+    .cred-card { border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; }
+    .cred-card h3 { font-size: .88rem; font-weight: 700; color: var(--brand); margin-bottom: 10px; text-transform: uppercase; letter-spacing: .04em; }
+    .cred-card table { width: 100%; font-size: .88rem; border-collapse: collapse; }
+    .cred-card td { padding: 4px 0; }
+    .cred-card td:first-child { color: var(--muted); width: 90px; }
+    .cred-card code { background: var(--surface); padding: 2px 7px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: .85rem; }
+
+    /* TEST CASE */
+    .test-suite { display: flex; flex-direction: column; gap: 20px; }
+    .tc { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .tc-head {
+      display: grid;
+      grid-template-columns: 56px 1fr auto;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 18px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+    .tc-id { font-size: .78rem; font-weight: 700; color: var(--muted); font-family: monospace; }
+    .tc-title { font-weight: 700; font-size: .95rem; }
+    .tc-body { padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; }
+
+    /* BADGE */
+    .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .72rem; font-weight: 700; white-space: nowrap; }
+    .badge-green  { background: var(--pass-pale);   color: var(--pass); }
+    .badge-yellow { background: var(--warn-pale);   color: var(--warn); }
+    .badge-red    { background: var(--danger-pale); color: var(--danger); }
+    .badge-blue   { background: var(--info-pale);   color: var(--info); }
+    .badge-brand  { background: var(--brand-pale);  color: var(--brand); }
+
+    /* STEPS */
+    .steps { counter-reset: step; list-style: none; }
+    .steps li {
+      counter-increment: step;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: .9rem;
+    }
+    .steps li:last-child { border-bottom: none; }
+    .steps li::before {
+      content: counter(step);
+      min-width: 24px; height: 24px;
+      border-radius: 50%;
+      background: var(--brand);
+      color: #fff;
+      font-size: .72rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    /* EXPECTED / INPUT */
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 640px) { .row2 { grid-template-columns: 1fr; } }
+    .label-box { border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+    .label-box strong { display: block; font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-bottom: 6px; }
+    .label-box.expected { border-color: #bbf7d0; background: var(--pass-pale); }
+    .label-box.expected strong { color: var(--pass); }
+    .label-box.blocked  { border-color: #fecaca; background: var(--danger-pale); }
+    .label-box.blocked strong { color: var(--danger); }
+    .label-box ul { padding-left: 16px; font-size: .88rem; }
+    .label-box ul li { margin-bottom: 4px; }
+    .label-box p { font-size: .88rem; }
+
+    /* CALLOUT */
+    .callout { border-radius: 8px; padding: 14px 18px; font-size: .9rem; }
+    .callout.info   { background: var(--info-pale);   border-left: 4px solid var(--info); }
+    .callout.warn   { background: var(--warn-pale);   border-left: 4px solid var(--warn); }
+    .callout.note   { background: var(--brand-pale);  border-left: 4px solid var(--brand-light); }
+    .callout strong { display: block; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
+
+    /* NAV TABLE */
+    .nav-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+    .nav-table th { background: var(--brand); color: #fff; padding: 9px 14px; text-align: left; }
+    .nav-table td { padding: 9px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .nav-table tr:last-child td { border-bottom: none; }
+    .nav-table tr:nth-child(even) td { background: #f8fbf9; }
+
+    h3.sub { font-size: .95rem; font-weight: 700; color: var(--brand); margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+
+<header class="page-header">
+  <h1>Agent Panel — Manual Test Cases</h1>
+  <p class="subtitle">Test with bina@shuddhidham.com · Shuddhidham POS · May 2026</p>
+  <div class="meta">
+    <span>👤 Agent under test: Bina Shrestha</span>
+    <span>🔑 Password: shuddhidham</span>
+    <span>🗺 Territory: Thamel / Asan</span>
+    <span>🏷 Agent code: AGT-BINA</span>
+  </div>
+</header>
+
+<main>
+
+  <!-- CREDENTIALS -->
+  <section>
+    <div class="sec-head"><span class="icon">🔐</span><h2>Test Accounts</h2></div>
+    <div class="sec-body">
+      <div class="creds">
+        <div class="cred-card">
+          <h3>Super Admin</h3>
+          <table>
+            <tr><td>Email</td><td><code>admin@shuddhidham.com</code></td></tr>
+            <tr><td>Password</td><td><code>shuddhidham</code></td></tr>
+            <tr><td>Role</td><td>Full access</td></tr>
+          </table>
+        </div>
+        <div class="cred-card">
+          <h3>Sales Agent — Bina (Primary tester)</h3>
+          <table>
+            <tr><td>Email</td><td><code>bina@shuddhidham.com</code></td></tr>
+            <tr><td>Password</td><td><code>shuddhidham</code></td></tr>
+            <tr><td>Role</td><td>Sales Agent</td></tr>
+            <tr><td>Territory</td><td>Thamel / Asan</td></tr>
+          </table>
+        </div>
+        <div class="cred-card">
+          <h3>Sales Agent — Bishal</h3>
+          <table>
+            <tr><td>Email</td><td><code>bishal@shuddhidham.com</code></td></tr>
+            <tr><td>Password</td><td><code>shuddhidham</code></td></tr>
+            <tr><td>Role</td><td>Sales Agent</td></tr>
+            <tr><td>Territory</td><td>Patan / Lalitpur</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- NAV VISIBILITY -->
+  <section>
+    <div class="sec-head"><span class="icon">🧭</span><h2>TC-00 · Navigation Visibility Check (Run first)</h2></div>
+    <div class="sec-body">
+      <div class="callout info" style="margin-bottom:18px">
+        <strong>Purpose</strong>
+        Verify the agent sees only what they should. Log in as Bina and compare your sidebar against this table before running any functional tests.
+      </div>
+      <table class="nav-table">
+        <thead><tr><th>Nav Item</th><th>Expected for Agent</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Dashboard</td><td><span class="badge badge-green">✓ Visible</span></td><td>Basic stats only</td></tr>
+          <tr><td>POS / Billing</td><td><span class="badge badge-green">✓ Visible</span></td><td>Core function</td></tr>
+          <tr><td>Customers (list)</td><td><span class="badge badge-green">✓ Visible</span></td><td>Can view + create + edit</td></tr>
+          <tr><td>Record Payment</td><td><span class="badge badge-green">✓ Visible</span></td><td>Under Customers group</td></tr>
+          <tr><td>Customer Ledger Report</td><td><span class="badge badge-green">✓ Visible</span></td><td>view_customer_ledger permission</td></tr>
+          <tr><td>Price List</td><td><span class="badge badge-green">✓ Visible</span></td><td>Reference only</td></tr>
+          <tr><td>Inventory / Stock pages</td><td><span class="badge badge-red">✗ Hidden</span></td><td>No inventory permissions</td></tr>
+          <tr><td>Purchases / Suppliers</td><td><span class="badge badge-red">✗ Hidden</span></td><td>Admin only</td></tr>
+          <tr><td>Sales Report</td><td><span class="badge badge-red">✗ Hidden</span></td><td>No view_sales_reports</td></tr>
+          <tr><td>Profit Report</td><td><span class="badge badge-red">✗ Hidden</span></td><td>Admin only</td></tr>
+          <tr><td>User Management</td><td><span class="badge badge-red">✗ Hidden</span></td><td>Admin only</td></tr>
+          <tr><td>Roles / Settings</td><td><span class="badge badge-red">✗ Hidden</span></td><td>Admin only</td></tr>
+          <tr><td>Agent Earnings</td><td><span class="badge badge-yellow">Check</span></td><td>Should only show own earnings — verify no other agent data visible</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- TEST SUITE -->
+  <section>
+    <div class="sec-head"><span class="icon">🧪</span><h2>Functional Test Cases</h2></div>
+    <div class="sec-body">
+      <div class="test-suite">
+
+        <!-- TC-01 -->
+        <div class="tc">
+          <div class="tc-head">
+            <span class="tc-id">TC-01</span>
+            <span class="tc-title">Login as Sales Agent</span>
+            <span class="badge badge-blue">Auth</span>
+          </div>
+          <div class="tc-body">
+            <ol class="steps">
+              <li>Open <code>https://rishipath-pos.test</code> in browser</li>
+              <li>Enter email: <code>bina@shuddhidham.com</code>, password: <code>shuddhidham</code></li>
+              <li>Click Sign In</li>
+            </ol>
+            <div class="row2">
+              <div class="label-box expected">
+                <strong>✓ Expected</strong>
+                <ul>
+                  <li>Redirected to admin dashboard</li>
+                  <li>User name shows "Bina Shrestha" in top bar</li>
+                  <li>No 403/Forbidden error</li>
+                </ul>
+              </div>
+              <div class="label-box blocked">
+                <strong>✗ Should NOT happen</strong>
+                <ul>
+                  <li>Login error with correct credentials</li>
+                  <li>Redirected to a blank page</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-02 -->
+        <div class="tc">
+          <div class="tc-head">
+            <span class="tc-id">TC-02</span>
+            <span class="tc-title">Create a Cash Sale (Paid immediately)</span>
+            <span class="badge badge-brand">POS — Core</span>
+          </div>
+          <div class="tc-body">
+            <div class="callout note" style="margin-bottom:12px">
+              <strong>Setup</strong>
+              Ensure at least one product exists (e.g. Turmeric 100g). No buffer stock is needed — stock enforcement is disabled for agents.
+            </div>
+            <ol class="steps">
+              <li>Click <strong>POS / Billing</strong> in the sidebar</li>
+              <li>In the product search box, type "Turmeric" and click the result to add it to cart</li>
+              <li>Set quantity to <strong>2</strong></li>
+              <li>Click <strong>Select Customer</strong> → search "Restaurant" → select or create: <strong>Momo Corner</strong> (phone: 9841000001)</li>
+              <li>Select payment method: <strong>Cash</strong></li>
+              <li>Enter amount received (e.g. 500)</li>
+              <li>Click <strong>Complete Sale</strong></li>
+            </ol>
+            <div class="row2">
+              <div class="label-box expected">
+                <strong>✓ Expected</strong>
+                <ul>
+                  <li>Success notification "Sale completed"</li>
+                  <li>Receipt number generated (e.g. RCPT-XXXXX)</li>
+                  <li>Cart clears, new session starts</li>
+                  <li>If customer phone provided, WhatsApp receipt prompt appears</li>
+                  <li>Sale shows <code>payment_status = paid</code></li>
+                </ul>
+              </div>
+              <div class="label-box blocked">
+                <strong>✗ Should NOT happen</strong>
+                <ul>
+                  <li>"Insufficient Stock" error blocking the sale</li>
+                  <li>500 error during completion</li>
+                  <li>Sale saved but payment_status = unpaid</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-03 -->
+        <div class="tc">
+          <div class="tc-head">
+            <span class="tc-id">TC-03</span>
+            <span class="tc-title">Create a Credit / Preorder Sale (Customer pays later)</span>
+            <span class="badge badge-brand">POS — Credit Flow</span>
+          </div>
+          <div class="tc-body">
+            <div class="callout note" style="margin-bottom:12px">
+              <strong>Scenario</strong>
+              Bina visits a sweet shop. They want 5kg cashews but stock isn't in hand yet. Agent takes the order as a credit.
+            </div>
+            <ol class="steps">
+              <li>Open POS, add <strong>Cashews 1kg</strong> × 5 to cart</li>
+              <li>Select customer: <strong>Angan Sweets</strong> (phone: 9841000002) — create if not exists</li>
+              <li>Select payment method: <strong>Credit</strong></li>
+              <li>Click <strong>Complete Sale</strong></li>
+            </ol>
+            <div class="row2">
+              <div class="label-box expected">
+                <strong>✓ Expected</strong>
+                <ul>
+                  <li>Sale saved with <code>payment_status = unpaid</code></li>
+                  <li>WhatsApp receipt (if sent) shows amber "ORDER CONFIRMED — Payment due on delivery" banner</li>
+                  <li>Customer ledger entry created with status = pending and debit = order total</li>
+                  <li>This order does NOT appear in Sales Report revenue (only in ledger)</li>
+                </ul>
+              </div>
+              <div class="label-box blocked">
+                <strong>✗ Should NOT happen</strong>
+                <ul>
+                  <li>Sale blocked due to zero stock</li>
+                  <li>Receipt shows "CREDIT" as payment method without order confirmation message</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-04 -->
+        <div class="tc">
+          <div class="tc-head">
+            <span class="tc-id">TC-04</span>
+            <span class="tc-title">Record Payment on a Credit Sale (Close the order)</span>
+            <span class="badge badge-brand">Credit → Paid</span>
+          </div>
+          <div class="tc-body">
+            <div class="callout note" style="margin-bottom:12px">
+              <strong>Pre-condition</strong>
+              TC-03 must be completed first. Angan Sweets has an outstanding balance.
+            </div>
+            <ol class="steps">
+              <li>Go to <strong>Customers → Record Payment</strong></li>
+              <li>Select customer: <strong>Angan Sweets</strong></li>
+              <li>Observe the <strong>Outstanding Balance</strong> field — it should show the amount owed from TC-03</li>
+              <li>Enter the full amount, payment method: <strong>Cash</strong>, date: today</li>
+              <li>Click <strong>Record Payment</strong></li>
+            </ol>
+            <div class="row2">
+              <div class="label-box expected">
+                <strong>✓ Expected</strong>
+                <ul>
+                  <li>Success notification</li>
+                  <li>Outstanding balance goes to 0</li>
+                  <li>Customer Ledger shows a new "payment" entry with credit = amount paid</li>
+                  <li>The original sale's payment_status updates to <code>paid</code></li>
+                  <li>This payment now shows up in Sales Report revenue</li>
+                </ul>
+              </div>
+              <div class="label-box blocked">
+                <strong>✗ Should NOT happen</strong>
+                <ul>
+                  <li>Outstanding balance shows 0 before payment (TC-03 not saved correctly)</li>
+                  <li>Payment saved but balance doesn't reduce</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-05 -->
+        <div class="tc">
+          <div class="tc-head">
+            <span class="tc-id">TC-05</span>
+            <span class="tc-title">Add item to cart when zero buffer stock</span>
+            <span class="badge badge-warn">Stock Bypass</span>
+          </div>
+          <div class="tc-body">
+            <div class="callout note" style="margin-bottom:12px">
+              <strong>Purpose</strong>
+              Verify that the removed stock enforcement allows agents to take orders even when physical stock shows 0.
+            </div>
+            <ol class="steps">
+              <li>Find a product that currently has 0 stock (check Inventory as admin first if needed)</li>
+              <li>Log in as Bina, open POS</li>
+              <li>Search for the zero-stock product and click to add it</li>
+              <li>Try setting quantity to 10</li>
+            </ol>
+            <div class="row2">
+              <div class="label-box expected">
+                <strong>✓ Expected</strong>
+                <ul>
+                  <li>Product adds to cart without any warning</li>
+                  <li>Quantity can be set to 10 freely</li>
+                  <li>Stock display shows "0 available" informatively but does not block</li>
+                  <li>Sale can be completed as credit (preorder)</li>
+                </ul>
+              </div>
+              <div class="label-box blocked">
+                <strong>✗ Should NOT happen</strong>
+                <ul>
+                  <li>"Insufficient Stock" toast/notification blocks adding to cart</li>
+                  <li>Quantity update rejected with stock warning</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-06 -->
+        <div class="tc">
+          <div class="tc-head">
+            <span class="tc-id">TC-06</span>
+            <span class="tc-title">Create a new Customer from POS</span>
+            <span class="badge badge-brand">Customer Mgmt</span>
+          </div>
+          <div class="tc-body">
+            <ol class="steps">
+              <li>Open POS, add any product to cart</li>
+              <li>Click <strong>Select Customer</strong></li>
+              <li>Type a name that doesn't exist: "Puja Corner Temple Shop"</li>
+              <li>Click <strong>Create Customer</strong> (or the create option if available)</li>
+              <li>Fill: name, phone (9841000003), address (Boudhanath)</li>
+              <li>Save and return to POS — verify customer is selected</li>
+            </ol>
+            <div class="row2">
+              <div class="label-box expected">
+                <strong>✓ Expected</strong>
+                <ul>
+                  <li>New customer saved and auto-selected on POS</li>
+                  <li>Customer appears in Customers list</li>
+                </ul>
+              </div>
+              <div class="label-box blocked">
+                <strong>✗ Should NOT happen</strong>
+                <ul>
+                  <li>Permission denied when trying to create customer</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-07 -->
+        <div class="tc">
+          <div class="tc-head">
+            <span class="tc-id">TC-07</span>
+            <span class="tc-title">Apply a discount in POS</span>
+            <span class="badge badge-brand">POS — Discount</span>
+          </div>
+          <div class="tc-body">
+            <ol class="steps">
+              <li>Open POS, add 2 products to cart</li>
+              <li>Find the discount field (usually a % or fixed amount input on the cart)</li>
+              <li>Enter <strong>5%</strong> discount</li>
+              <li>Verify total updates correctly</li>
+              <li>Complete sale with Cash payment</li>
+            </ol>
+            <div class="row2">
+              <div class="label-box expected">
+                <strong>✓ Expected</strong>
+                <ul>
+                  <li>Discount applied, total recalculated</li>
+                  <li>Sale record shows discount_amount > 0</li>
+                </ul>
+              </div>
+              <div class="label-box blocked">
+                <strong>✗ Should NOT happen</strong>
+                <ul>
+                  <li>Discount field missing or disabled for agent role</li>
+                  <li>Permission denied error</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-08 -->
+        <div class="tc">
+          <div class="tc-head">
+            <span class="tc-id">TC-08</span>
+            <span class="tc-title">Multiple items in cart (mixed products)</span>
+            <span class="badge badge-brand">POS — Cart</span>
+          </div>
+          <div class="tc-body">
+            <ol class="steps">
+              <li>Open POS, add 3 different products (e.g. Turmeric, Cumin, Cardamom)</li>
+              <li>Set different quantities for each</li>
+              <li>Verify subtotal, tax, and total update correctly</li>
+              <li>Remove the middle item using the remove (×) button</li>
+              <li>Verify totals recalculate after removal</li>
+              <li>Complete sale as Cash</li>
+            </ol>
+            <div class="row2">
+              <div class="label-box expected">
+                <strong>✓ Expected</strong>
+                <ul>
+                  <li>Each item shows correct subtotal</li>
+                  <li>Totals recalculate on every change</li>
+                  <li>Removal works without page reload</li>
+                  <li>Final sale has 2 SaleItems</li>
+                </ul>
+              </div>
+              <div class="label-box blocked">
+                <strong>✗ Should NOT happen</strong>
+                <ul>
+                  <li>Cart shows stale totals after quantity change</li>
+                  <li>Remove button doesn't work</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-09 -->
+        <div class="tc">
+          <div class="tc-head">
+            <span class="tc-id">TC-09</span>
+            <span class="tc-title">Multi-session cart (hold one order, start another)</span>
+            <span class="badge badge-brand">POS — Sessions</span>
+          </div>
+          <div class="tc-body">
+            <div class="callout note" style="margin-bottom:12px">
+              <strong>Use case</strong>
+              Agent is mid-order with Customer A but another customer walks in. Use session tabs to hold the first.
+            </div>
+            <ol class="steps">
+              <li>Open POS, add Turmeric × 3 for Customer A (Momo Corner)</li>
+              <li>Click <strong>+ New Session / Tab</strong> button</li>
+              <li>In new session, add Cardamom × 1 for Customer B (Angan Sweets)</li>
+              <li>Complete session 2 (Customer B, Cash)</li>
+              <li>Switch back to session 1 (Customer A cart still there)</li>
+              <li>Complete session 1 as Credit</li>
+            </ol>
+            <div class="row2">
+              <div class="label-box expected">
+                <strong>✓ Expected</strong>
+                <ul>
+                  <li>Both sessions maintain independent carts</li>
+                  <li>Switching sessions doesn't lose cart data</li>
+                  <li>2 separate sales created with correct customers</li>
+                </ul>
+              </div>
+              <div class="label-box blocked">
+                <strong>✗ Should NOT happen</strong>
+                <ul>
+                  <li>Session 1 cart clears when session 2 is created</li>
+                  <li>Customer from session 2 bleeds into session 1</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-10 -->
+        <div class="tc">
+          <div class="tc-head">
+            <span class="tc-id">TC-10</span>
+            <span class="tc-title">View Customer Ledger (Outstanding balances)</span>
+            <span class="badge badge-brand">Credit Visibility</span>
+          </div>
+          <div class="tc-body">
+            <div class="callout note" style="margin-bottom:12px">
+              <strong>Pre-condition</strong>
+              TC-03 (credit sale for Angan Sweets) must exist and still be unpaid. Do NOT run TC-04 first.
+            </div>
+            <ol class="steps">
+              <li>Go to <strong>Reports → Customer Ledger</strong></li>
+              <li>Search or filter for <strong>Angan Sweets</strong></li>
+              <li>Review the ledger entries</li>
+            </ol>
+            <div class="row2">
+              <div class="label-box expected">
+                <strong>✓ Expected</strong>
+                <ul>
+                  <li>Ledger shows the credit sale as a debit entry with status = pending</li>
+                  <li>Outstanding balance = order total</li>
+                  <li>Aging bucket shows it in "current" (0–30 days)</li>
+                </ul>
+              </div>
+              <div class="label-box blocked">
+                <strong>✗ Should NOT happen</strong>
+                <ul>
+                  <li>Permission denied accessing ledger report</li>
+                  <li>Ledger empty when TC-03 sale exists</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-11 -->
+        <div class="tc">
+          <div class="tc-head">
+            <span class="tc-id">TC-11</span>
+            <span class="tc-title">Access Inventory page (should be BLOCKED)</span>
+            <span class="badge badge-red">Permission Gate</span>
+          </div>
+          <div class="tc-body">
+            <ol class="steps">
+              <li>As Bina, try to navigate directly to <code>/admin/inventory</code> in the browser URL bar</li>
+              <li>Also check the sidebar — Inventory group should not appear at all</li>
+            </ol>
+            <div class="row2">
+              <div class="label-box expected">
+                <strong>✓ Expected</strong>
+                <ul>
+                  <li>403 Forbidden page or redirect to dashboard</li>
+                  <li>No Inventory nav item in sidebar</li>
+                </ul>
+              </div>
+              <div class="label-box blocked">
+                <strong>✗ Should NOT happen</strong>
+                <ul>
+                  <li>Inventory page loads successfully for agent</li>
+                  <li>Stock levels or adjustment controls visible</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-12 -->
+        <div class="tc">
+          <div class="tc-head">
+            <span class="tc-id">TC-12</span>
+            <span class="tc-title">Access Profit Report (should be BLOCKED)</span>
+            <span class="badge badge-red">Permission Gate</span>
+          </div>
+          <div class="tc-body">
+            <ol class="steps">
+              <li>As Bina, try to navigate to <code>/admin/profit-report</code></li>
+            </ol>
+            <div class="row2">
+              <div class="label-box expected">
+                <strong>✓ Expected</strong>
+                <ul><li>403 / access denied — profit data is admin-only</li></ul>
+              </div>
+              <div class="label-box blocked">
+                <strong>✗ Should NOT happen</strong>
+                <ul><li>Profit figures visible to sales agent</li></ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-13 -->
+        <div class="tc">
+          <div class="tc-head">
+            <span class="tc-id">TC-13</span>
+            <span class="tc-title">Sales Report only shows paid sales</span>
+            <span class="badge badge-warn">Report Accuracy</span>
+          </div>
+          <div class="tc-body">
+            <div class="callout note" style="margin-bottom:12px">
+              <strong>Pre-condition</strong>
+              Run TC-02 (paid cash sale) and TC-03 (unpaid credit sale) first. Note the totals.
+            </div>
+            <ol class="steps">
+              <li>Log in as <strong>admin@shuddhidham.com</strong></li>
+              <li>Go to <strong>Reports → Sales Report</strong></li>
+              <li>Set date range to today</li>
+              <li>Note <strong>Total Sales</strong> amount</li>
+            </ol>
+            <div class="row2">
+              <div class="label-box expected">
+                <strong>✓ Expected</strong>
+                <ul>
+                  <li>Total Sales reflects only the TC-02 cash sale</li>
+                  <li>TC-03 credit/unpaid sale is NOT included in the revenue total</li>
+                  <li>Payment method breakdown does not list "credit" as a revenue source</li>
+                </ul>
+              </div>
+              <div class="label-box blocked">
+                <strong>✗ Should NOT happen</strong>
+                <ul>
+                  <li>Total Sales = TC-02 + TC-03 combined (inflated by unpaid order)</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-14 -->
+        <div class="tc">
+          <div class="tc-head">
+            <span class="tc-id">TC-14</span>
+            <span class="tc-title">Credit invoice shows "ORDER CONFIRMED" status</span>
+            <span class="badge badge-brand">Receipt UX</span>
+          </div>
+          <div class="tc-body">
+            <div class="callout note" style="margin-bottom:12px">
+              <strong>Pre-condition</strong>
+              TC-03 credit sale was sent via WhatsApp or open the PDF invoice directly.
+            </div>
+            <ol class="steps">
+              <li>As admin, go to <strong>Sales</strong> list, find the credit sale from TC-03</li>
+              <li>Open the invoice/receipt PDF or preview</li>
+            </ol>
+            <div class="row2">
+              <div class="label-box expected">
+                <strong>✓ Expected</strong>
+                <ul>
+                  <li>Amber/yellow banner: "ORDER CONFIRMED — Payment due on delivery"</li>
+                  <li>Amount Due shown (not Amount Paid)</li>
+                  <li>Payment method does NOT say "CREDIT" plainly</li>
+                </ul>
+              </div>
+              <div class="label-box blocked">
+                <strong>✗ Should NOT happen</strong>
+                <ul>
+                  <li>Invoice looks identical to a paid receipt (misleading)</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-15 -->
+        <div class="tc">
+          <div class="tc-head">
+            <span class="tc-id">TC-15</span>
+            <span class="tc-title">Agent cannot create users or change roles</span>
+            <span class="badge badge-red">Permission Gate</span>
+          </div>
+          <div class="tc-body">
+            <ol class="steps">
+              <li>As Bina, try to navigate to <code>/admin/users</code></li>
+              <li>Try <code>/admin/roles</code></li>
+              <li>Try <code>/admin/settings</code></li>
+            </ol>
+            <div class="row2">
+              <div class="label-box expected">
+                <strong>✓ Expected</strong>
+                <ul>
+                  <li>All three return 403 or redirect</li>
+                  <li>None appear in the sidebar navigation</li>
+                </ul>
+              </div>
+              <div class="label-box blocked">
+                <strong>✗ Should NOT happen</strong>
+                <ul><li>Any of these pages load for the agent</li></ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-16 -->
+        <div class="tc">
+          <div class="tc-head">
+            <span class="tc-id">TC-16</span>
+            <span class="tc-title">Admin sees open orders (pending credits) as sourcing pipeline</span>
+            <span class="badge badge-warn">Admin Workflow</span>
+          </div>
+          <div class="tc-body">
+            <div class="callout note" style="margin-bottom:12px">
+              <strong>Scenario</strong>
+              Bina and Bishal have each created credit orders. Admin needs to see combined demand to source goods.
+            </div>
+            <ol class="steps">
+              <li>As Bina — create a credit sale: Turmeric × 5kg for Customer A</li>
+              <li>As Bishal — create a credit sale: Turmeric × 3kg for Customer B</li>
+              <li>Log in as <strong>admin@shuddhidham.com</strong></li>
+              <li>Go to <strong>Reports → Customer Ledger Report</strong></li>
+              <li>Filter by status = pending (or unpaid)</li>
+            </ol>
+            <div class="row2">
+              <div class="label-box expected">
+                <strong>✓ Expected</strong>
+                <ul>
+                  <li>Both credit entries visible in ledger</li>
+                  <li>Admin can see: 2 customers owe, combined 8kg turmeric needed</li>
+                  <li>This drives the sourcing decision</li>
+                </ul>
+              </div>
+              <div class="label-box blocked">
+                <strong>✗ Should NOT happen</strong>
+                <ul><li>One agent's orders invisible to admin</li></ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-17 -->
+        <div class="tc">
+          <div class="tc-head">
+            <span class="tc-id">TC-17</span>
+            <span class="tc-title">New user can be created from admin panel</span>
+            <span class="badge badge-blue">User Mgmt</span>
+          </div>
+          <div class="tc-body">
+            <div class="callout note" style="margin-bottom:12px">
+              <strong>Confirms: Yes, you can create users from the system — no need to run seeders for new agents.</strong>
+            </div>
+            <ol class="steps">
+              <li>Log in as <strong>admin@shuddhidham.com</strong></li>
+              <li>Go to <strong>Settings → Users</strong></li>
+              <li>Click <strong>New User</strong></li>
+              <li>Fill: name, email (e.g. <code>newagent@shuddhidham.com</code>), password, role = Sales Agent</li>
+              <li>Save</li>
+              <li>Also go to <strong>Sales → Sales Agents</strong> and create a matching SalesAgent profile (same email, set territory + commission)</li>
+            </ol>
+            <div class="row2">
+              <div class="label-box expected">
+                <strong>✓ Expected</strong>
+                <ul>
+                  <li>User saved, can log in with new credentials</li>
+                  <li>SalesAgent record links to the user by email</li>
+                  <li>Commission tracking active from first sale</li>
+                </ul>
+              </div>
+              <div class="label-box blocked">
+                <strong>✗ Should NOT happen</strong>
+                <ul><li>User creation form throws validation errors with valid data</li></ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /test-suite -->
+    </div>
+  </section>
+
+  <!-- QUICK TEST ORDER -->
+  <section>
+    <div class="sec-head"><span class="icon">🗺</span><h2>Recommended Test Run Order</h2></div>
+    <div class="sec-body">
+      <div class="callout info" style="margin-bottom:16px">
+        <strong>Run in this order to chain dependencies correctly</strong>
+      </div>
+      <table class="nav-table">
+        <thead><tr><th>#</th><th>Test Case</th><th>Account</th><th>Depends on</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>TC-00 · Navigation visibility</td><td>bina@shuddhidham.com</td><td>—</td></tr>
+          <tr><td>2</td><td>TC-01 · Login</td><td>bina@shuddhidham.com</td><td>—</td></tr>
+          <tr><td>3</td><td>TC-05 · Zero-stock order (no block)</td><td>bina@shuddhidham.com</td><td>TC-01</td></tr>
+          <tr><td>4</td><td>TC-06 · Create customer from POS</td><td>bina@shuddhidham.com</td><td>TC-01</td></tr>
+          <tr><td>5</td><td>TC-02 · Cash sale</td><td>bina@shuddhidham.com</td><td>TC-06</td></tr>
+          <tr><td>6</td><td>TC-03 · Credit sale (preorder)</td><td>bina@shuddhidham.com</td><td>TC-06</td></tr>
+          <tr><td>7</td><td>TC-07 · Discount</td><td>bina@shuddhidham.com</td><td>TC-01</td></tr>
+          <tr><td>8</td><td>TC-08 · Multi-item cart</td><td>bina@shuddhidham.com</td><td>TC-01</td></tr>
+          <tr><td>9</td><td>TC-09 · Multi-session</td><td>bina@shuddhidham.com</td><td>TC-01</td></tr>
+          <tr><td>10</td><td>TC-10 · View customer ledger</td><td>bina@shuddhidham.com</td><td>TC-03</td></tr>
+          <tr><td>11</td><td>TC-13 · Sales report (paid only)</td><td>admin@shuddhidham.com</td><td>TC-02, TC-03</td></tr>
+          <tr><td>12</td><td>TC-14 · Credit invoice label</td><td>admin@shuddhidham.com</td><td>TC-03</td></tr>
+          <tr><td>13</td><td>TC-04 · Record payment (close credit)</td><td>bina@shuddhidham.com</td><td>TC-03</td></tr>
+          <tr><td>14</td><td>TC-11 · Inventory blocked</td><td>bina@shuddhidham.com</td><td>TC-01</td></tr>
+          <tr><td>15</td><td>TC-12 · Profit report blocked</td><td>bina@shuddhidham.com</td><td>TC-01</td></tr>
+          <tr><td>16</td><td>TC-15 · User/role pages blocked</td><td>bina@shuddhidham.com</td><td>TC-01</td></tr>
+          <tr><td>17</td><td>TC-16 · Admin sees combined open orders</td><td>Both agents + admin</td><td>TC-03</td></tr>
+          <tr><td>18</td><td>TC-17 · Create user from admin panel</td><td>admin@shuddhidham.com</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+</body>
+</html>

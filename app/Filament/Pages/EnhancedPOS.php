@@ -8,11 +8,11 @@ use App\Models\PaymentSplit;
 use App\Models\PosSession;
 use App\Models\Product;
 use App\Models\ProductVariant;
-use App\Models\RetailStore;
 use App\Models\Reward;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\StockLevel;
+use App\Models\RetailStore;
 use App\Models\Store;
 use App\Models\Terminal;
 use App\Services\InventoryService;
@@ -37,17 +37,6 @@ class EnhancedPOS extends Page
     protected static ?string $navigationLabel = 'POS';
 
     protected static ?int $navigationSort = 1;
-
-    // ── Wholesale (bulk) pricing ────────────────────────────────────────────
-    // Bulk buyers get a percentage off MRP (never a separate price list — the
-    // customer always sees MRP, the bulk discount is applied on top). Auto-armed
-    // when the cart reaches WHOLESALE_MIN_WEIGHT_KG (mixed products, by weight)
-    // OR WHOLESALE_MIN_AMOUNT. The percentage is cashier-adjustable per sale.
-    public const WHOLESALE_DEFAULT_PCT = 15.0;
-
-    public const WHOLESALE_MIN_WEIGHT_KG = 7.0;
-
-    public const WHOLESALE_MIN_AMOUNT = 7000.0;
 
     public function getTitle(): string
     {
@@ -86,9 +75,7 @@ class EnhancedPOS extends Page
 
     // Reward redemption
     public $showRewardModal = false;
-
     public $availableRewards = [];
-
     public $selectedRewardId = null;
 
     // Keyboard shortcuts enabled
@@ -250,12 +237,11 @@ class EnhancedPOS extends Page
         $userStores = auth()->user()->stores ?? [];
         if (! empty($userStores)) {
             // Ensure we're getting the first store ID from the array
-            return is_array($userStores) ? (int) $userStores[0] : (int) $userStores;
+            return is_array($userStores) ? (int)$userStores[0] : (int)$userStores;
         }
 
         // Last resort: first store in database
         $firstStore = Store::where('active', true)->first();
-
         return $firstStore?->id;
     }
 
@@ -456,7 +442,7 @@ class EnhancedPOS extends Page
         $this->sessions[$this->activeSessionKey]['applied_reward_id'] = null;
         $this->sessions[$this->activeSessionKey]['reward_discount'] = 0;
         $this->customerSearch = '';
-
+        
         $this->recalculateCart();
         $this->saveCurrentSession();
     }
@@ -477,37 +463,35 @@ class EnhancedPOS extends Page
     public function openRewardModal(): void
     {
         $session = $this->getCurrentSession();
-
-        if (! $session || ! $session['customer_id']) {
+        
+        if (!$session || !$session['customer_id']) {
             Notification::make()
                 ->warning()
                 ->title('No Customer Selected')
                 ->body('Please select a customer to view available rewards.')
                 ->send();
-
             return;
         }
 
         $customer = Customer::with('loyaltyTier')->find($session['customer_id']);
-
-        if (! $customer) {
+        
+        if (!$customer) {
             return;
         }
 
         // Get available rewards using LoyaltyService
-        $loyaltyService = new LoyaltyService;
+        $loyaltyService = new LoyaltyService();
         $this->availableRewards = $loyaltyService->getAvailableRewards($customer);
-
+        
         if (empty($this->availableRewards)) {
             Notification::make()
                 ->info()
                 ->title('No Rewards Available')
                 ->body("Customer has {$customer->loyalty_points} points. Keep shopping to unlock rewards!")
                 ->send();
-
             return;
         }
-
+        
         $this->showRewardModal = true;
     }
 
@@ -517,45 +501,42 @@ class EnhancedPOS extends Page
     public function applyReward($rewardId): void
     {
         $session = $this->getCurrentSession();
-
-        if (! $session || ! $session['customer_id']) {
+        
+        if (!$session || !$session['customer_id']) {
             Notification::make()
                 ->danger()
                 ->title('Error')
                 ->body('No customer selected.')
                 ->send();
-
             return;
         }
 
         $customer = Customer::find($session['customer_id']);
         $reward = Reward::find($rewardId);
-
-        if (! $customer || ! $reward) {
+        
+        if (!$customer || !$reward) {
             Notification::make()
                 ->danger()
                 ->title('Error')
                 ->body('Invalid reward or customer.')
                 ->send();
-
             return;
         }
 
         // Verify customer can redeem
-        if (! $reward->canBeRedeemedBy($customer)) {
+        if (!$reward->canBeRedeemedBy($customer)) {
             Notification::make()
                 ->warning()
                 ->title('Cannot Redeem')
                 ->body('Customer does not meet requirements for this reward.')
                 ->send();
-
             return;
         }
 
         // Calculate discount amount based on reward type
         $discountAmount = 0;
         $subtotal = $session['subtotal'] ?? 0;
-
+        
         switch ($reward->type) {
             case 'discount':
             case 'discount_percentage':
@@ -573,16 +554,16 @@ class EnhancedPOS extends Page
         $this->sessions[$this->activeSessionKey]['applied_reward_id'] = $rewardId;
         $this->sessions[$this->activeSessionKey]['reward_discount'] = $discountAmount;
         $this->sessions[$this->activeSessionKey]['reward_points_cost'] = $reward->points_required;
-
+        
         $this->recalculateCart();
         $this->saveCurrentSession();
-
+        
         $this->showRewardModal = false;
-
+        
         Notification::make()
             ->success()
             ->title('Reward Applied')
-            ->body("Applied: {$reward->name} (-₹".number_format($discountAmount, 2).')')
+            ->body("Applied: {$reward->name} (-₹" . number_format($discountAmount, 2) . ")")
             ->send();
     }
 
@@ -591,17 +572,17 @@ class EnhancedPOS extends Page
      */
     public function removeReward(): void
     {
-        if (! $this->activeSessionKey) {
+        if (!$this->activeSessionKey) {
             return;
         }
-
+        
         $this->sessions[$this->activeSessionKey]['applied_reward_id'] = null;
         $this->sessions[$this->activeSessionKey]['reward_discount'] = 0;
         $this->sessions[$this->activeSessionKey]['reward_points_cost'] = 0;
-
+        
         $this->recalculateCart();
         $this->saveCurrentSession();
-
+        
         Notification::make()
             ->info()
             ->title('Reward Removed')
@@ -639,10 +620,10 @@ class EnhancedPOS extends Page
             'name' => $session->session_name,
             'store_id' => $session->store_id,
             'store_name' => $session->store?->name,
-            'customer_id' => null,
-            'customer_name' => null,
-            'customer_phone' => null,
-            'customer_email' => null,
+                'customer_id' => null,
+                'customer_name' => null,
+                'customer_phone' => null,
+                'customer_email' => null,
             'applied_reward_id' => null,
             'reward_discount' => 0,
             'reward_points_cost' => 0,
@@ -650,11 +631,6 @@ class EnhancedPOS extends Page
             'subtotal' => 0,
             'discount' => 0,
             'manual_discount' => 0,
-            'wholesale_pct' => self::WHOLESALE_DEFAULT_PCT,
-            'wholesale_enabled' => true,
-            'wholesale_eligible' => false,
-            'wholesale_discount' => 0,
-            'cart_weight_kg' => 0,
             'tax' => 0,
             'total' => 0,
             'status' => 'active',
@@ -886,13 +862,12 @@ class EnhancedPOS extends Page
         // Check stock - use same store resolution as search results
         $storeId = $this->resolveStoreId();
 
-        if (! $storeId) {
+        if (!$storeId) {
             Notification::make()
                 ->danger()
                 ->title('Store Not Found')
                 ->body('Please select a store or ensure you have access to a store.')
                 ->send();
-
             return;
         }
 
@@ -909,8 +884,8 @@ class EnhancedPOS extends Page
             return $item['variant_id'] == $variantId;
         });
 
-        $currentCartQty = ($existingIndex !== false) ? (int) $session['cart'][$existingIndex]['quantity'] : 0;
-        $totalNeeded = (int) $currentCartQty + (int) $quantity;
+        $currentCartQty = ($existingIndex !== false) ? (int)$session['cart'][$existingIndex]['quantity'] : 0;
+        $totalNeeded = (int)$currentCartQty + (int)$quantity;
 
         if ($existingIndex !== false) {
             $this->sessions[$this->activeSessionKey]['cart'][$existingIndex]['quantity'] += $quantity;
@@ -922,7 +897,6 @@ class EnhancedPOS extends Page
                 'variant_name' => $variant->pack_size.$variant->unit,
                 'sku' => $variant->sku,
                 'unit' => $variant->unit ?? 'pcs',
-                'pack_size' => (float) ($variant->pack_size ?? 0),
                 'price' => PricingService::getStorePricing($variant, $this->resolveStoreId(), auth()->user()?->organization),
                 'cost_price' => $variant->cost_price ?? 0,
                 'quantity' => $quantity,
@@ -1045,7 +1019,6 @@ class EnhancedPOS extends Page
         $subtotal = 0;
         $totalDiscount = 0;
         $totalTax = 0;
-        $cartWeightKg = 0.0;
 
         foreach ($cart as $item) {
             $lineTotal = $item['price'] * $item['quantity'];
@@ -1056,7 +1029,6 @@ class EnhancedPOS extends Page
             $subtotal += $lineTotal;
             $totalDiscount += $discount;
             $totalTax += $tax;
-            $cartWeightKg += $this->normalizeWeightKg($item['pack_size'] ?? 0, $item['unit'] ?? '', $item['quantity'] ?? 0);
         }
 
         // Loyalty tier automatic discount is intentionally disabled for thin-margin MVP.
@@ -1067,76 +1039,15 @@ class EnhancedPOS extends Page
         $rewardDiscount = $this->sessions[$this->activeSessionKey]['reward_discount'] ?? 0;
         $manualDiscount = max(0, (float) ($this->sessions[$this->activeSessionKey]['manual_discount'] ?? 0));
         $deliveryCharge = max(0, (float) ($this->sessions[$this->activeSessionKey]['delivery_charge'] ?? 0));
-
-        // Wholesale (bulk) discount — % off MRP subtotal, auto-armed by weight/amount.
-        $wholesaleEligible = $cartWeightKg >= self::WHOLESALE_MIN_WEIGHT_KG
-            || $subtotal >= self::WHOLESALE_MIN_AMOUNT;
-        $wholesaleEnabled = (bool) ($this->sessions[$this->activeSessionKey]['wholesale_enabled'] ?? true);
-        $wholesalePct = min(100, max(0, (float) ($this->sessions[$this->activeSessionKey]['wholesale_pct'] ?? self::WHOLESALE_DEFAULT_PCT)));
-        $wholesaleDiscount = ($wholesaleEligible && $wholesaleEnabled)
-            ? round($subtotal * $wholesalePct / 100, 2)
-            : 0;
-
-        // Cap combined discounts so the total never goes negative.
         $maxDiscount = max(0, $subtotal - $loyaltyDiscount - $rewardDiscount);
         $manualDiscount = min($manualDiscount, $maxDiscount);
-        $wholesaleDiscount = min($wholesaleDiscount, max(0, $maxDiscount - $manualDiscount));
-
-        $combinedDiscount = $totalDiscount + $loyaltyDiscount + $rewardDiscount + $manualDiscount + $wholesaleDiscount;
 
         $this->sessions[$this->activeSessionKey]['subtotal'] = $subtotal;
         $this->sessions[$this->activeSessionKey]['loyalty_discount'] = $loyaltyDiscount;
-        $this->sessions[$this->activeSessionKey]['discount'] = $combinedDiscount;
+        $this->sessions[$this->activeSessionKey]['discount'] = $totalDiscount + $loyaltyDiscount + $rewardDiscount + $manualDiscount;
         $this->sessions[$this->activeSessionKey]['manual_discount'] = $manualDiscount;
-        $this->sessions[$this->activeSessionKey]['cart_weight_kg'] = round($cartWeightKg, 3);
-        $this->sessions[$this->activeSessionKey]['wholesale_eligible'] = $wholesaleEligible;
-        $this->sessions[$this->activeSessionKey]['wholesale_pct'] = $wholesalePct;
-        $this->sessions[$this->activeSessionKey]['wholesale_discount'] = $wholesaleDiscount;
         $this->sessions[$this->activeSessionKey]['tax'] = $totalTax;
-        $this->sessions[$this->activeSessionKey]['total'] = $subtotal - $combinedDiscount + $totalTax + $deliveryCharge;
-    }
-
-    /**
-     * Normalize a pack size + unit + quantity to total kilograms (for the
-     * wholesale weight threshold). Non-weight units contribute 0.
-     */
-    protected function normalizeWeightKg(float $packSize, string $unit, $quantity): float
-    {
-        $qty = (float) $quantity;
-        $u = strtoupper(trim($unit));
-
-        return match ($u) {
-            'KG', 'KGS', 'KILOGRAM', 'KILOGRAMS' => $packSize * $qty,
-            'G', 'GM', 'GMS', 'GRAM', 'GRAMS' => $packSize * $qty / 1000,
-            default => 0.0,
-        };
-    }
-
-    /**
-     * Cashier sets the bulk discount % for the active cart (0–100).
-     */
-    public function setWholesalePct($pct): void
-    {
-        if (! $this->activeSessionKey) {
-            return;
-        }
-        $this->sessions[$this->activeSessionKey]['wholesale_pct'] = min(100, max(0, (float) $pct));
-        $this->recalculateCart();
-        $this->saveCurrentSession();
-    }
-
-    /**
-     * Cashier toggles the bulk discount on/off for the active cart.
-     */
-    public function toggleWholesale(): void
-    {
-        if (! $this->activeSessionKey) {
-            return;
-        }
-        $current = (bool) ($this->sessions[$this->activeSessionKey]['wholesale_enabled'] ?? true);
-        $this->sessions[$this->activeSessionKey]['wholesale_enabled'] = ! $current;
-        $this->recalculateCart();
-        $this->saveCurrentSession();
+        $this->sessions[$this->activeSessionKey]['total'] = $subtotal - ($totalDiscount + $loyaltyDiscount + $rewardDiscount + $manualDiscount) + $totalTax + $deliveryCharge;
     }
 
     /**
@@ -1185,7 +1096,7 @@ class EnhancedPOS extends Page
             } else {
                 $paymentMethod = in_array($paymentMethod, $allowedPaymentMethods, true) ? $paymentMethod : 'other';
             }
-
+            
             // Determine payment status based on payment method
             // Credit = customer will pay later (unpaid), creates ledger entry
             // Cash/UPI/Other = paid immediately (paid), no ledger entry
@@ -1291,7 +1202,7 @@ class EnhancedPOS extends Page
 
                 // Ensure split payments cover the total amount
                 if ($splitTotal < (float) $sale->total_amount) {
-                    throw new \Exception('Split payments total (₹'.number_format($splitTotal, 2).') is less than sale total (₹'.number_format($sale->total_amount, 2).').');
+                    throw new \Exception('Split payments total (₹' . number_format($splitTotal, 2) . ") is less than sale total (₹" . number_format($sale->total_amount, 2) . ').');
                 }
 
                 // Update sale paid/change to reflect splits
@@ -1310,12 +1221,12 @@ class EnhancedPOS extends Page
             if ($session['customer_id']) {
                 $loyaltyService = new LoyaltyService;
                 $loyaltyService->awardPointsForSale($sale);
-
+                
                 // Process reward redemption if applied
-                if (! empty($session['applied_reward_id'])) {
+                if (!empty($session['applied_reward_id'])) {
                     $customer = Customer::find($session['customer_id']);
                     $reward = Reward::find($session['applied_reward_id']);
-
+                    
                     if ($customer && $reward) {
                         $loyaltyService->redeemReward($customer, $reward, auth()->id());
                     }
@@ -1390,7 +1301,7 @@ class EnhancedPOS extends Page
 
             // Generate and save PDF invoice
             $invoicePath = $invoiceService->generateAndSaveInvoice($sale);
-            $publicUrl = asset('storage/'.$invoicePath);
+            $publicUrl = asset('storage/' . $invoicePath);
 
             // Send PDF via WhatsApp
             $result = $whatsappService->sendInvoicePdf($sale, $sale->customer_phone, $publicUrl);
@@ -1405,7 +1316,6 @@ class EnhancedPOS extends Page
                         ->title('Receipt Sent (Text Only)')
                         ->body('Invoice PDF requires public URL. Text receipt sent instead.')
                         ->send();
-
                     return true;
                 }
             }
@@ -1510,7 +1420,7 @@ class EnhancedPOS extends Page
         if ($this->showSplitPayment) {
             // Clear main payment method when splitting
             $this->sessions[$this->activeSessionKey]['payment_method'] = null;
-
+            
             // Initialize split if empty
             if (empty($this->splitPayments)) {
                 $this->splitPayments = [
@@ -1545,25 +1455,25 @@ class EnhancedPOS extends Page
         $this->sessions[$this->activeSessionKey]['manual_discount'] = 0;
         $this->sessions[$this->activeSessionKey]['tax'] = 0;
         $this->sessions[$this->activeSessionKey]['total'] = 0;
-
+        
         // Reset customer info
         $this->sessions[$this->activeSessionKey]['customer_id'] = null;
         $this->sessions[$this->activeSessionKey]['customer_name'] = null;
         $this->sessions[$this->activeSessionKey]['customer_phone'] = null;
         $this->sessions[$this->activeSessionKey]['customer_email'] = null;
-
+        
         // Reset reward info
         $this->sessions[$this->activeSessionKey]['applied_reward_id'] = null;
         $this->sessions[$this->activeSessionKey]['reward_discount'] = 0;
         $this->sessions[$this->activeSessionKey]['reward_points_cost'] = 0;
-
+        
         // Reset payment fields
         $this->sessions[$this->activeSessionKey]['payment_method'] = 'cash';
         $this->sessions[$this->activeSessionKey]['amount_received'] = 0;
         $this->sessions[$this->activeSessionKey]['delivery_charge'] = 0;
         $this->sessions[$this->activeSessionKey]['manual_discount'] = 0;
         $this->sessions[$this->activeSessionKey]['notes'] = '';
-
+        
         // Update database session
         $dbSession = PosSession::where('session_key', $this->activeSessionKey)->first();
         if ($dbSession) {

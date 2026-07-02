@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shuddhidham — Strategy & POS Implementation Context</title>
+  <style>
+    :root {
+      --brand: #2d6a4f;
+      --brand-light: #52b788;
+      --brand-pale: #d8f3dc;
+      --warn: #e07b00;
+      --warn-pale: #fff3cd;
+      --danger: #c0392b;
+      --danger-pale: #fdecea;
+      --done: #1b4332;
+      --done-pale: #b7e4c7;
+      --neutral: #2d3436;
+      --neutral-light: #636e72;
+      --surface: #f9fafb;
+      --border: #e0e7e9;
+      --font: 'Segoe UI', system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font);
+      background: #f0f4f1;
+      color: var(--neutral);
+      line-height: 1.65;
+    }
+
+    /* ── HEADER ── */
+    .page-header {
+      background: var(--brand);
+      color: #fff;
+      padding: 40px 48px 32px;
+    }
+    .page-header h1 { font-size: 2rem; font-weight: 700; }
+    .page-header .subtitle { opacity: .8; font-size: 1rem; margin-top: 6px; }
+    .meta-row {
+      display: flex; gap: 32px; margin-top: 20px;
+      font-size: .85rem; opacity: .75;
+    }
+    .meta-row span { display: flex; align-items: center; gap: 6px; }
+
+    /* ── LAYOUT ── */
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+      display: flex;
+      flex-direction: column;
+      gap: 40px;
+    }
+
+    /* ── SECTION ── */
+    section {
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .section-header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 18px 28px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .section-header .icon {
+      font-size: 1.3rem;
+    }
+    .section-header h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--brand);
+    }
+    .section-body { padding: 28px; }
+
+    /* ── CALLOUT ── */
+    .callout {
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      font-size: .93rem;
+    }
+    .callout.info  { background: var(--brand-pale); border-left: 4px solid var(--brand-light); }
+    .callout.warn  { background: var(--warn-pale);  border-left: 4px solid var(--warn); }
+    .callout.done  { background: var(--done-pale);  border-left: 4px solid var(--done); }
+    .callout.danger { background: var(--danger-pale); border-left: 4px solid var(--danger); }
+    .callout strong { display: block; margin-bottom: 4px; font-size: .88rem; text-transform: uppercase; letter-spacing: .04em; }
+
+    /* ── TABLE ── */
+    .styled-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .9rem;
+    }
+    .styled-table th {
+      background: var(--brand);
+      color: #fff;
+      text-align: left;
+      padding: 10px 14px;
+      font-weight: 600;
+    }
+    .styled-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    .styled-table tr:last-child td { border-bottom: none; }
+    .styled-table tr:nth-child(even) td { background: #f7fbf8; }
+
+    /* ── STAR RATING ── */
+    .stars { color: #f59e0b; letter-spacing: .1em; }
+    .stars-empty { color: #d1d5db; }
+
+    /* ── BADGE ── */
+    .badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: .75rem;
+      font-weight: 600;
+    }
+    .badge-green  { background: var(--done-pale);   color: var(--done); }
+    .badge-yellow { background: var(--warn-pale);   color: var(--warn); }
+    .badge-red    { background: var(--danger-pale); color: var(--danger); }
+    .badge-blue   { background: #dbeafe; color: #1d4ed8; }
+    .badge-purple { background: #ede9fe; color: #6d28d9; }
+
+    /* ── CHANGE CARDS ── */
+    .changes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    .change-card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+    }
+    .change-card.priority-high { border-top: 4px solid var(--danger); }
+    .change-card.priority-med  { border-top: 4px solid var(--warn); }
+    .change-card.priority-low  { border-top: 4px solid var(--brand-light); }
+    .change-card h3 { font-size: .95rem; font-weight: 700; margin-bottom: 8px; }
+    .change-card .meta {
+      font-size: .78rem;
+      color: var(--neutral-light);
+      margin-bottom: 10px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .change-card p  { font-size: .88rem; margin-bottom: 10px; }
+    .change-card code {
+      display: block;
+      background: #f1f5f1;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: .82rem;
+      font-family: 'Courier New', monospace;
+      color: #1b4332;
+      overflow-x: auto;
+      white-space: pre;
+    }
+
+    /* ── ALREADY DONE ── */
+    .done-list {
+      list-style: none;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 12px;
+    }
+    .done-list li {
+      background: var(--done-pale);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: .88rem;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .done-list li .tick { flex-shrink: 0; color: var(--done); font-size: 1rem; }
+
+    /* ── FLOW DIAGRAM ── */
+    .flow {
+      display: flex;
+      align-items: flex-start;
+      gap: 0;
+      flex-wrap: wrap;
+      margin: 16px 0;
+    }
+    .flow-step {
+      background: var(--brand-pale);
+      border: 1px solid var(--brand-light);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: .82rem;
+      text-align: center;
+      min-width: 130px;
+    }
+    .flow-step strong { display: block; font-size: .78rem; color: var(--brand); margin-bottom: 2px; }
+    .flow-arrow {
+      font-size: 1.4rem;
+      color: var(--brand-light);
+      padding: 8px 6px;
+      align-self: center;
+    }
+    .flow-step.credit { background: var(--warn-pale); border-color: var(--warn); }
+    .flow-step.credit strong { color: var(--warn); }
+    .flow-step.paid { background: var(--done-pale); border-color: var(--done); }
+    .flow-step.paid strong { color: var(--done); }
+
+    /* ── CHECKLIST ── */
+    .checklist { list-style: none; }
+    .checklist li {
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      font-size: .9rem;
+    }
+    .checklist li:last-child { border-bottom: none; }
+    .chk-box {
+      width: 20px; height: 20px;
+      border-radius: 4px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .75rem;
+    }
+    .chk-box.todo  { border: 2px solid #9ca3af; }
+    .chk-box.done  { background: var(--brand); color: #fff; }
+    .chk-box.skip  { background: #9ca3af; color: #fff; }
+    .chk-content { flex: 1; }
+    .chk-content .chk-title { font-weight: 600; }
+    .chk-content .chk-desc  { font-size: .82rem; color: var(--neutral-light); margin-top: 2px; }
+
+    /* ── TWO-COL ── */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 700px) {
+      .two-col { grid-template-columns: 1fr; }
+      .changes-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ── MISC ── */
+    h3.sub { font-size: 1rem; font-weight: 600; color: var(--brand); margin: 20px 0 10px; }
+    p { font-size: .92rem; margin-bottom: 12px; }
+    p:last-child { margin-bottom: 0; }
+    ul.bullet { padding-left: 18px; margin-bottom: 12px; }
+    ul.bullet li { font-size: .9rem; margin-bottom: 5px; }
+    .divider { border: none; border-top: 1px solid var(--border); margin: 22px 0; }
+    .text-muted { color: var(--neutral-light); font-size: .85rem; }
+    .highlight { color: var(--brand); font-weight: 600; }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════ HEADER ═══════════════════════════════════════ -->
+<header class="page-header">
+  <h1>Shuddhidham — Strategy &amp; POS Context</h1>
+  <p class="subtitle">Business model decisions, target customer analysis, codebase changes required</p>
+  <div class="meta-row">
+    <span>📅 Last updated: May 2026</span>
+    <span>🏷 Stage: Early / MVP</span>
+    <span>📍 Market: Kathmandu Valley, Nepal</span>
+    <span>⚙ System: Shuddhidham POS (Laravel + Filament)</span>
+  </div>
+</header>
+
+<main>
+
+  <!-- ═══════════════════════ SECTION 1: BUSINESS MODEL ═══════════════════════ -->
+  <section>
+    <div class="section-header">
+      <span class="icon">🏪</span>
+      <h2>1. Business Model Overview</h2>
+    </div>
+    <div class="section-body">
+      <div class="callout info">
+        <strong>Core Value Proposition</strong>
+        Wholesale-quality spices &amp; dry fruits delivered to B2B customers' doorsteps. Shuddhidham keeps 13% margin on best-available wholesale price, with no need for customers to travel to Asan/Kalimati.
+      </div>
+
+      <div class="two-col">
+        <div>
+          <h3 class="sub">How It Works</h3>
+          <ul class="bullet">
+            <li><strong>Procurement on Demand</strong> — No large pre-stock. Order comes in, goods are sourced same/next day from the wholesale market.</li>
+            <li><strong>Buffer stock only</strong> — 2–3 cases of fast-moving SKUs kept on hand at any time.</li>
+            <li><strong>Agent-first channel</strong> — Sales agents walk routes (restaurant belts, sweet shop lanes, puja corridors) to onboard and collect orders. App is for reorders once trust is established.</li>
+            <li><strong>Delivery to doorstep</strong> — The agent or delivery person delivers after sourcing. Payment collected on delivery or settled later.</li>
+            <li><strong>Margin model</strong> — 13% on top of the lowest wholesale price. Must source right every time.</li>
+          </ul>
+        </div>
+        <div>
+          <h3 class="sub">Business Stage Constraints</h3>
+          <ul class="bullet">
+            <li>Small team — agents double as collectors.</li>
+            <li>Limited storage — no warehouse, only buffer cases.</li>
+            <li>Reputation is fragile — first 2–3 months matter most for trust.</li>
+            <li>Cash flow is king — credit must be managed carefully.</li>
+            <li>Procurement intelligence matters from day one — which SKUs move fastest drives better sourcing deals.</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3 class="sub">Order-to-Cash Flow (Procurement on Demand)</h3>
+      <div class="flow">
+        <div class="flow-step credit">
+          <strong>CREDIT ENTRY</strong>
+          Agent creates order as credit in POS
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <strong>ADMIN REVIEWS</strong>
+          Sees combined open credits → sources accordingly
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <strong>SOURCING</strong>
+          Buys from Kalimati / Asan at best price
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <strong>DELIVERY</strong>
+          Agent or driver delivers to customer
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step paid">
+          <strong>PAYMENT CLOSED</strong>
+          RecordPayment → credit converts to Sale
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ SECTION 2: TARGET CUSTOMERS ═══════════════════════ -->
+  <section>
+    <div class="section-header">
+      <span class="icon">🎯</span>
+      <h2>2. Target Customer Matrix</h2>
+    </div>
+    <div class="section-body">
+      <div class="callout info">
+        <strong>Selection Criteria</strong>
+        Target businesses that: (1) buy regularly, (2) lack dedicated procurement staff, (3) currently pay mid-market or retail rates, (4) are price-sensitive enough that even 5–10% savings matters to their margins.
+      </div>
+
+      <table class="styled-table">
+        <thead>
+          <tr>
+            <th>Customer Type</th>
+            <th>Priority</th>
+            <th>Order Frequency</th>
+            <th>Avg Order Size</th>
+            <th>Spice Need</th>
+            <th>Dry Fruit Need</th>
+            <th>Acquisition Approach</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Mid/Small Restaurants &amp; Momo Chains</strong><br><span class="text-muted">Dal-bhat, Indian, Momo outlets — owner is also chef &amp; procurement person</span></td>
+            <td><span class="badge badge-red">Primary #1</span></td>
+            <td>Weekly / Bi-weekly</td>
+            <td>NPR 3k–15k</td>
+            <td><span class="stars">★★★★★</span></td>
+            <td><span class="stars">★★★</span><span class="stars-empty">★★</span></td>
+            <td>Agent walk: Thamel belt, Patan restaurant corridor, Baneshwor</td>
+          </tr>
+          <tr>
+            <td><strong>Independent Sweet Shops (Mithai Pasals)</strong><br><span class="text-muted">Non-chain shops — Asan, Maru Tole, Bhaktapur, Lalitpur areas</span></td>
+            <td><span class="badge badge-red">Primary #2</span></td>
+            <td>Weekly</td>
+            <td>NPR 5k–25k</td>
+            <td><span class="stars">★★★</span><span class="stars-empty">★★</span></td>
+            <td><span class="stars">★★★★★</span></td>
+            <td>Agent walk: Asan mithai lane, Bhaktapur old town, Lalitpur market</td>
+          </tr>
+          <tr>
+            <td><strong>Ayurvedic &amp; Herbal Shops</strong><br><span class="text-muted">Premium-grade spices, specific dry fruits for tonics &amp; preparations</span></td>
+            <td><span class="badge badge-yellow">Primary #3</span></td>
+            <td>Bi-weekly / Monthly</td>
+            <td>NPR 5k–20k</td>
+            <td><span class="stars">★★★★</span><span class="stars-empty">★</span></td>
+            <td><span class="stars">★★★★</span><span class="stars-empty">★</span></td>
+            <td>Agent walk: Asan Bazaar, Bangemudha, Indrachowk</td>
+          </tr>
+          <tr>
+            <td><strong>Puja Supply Shops (near temples)</strong><br><span class="text-muted">Specific recurring SKUs — cloves, cardamom, raisins, dates for ritual use</span></td>
+            <td><span class="badge badge-yellow">Primary #4</span></td>
+            <td>Weekly / Bi-weekly</td>
+            <td>NPR 2k–8k</td>
+            <td><span class="stars">★★★</span><span class="stars-empty">★★</span></td>
+            <td><span class="stars">★★★</span><span class="stars-empty">★★</span></td>
+            <td>Agent walk: Pashupatinath, Boudhanath, Swayambhunath corridors</td>
+          </tr>
+          <tr>
+            <td><strong>Small/Mid Catering Operators</strong><br><span class="text-muted">Wedding, corporate &amp; community bhoj caterers without supplier contracts</span></td>
+            <td><span class="badge badge-blue">Secondary</span></td>
+            <td>Event-based (lumpy)</td>
+            <td>NPR 15k–60k</td>
+            <td><span class="stars">★★★★</span><span class="stars-empty">★</span></td>
+            <td><span class="stars">★★★★</span><span class="stars-empty">★</span></td>
+            <td>Word-of-mouth; target caterers at Kalimati early morning</td>
+          </tr>
+          <tr>
+            <td><strong>Trekking-area Cafés (Thamel)</strong><br><span class="text-muted">Trail mix, granola, dry fruit snack focus</span></td>
+            <td><span class="badge badge-blue">Secondary</span></td>
+            <td>Bi-weekly</td>
+            <td>NPR 2k–10k</td>
+            <td><span class="stars">★★</span><span class="stars-empty">★★★</span></td>
+            <td><span class="stars">★★★★</span><span class="stars-empty">★</span></td>
+            <td>Agent walk: Thamel café belt</td>
+          </tr>
+          <tr>
+            <td><strong>Large 5-Star Hotels &amp; Food Processors</strong><br><span class="text-muted">Already have supplier contracts, procurement teams, volume leverage</span></td>
+            <td><span class="badge badge-purple">Later Stage</span></td>
+            <td>Contract-based</td>
+            <td>NPR 50k+</td>
+            <td><span class="stars">★★★★★</span></td>
+            <td><span class="stars">★★★★</span><span class="stars-empty">★</span></td>
+            <td>Not until scale &amp; quality reputation established (6–12 months+)</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout warn" style="margin-top:20px">
+        <strong>Agent Strategy Note</strong>
+        In Nepal's trade culture, trust is built face-to-face first. Agents are the primary acquisition channel. The POS/app becomes useful for <em>reorders after the relationship exists</em>. Route coverage should start with: Thamel restaurant belt → Asan mithai/spice lane → Patan restaurant corridor → temple shop corridors.
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ SECTION 3: WHAT'S ALREADY BUILT ═══════════════════════ -->
+  <section>
+    <div class="section-header">
+      <span class="icon">✅</span>
+      <h2>3. What's Already Built (No Changes Needed)</h2>
+    </div>
+    <div class="section-body">
+      <div class="callout done">
+        <strong>Foundation is solid</strong>
+        The core flows required for the procurement-on-demand model are already implemented. The work is refinement, not rebuilding.
+      </div>
+
+      <ul class="done-list">
+        <li>
+          <span class="tick">✓</span>
+          <div>
+            <strong>Credit / Preorder System</strong><br>
+            <span class="text-muted">Sale created with <code style="display:inline;background:none;padding:0;font-size:.85rem">payment_method='credit'</code> → <code style="display:inline;background:none;padding:0;font-size:.85rem">payment_status='unpaid'</code> → CustomerLedgerEntry with pending debit. This IS the preorder mechanism.</span>
+          </div>
+        </li>
+        <li>
+          <span class="tick">✓</span>
+          <div>
+            <strong>RecordPayment Page</strong><br>
+            <span class="text-muted">Agent or admin can record payment against outstanding balance. FIFO allocation against pending invoices. Closes the credit loop.</span>
+          </div>
+        </li>
+        <li>
+          <span class="tick">✓</span>
+          <div>
+            <strong>CustomerLedgerEntry &amp; Report</strong><br>
+            <span class="text-muted">Full ledger with aging buckets (current / 1-30 / 31-60 / 61-90 / 90+ days). Shows open credits in real time. This is the admin's pipeline view.</span>
+          </div>
+        </li>
+        <li>
+          <span class="tick">✓</span>
+          <div>
+            <strong>Sales Agent System</strong><br>
+            <span class="text-muted">SalesAgent model with territory, commission tiers (retail % and wholesale profit %), SalesAgentLedger for earnings tracking, AgentEarningsSettlement dashboard.</span>
+          </div>
+        </li>
+        <li>
+          <span class="tick">✓</span>
+          <div>
+            <strong>Inventory / Stock Tracking (Admin)</strong><br>
+            <span class="text-muted">StockLevel, InventoryMovement, ProductBatch with FIFO. Low stock alerts via AlertRule. InventoryList, StockAdjustment, InventoryAuditLog pages. InventoryService centralizes all changes.</span>
+          </div>
+        </li>
+        <li>
+          <span class="tick">✓</span>
+          <div>
+            <strong>Demand Pattern Data from Day 1</strong><br>
+            <span class="text-muted">Every sale (including credits) creates SaleItems. Sales Report + InventoryTurnover Report can show fast-movers from first sale. This data drives sourcing decisions.</span>
+          </div>
+        </li>
+        <li>
+          <span class="tick">✓</span>
+          <div>
+            <strong>WhatsApp Receipt on Sale Completion</strong><br>
+            <span class="text-muted">PDF invoice generated and sent via WhatsApp after sale. Builds trust with B2B customers immediately.</span>
+          </div>
+        </li>
+        <li>
+          <span class="tick">✓</span>
+          <div>
+            <strong>Wholesale / Retail Order Channels</strong><br>
+            <span class="text-muted">Sale.order_channel distinguishes wholesale vs retail. Commission calculations differ per channel. Ready for when you formalize B2B pricing tiers.</span>
+          </div>
+        </li>
+        <li>
+          <span class="tick">✓</span>
+          <div>
+            <strong>Commission Auto-posted on Payment</strong><br>
+            <span class="text-muted">Sale model observer: when payment_status changes to 'paid', commission is auto-posted to SalesAgentLedger. Agent only earns on collected orders.</span>
+          </div>
+        </li>
+        <li>
+          <span class="tick">✓</span>
+          <div>
+            <strong>Multi-session Cart (POS)</strong><br>
+            <span class="text-muted">POS supports multiple simultaneous sessions. Agent can hold one customer's order while starting another. Useful for agents serving multiple walk-in orders.</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ SECTION 4: REQUIRED CHANGES ═══════════════════════ -->
+  <section>
+    <div class="section-header">
+      <span class="icon">🔧</span>
+      <h2>4. Required Codebase Changes</h2>
+    </div>
+    <div class="section-body">
+      <div class="callout warn">
+        <strong>Principle</strong>
+        The POS must be <em>free from stock enforcement</em> since the model is procurement-on-demand. Inventory tracking stays active for the admin only. Sales figures should reflect real money received — credits are a separate pipeline.
+      </div>
+
+      <div class="changes-grid">
+
+        <!-- CHANGE 1 -->
+        <div class="change-card priority-high">
+          <h3>① Remove Stock Enforcement from POS</h3>
+          <div class="meta">
+            <span class="badge badge-red">HIGH PRIORITY</span>
+            <span class="badge badge-blue">POS</span>
+            <span class="text-muted">EnhancedPOS.php</span>
+          </div>
+          <p>
+            Currently the POS blocks adding items to cart and updating quantities when <code style="display:inline;background:none;font-size:.85rem">availableStock &lt; requested quantity</code>. This is wrong for a procurement-on-demand model where agents take orders before sourcing.
+          </p>
+          <p>
+            <strong>What to do:</strong> Remove or bypass the stock check in <code style="display:inline;background:none;font-size:.85rem">addToCart()</code> and <code style="display:inline;background:none;font-size:.85rem">updateQuantity()</code>. Keep the stock display (show available qty) but don't block the action.
+          </p>
+          <code>// app/Filament/Pages/EnhancedPOS.php
+
+// IN addToCart() — REMOVE this block:
+if ($availableStock &lt; $totalNeeded) {
+    Notification::make()
+        ->warning()
+        ->title('Insufficient Stock')
+        ->body("Available: {$availableStock}, ...")
+        ->send();
+    return;  // &lt;-- remove this guard
+}
+
+// IN updateQuantity() — REMOVE this block:
+if ($availableStock &lt; $quantity) {
+    Notification::make()
+        ->warning()
+        ->title('Insufficient Stock')
+        ->send();
+    return;  // &lt;-- remove this guard
+}
+
+// KEEP: Still show availableStock in search
+// results for informational purposes only.</code>
+          <p style="margin-top:10px" class="text-muted">
+            File: <strong>app/Filament/Pages/EnhancedPOS.php</strong><br>
+            Lines: ~887 (addToCart block), ~990 (updateQuantity block)
+          </p>
+        </div>
+
+        <!-- CHANGE 2 -->
+        <div class="change-card priority-high">
+          <h3>② Sales Report: Show Only Paid Sales</h3>
+          <div class="meta">
+            <span class="badge badge-red">HIGH PRIORITY</span>
+            <span class="badge badge-blue">Reports</span>
+            <span class="text-muted">SalesReport.php</span>
+          </div>
+          <p>
+            Currently the Sales Report filters by <code style="display:inline;background:none;font-size:.85rem">status = 'completed'</code> only. This includes credit (unpaid) sales in the revenue totals — money not yet received.
+          </p>
+          <p>
+            <strong>Decision from chat:</strong> "Only completed payments show as sales. Credits stay as credits until closed." Sales = real money in.
+          </p>
+          <code>// app/Filament/Pages/SalesReport.php
+// In getSalesData() and getSalesByPaymentMethod():
+
+$query = Sale::query()
+    ->whereBetween('date', [...])
+    ->where('status', 'completed')
+    ->where('payment_status', 'paid'); // &lt;-- ADD THIS
+
+// Apply same filter consistently to ALL
+// metric queries in this file.</code>
+          <p style="margin-top:10px" class="text-muted">
+            File: <strong>app/Filament/Pages/SalesReport.php</strong><br>
+            Affects: getSalesData(), getSalesByPaymentMethod(), top products query
+          </p>
+        </div>
+
+        <!-- CHANGE 3 -->
+        <div class="change-card priority-high">
+          <h3>③ Add "Open Orders" Dashboard for Admin</h3>
+          <div class="meta">
+            <span class="badge badge-red">HIGH PRIORITY</span>
+            <span class="badge badge-blue">Admin</span>
+            <span class="text-muted">New widget or existing CustomerLedger</span>
+          </div>
+          <p>
+            Admin needs a real-time view of all open credit sales (pending orders) aggregated by product. This is the sourcing intelligence: "Three agents created credits for turmeric today — source 10kg."
+          </p>
+          <p>
+            <strong>Option A (quick win):</strong> Use the existing <code style="display:inline;background:none;font-size:.85rem">CustomerLedgerReport</code> page — filter by status='pending' to see all open orders. Already built.
+          </p>
+          <p>
+            <strong>Option B (better):</strong> Add a Filament widget on the admin dashboard showing open credits grouped by product variant (SaleItems of unpaid Sales). This gives sourcing summary in one view.
+          </p>
+          <code>// Option B: New widget query concept
+SaleItem::query()
+    ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+    ->where('sales.payment_status', 'unpaid')
+    ->where('sales.status', 'completed')
+    ->groupBy('sale_items.product_variant_id')
+    ->select([
+        'product_variant_id',
+        DB::raw('SUM(quantity) as total_ordered'),
+        DB::raw('COUNT(DISTINCT sales.customer_id) as customer_count')
+    ])
+    ->with('productVariant.product')
+    ->get();</code>
+          <p style="margin-top:10px" class="text-muted">
+            This is the operator's sourcing dashboard. Start with Option A (no code needed), graduate to Option B when the pattern is clear.
+          </p>
+        </div>
+
+        <!-- CHANGE 4 -->
+        <div class="change-card priority-med">
+          <h3>④ Agent Role: Hide Inventory Navigation</h3>
+          <div class="meta">
+            <span class="badge badge-yellow">MEDIUM PRIORITY</span>
+            <span class="badge badge-blue">Permissions</span>
+            <span class="text-muted">Roles &amp; Permissions</span>
+          </div>
+          <p>
+            Sales agents should only see: POS, their earnings, customer ledger for their customers, and price list. They should NOT see inventory pages, stock reports, purchase orders, or supplier data.
+          </p>
+          <p>
+            <strong>What to do:</strong> Ensure the agent role does NOT have these permissions:
+          </p>
+          <code>// Permissions to EXCLUDE from Agent role:
+view_inventory
+manage_inventory
+view_stock_reports
+view_stock_valuation
+view_inventory_audit
+manage_purchases
+view_supplier_ledger
+view_profit_reports
+manage_products
+manage_categories
+
+// Permissions agents SHOULD have:
+access_pos_billing
+view_customers
+view_price_list
+view_agent_earnings  (their own only)</code>
+          <p style="margin-top:10px" class="text-muted">
+            Configure via <strong>Roles &amp; Permissions</strong> in the admin panel. No code change needed if role system is already flexible.
+          </p>
+        </div>
+
+        <!-- CHANGE 5 -->
+        <div class="change-card priority-med">
+          <h3>⑤ completeSale: Skip FIFO Batch Check When No Stock</h3>
+          <div class="meta">
+            <span class="badge badge-yellow">MEDIUM PRIORITY</span>
+            <span class="badge badge-blue">Services</span>
+            <span class="text-muted">EnhancedPOS.php / InventoryService.php</span>
+          </div>
+          <p>
+            Currently <code style="display:inline;background:none;font-size:.85rem">completeSale()</code> calls <code style="display:inline;background:none;font-size:.85rem">InventoryService::decreaseStockWithBatchInfo()</code> for every item. If buffer stock is zero (common in demand-on-demand), this may create negative stock levels or allocation errors.
+          </p>
+          <p>
+            <strong>What to do:</strong> Wrap the FIFO allocation in a guard — if no batch stock exists, still create the SaleItem but skip batch allocation. Record an InventoryMovement with a 'credit_sale' or 'preorder' note for reconciliation later when goods are received.
+          </p>
+          <code>// In completeSale(), per cart item:
+$currentStock = InventoryService::getStock(
+    $item['variant_id'], $storeId
+);
+
+if ($currentStock > 0) {
+    // Normal FIFO decrease
+    $allocationResult = InventoryService
+        ::decreaseStockWithBatchInfo(...);
+    $primaryBatchId = $allocationResult[...];
+} else {
+    // Preorder — no stock to allocate yet
+    $primaryBatchId = null;
+    // Optionally: log a preorder movement
+}</code>
+          <p style="margin-top:10px" class="text-muted">
+            Prevents errors when agents take orders for items not yet in buffer stock. Stock will be updated when goods arrive via Purchase Receipt.
+          </p>
+        </div>
+
+        <!-- CHANGE 6 -->
+        <div class="change-card priority-low">
+          <h3>⑥ Credit Sales: Label Clearly in POS Receipt</h3>
+          <div class="meta">
+            <span class="badge badge-green">LOW PRIORITY</span>
+            <span class="badge badge-blue">UX</span>
+            <span class="text-muted">InvoiceService / ReceiptService</span>
+          </div>
+          <p>
+            When an agent creates a credit (preorder) sale, the customer's WhatsApp receipt should clearly say "ORDER CONFIRMED — Payment due on delivery" rather than looking like a paid receipt.
+          </p>
+          <p>
+            <strong>What to do:</strong> In the invoice/receipt template, check <code style="display:inline;background:none;font-size:.85rem">payment_status</code> and conditionally show "PENDING DELIVERY" watermark or status label instead of "PAID."
+          </p>
+          <code>// In receipt/invoice template:
+@if($sale->payment_status === 'unpaid')
+    &lt;div class="status-badge pending"&gt;
+        ORDER CONFIRMED
+        &lt;small&gt;Payment due on delivery&lt;/small&gt;
+    &lt;/div&gt;
+@else
+    &lt;div class="status-badge paid"&gt;PAID&lt;/div&gt;
+@endif</code>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ SECTION 5: SYSTEM-LEVEL DECISIONS ═══════════════════════ -->
+  <section>
+    <div class="section-header">
+      <span class="icon">⚙️</span>
+      <h2>5. System-Level Decisions &amp; Rationale</h2>
+    </div>
+    <div class="section-body">
+      <table class="styled-table">
+        <thead>
+          <tr>
+            <th>Decision</th>
+            <th>Choice Made</th>
+            <th>Rationale</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Fully detach stock from POS?</strong></td>
+            <td><span class="badge badge-yellow">Partial — Remove enforcement, keep tracking</span></td>
+            <td>Keep inventory system active for low-stock alerts and sourcing intelligence. Only remove the blocking gate that prevents sales when stock = 0.</td>
+          </tr>
+          <tr>
+            <td><strong>How to handle preorders?</strong></td>
+            <td><span class="badge badge-green">Use existing Credit system</span></td>
+            <td>Payment method = 'credit' creates an unpaid sale + customer ledger entry. Already built. No new tables or flows needed.</td>
+          </tr>
+          <tr>
+            <td><strong>What counts as a "Sale" in reports?</strong></td>
+            <td><span class="badge badge-green">Only paid (payment_status = 'paid')</span></td>
+            <td>Revenue = money received. Credits are a pipeline/receivables view. Mixing them inflates reported revenue with unfulfilled orders.</td>
+          </tr>
+          <tr>
+            <td><strong>Where does the admin see open orders?</strong></td>
+            <td><span class="badge badge-yellow">CustomerLedger (now), dedicated widget (later)</span></td>
+            <td>CustomerLedgerReport filtered by status='pending' shows all open credits grouped by customer. A product-grouped view comes next for sourcing decisions.</td>
+          </tr>
+          <tr>
+            <td><strong>Should agents track stock?</strong></td>
+            <td><span class="badge badge-red">No — admin only</span></td>
+            <td>Agents need: POS, price list, customer ledger, their own earnings. Stock complexity slows them down and creates confusion since buffer stock won't match orders anyway.</td>
+          </tr>
+          <tr>
+            <td><strong>Bring full inventory back when?</strong></td>
+            <td><span class="badge badge-blue">Trigger-based — not time-based</span></td>
+            <td>Reintroduce full stock enforcement when: (a) you pre-stock 5+ SKUs regularly, (b) you have 2+ storage locations, or (c) agent errors about availability start happening.</td>
+          </tr>
+          <tr>
+            <td><strong>Loyalty program — activate now?</strong></td>
+            <td><span class="badge badge-purple">Defer — B2B focus first</span></td>
+            <td>Loyalty tiers/points make sense for repeat B2C. For B2B (restaurants, sweet shops), the loyalty equivalent is consistent pricing and reliable service. Don't add noise to agent UX now.</td>
+          </tr>
+          <tr>
+            <td><strong>WhatsApp receipts — keep?</strong></td>
+            <td><span class="badge badge-green">Yes — high value for B2B trust</span></td>
+            <td>B2B customers want paper trail for bookkeeping. WhatsApp PDF = instant receipt = trust signal. Especially important for credit sales (order confirmation).</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ SECTION 6: IMPLEMENTATION CHECKLIST ═══════════════════════ -->
+  <section>
+    <div class="section-header">
+      <span class="icon">📋</span>
+      <h2>6. Implementation Checklist</h2>
+    </div>
+    <div class="section-body">
+      <h3 class="sub">Code Changes</h3>
+      <ul class="checklist">
+        <li>
+          <div class="chk-box todo"></div>
+          <div class="chk-content">
+            <div class="chk-title">Remove stock enforcement in <code>addToCart()</code> — EnhancedPOS.php ~L887</div>
+            <div class="chk-desc">Delete the <code>if ($availableStock &lt; $totalNeeded) { ... return; }</code> block. Keep <code>$availableStock</code> calculation for display only.</div>
+          </div>
+        </li>
+        <li>
+          <div class="chk-box todo"></div>
+          <div class="chk-content">
+            <div class="chk-title">Remove stock enforcement in <code>updateQuantity()</code> — EnhancedPOS.php ~L990</div>
+            <div class="chk-desc">Delete the <code>if ($availableStock &lt; $quantity) { ... return; }</code> block.</div>
+          </div>
+        </li>
+        <li>
+          <div class="chk-box todo"></div>
+          <div class="chk-content">
+            <div class="chk-title">Add <code>payment_status = 'paid'</code> filter to SalesReport queries</div>
+            <div class="chk-desc">In <code>getSalesData()</code>, <code>getSalesByPaymentMethod()</code>, and top products query — add <code>->where('payment_status', 'paid')</code> after status filter.</div>
+          </div>
+        </li>
+        <li>
+          <div class="chk-box todo"></div>
+          <div class="chk-content">
+            <div class="chk-title">Guard FIFO batch allocation in <code>completeSale()</code> when buffer stock is zero</div>
+            <div class="chk-desc">Wrap <code>InventoryService::decreaseStockWithBatchInfo()</code> call in a stock availability check. If stock = 0, skip batch allocation, set <code>$primaryBatchId = null</code>. Do NOT throw an error.</div>
+          </div>
+        </li>
+        <li>
+          <div class="chk-box todo"></div>
+          <div class="chk-content">
+            <div class="chk-title">Update invoice/receipt template for credit (unpaid) sales</div>
+            <div class="chk-desc">Show "ORDER CONFIRMED — Payment due on delivery" status on WhatsApp receipts for <code>payment_status = 'unpaid'</code> sales.</div>
+          </div>
+        </li>
+      </ul>
+
+      <hr class="divider" />
+
+      <h3 class="sub">System / Configuration Changes</h3>
+      <ul class="checklist">
+        <li>
+          <div class="chk-box todo"></div>
+          <div class="chk-content">
+            <div class="chk-title">Create / review Sales Agent role permissions</div>
+            <div class="chk-desc">Agent role should include: <code>access_pos_billing</code>, <code>view_customers</code>, <code>view_price_list</code>, <code>create_sales</code>. Exclude all inventory, purchase, supplier, and report permissions.</div>
+          </div>
+        </li>
+        <li>
+          <div class="chk-box todo"></div>
+          <div class="chk-content">
+            <div class="chk-title">Validate CustomerLedgerReport as the "Open Orders" view</div>
+            <div class="chk-desc">Open CustomerLedgerReport, filter by status=pending — confirm it shows aggregated open credits per customer. This is the admin sourcing dashboard for now.</div>
+          </div>
+        </li>
+        <li>
+          <div class="chk-box todo"></div>
+          <div class="chk-content">
+            <div class="chk-title">Set up AlertRule for low stock (buffer SKUs)</div>
+            <div class="chk-desc">For the 2–3 buffer SKUs you keep in stock, configure low stock alerts in the AlertRule resource. Set reorder_level on their StockLevel records.</div>
+          </div>
+        </li>
+        <li>
+          <div class="chk-box todo"></div>
+          <div class="chk-content">
+            <div class="chk-title">Create test sales agents in the system</div>
+            <div class="chk-desc">Add agent records in SalesAgentResource. Set territory, commission rates. Link to user accounts if agents will log into the POS directly.</div>
+          </div>
+        </li>
+        <li>
+          <div class="chk-box todo"></div>
+          <div class="chk-content">
+            <div class="chk-title">Seed initial product catalog with spice &amp; dry fruit SKUs</div>
+            <div class="chk-desc">Add the core 15–20 SKUs you'll launch with (turmeric, cumin, coriander, cardamom, cashews, raisins, almonds, etc.) with correct cost prices and wholesale selling prices.</div>
+          </div>
+        </li>
+      </ul>
+
+      <hr class="divider" />
+
+      <h3 class="sub">Deferred (Do Not Build Now)</h3>
+      <ul class="checklist">
+        <li>
+          <div class="chk-box skip">–</div>
+          <div class="chk-content">
+            <div class="chk-title">Loyalty Points for B2B customers</div>
+            <div class="chk-desc">B2B relationship is price + reliability, not points. Defer until you have a clear request from a customer segment.</div>
+          </div>
+        </li>
+        <li>
+          <div class="chk-box skip">–</div>
+          <div class="chk-content">
+            <div class="chk-title">Full stock enforcement re-activation</div>
+            <div class="chk-desc">Bring back when: 5+ pre-stocked SKUs regularly, 2+ storage locations, or agent availability errors begin.</div>
+          </div>
+        </li>
+        <li>
+          <div class="chk-box skip">–</div>
+          <div class="chk-content">
+            <div class="chk-title">Online ordering portal for customers</div>
+            <div class="chk-desc">Agent-first for 3–6 months. App reorders come after the face-to-face relationship exists. Don't split focus now.</div>
+          </div>
+        </li>
+        <li>
+          <div class="chk-box skip">–</div>
+          <div class="chk-content">
+            <div class="chk-title">Large hotel / food processor sales</div>
+            <div class="chk-desc">They have procurement teams and existing contracts. Needs scale and quality track record first. 6–12 months out.</div>
+          </div>
+        </li>
+        <li>
+          <div class="chk-box skip">–</div>
+          <div class="chk-content">
+            <div class="chk-title">Product-level sourcing dashboard widget</div>
+            <div class="chk-desc">Aggregate open credits by product variant for sourcing planning. Build when volume justifies it. CustomerLedgerReport covers this need today.</div>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ SECTION 7: KEY FILES REFERENCE ═══════════════════════ -->
+  <section>
+    <div class="section-header">
+      <span class="icon">📁</span>
+      <h2>7. Key Files Quick Reference</h2>
+    </div>
+    <div class="section-body">
+      <table class="styled-table">
+        <thead>
+          <tr>
+            <th>File</th>
+            <th>Purpose</th>
+            <th>Relevant to This Plan</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>app/Filament/Pages/EnhancedPOS.php</code></td>
+            <td>Main POS interface</td>
+            <td>Changes ①, ⑤ — remove stock enforcement, guard FIFO allocation</td>
+          </tr>
+          <tr>
+            <td><code>app/Filament/Pages/SalesReport.php</code></td>
+            <td>Sales analytics</td>
+            <td>Change ② — add payment_status='paid' filter</td>
+          </tr>
+          <tr>
+            <td><code>app/Filament/Pages/RecordPayment.php</code></td>
+            <td>Record payment against open credit</td>
+            <td>Already built — the mechanism to close credits into sales</td>
+          </tr>
+          <tr>
+            <td><code>app/Filament/Pages/CustomerLedgerReport.php</code></td>
+            <td>Customer receivables view</td>
+            <td>Use as "Open Orders" view (filter pending) — Change ③ Option A</td>
+          </tr>
+          <tr>
+            <td><code>app/Filament/Pages/AgentEarningsSettlement.php</code></td>
+            <td>Agent performance dashboard</td>
+            <td>Already built — shows agent sales, commissions, settlement status</td>
+          </tr>
+          <tr>
+            <td><code>app/Services/InventoryService.php</code></td>
+            <td>All stock changes flow through here</td>
+            <td>Change ⑤ — understand decreaseStockWithBatchInfo() return behaviour</td>
+          </tr>
+          <tr>
+            <td><code>app/Services/CustomerLedgerService.php</code></td>
+            <td>Credit → payment allocation</td>
+            <td>Core of the preorder-to-sale flow — no changes needed</td>
+          </tr>
+          <tr>
+            <td><code>app/Services/SalesAgentCommissionService.php</code></td>
+            <td>Agent commission calculation</td>
+            <td>Works correctly — commission only posts on payment_status='paid'</td>
+          </tr>
+          <tr>
+            <td><code>app/Models/Sale.php</code></td>
+            <td>Core sale record</td>
+            <td>payment_status field: 'paid' | 'unpaid'. Observer triggers commission on paid.</td>
+          </tr>
+          <tr>
+            <td><code>app/Models/CustomerLedgerEntry.php</code></td>
+            <td>Ledger entries for credits</td>
+            <td>entry_type='sale' with status='pending' = open credit/preorder</td>
+          </tr>
+          <tr>
+            <td><code>app/Filament/Resources/SalesAgentResource.php</code></td>
+            <td>Agent management</td>
+            <td>Create agent accounts, set territories and commission rates here</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+</body>
+</html>
