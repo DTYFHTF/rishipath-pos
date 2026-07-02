@@ -600,15 +600,16 @@ class DryFruitsSeeder extends Seeder
 
             $sku = 'SP-'.$productData['sku_code'];
 
+            // Match on name (not sku) - other seeders (e.g. ProductCatalogSeeder) may have
+            // already created this product under a different SKU scheme.
             $product = Product::firstOrCreate(
-                ['organization_id' => $this->org->id, 'sku' => $sku],
+                ['organization_id' => $this->org->id, 'name' => $productData['name']],
                 [
                     'category_id' => $category->id,
-                    'name' => $productData['name'],
+                    'sku' => $sku,
                     'name_nepali' => $productData['name_nepali'] ?? null,
                     'name_romanized' => $productData['name_romanized'] ?? ($productData['name_hindi'] ?? null),
                     'name_hindi' => $productData['name_hindi'] ?? null,
-                    'sku' => $sku,
                     'product_type' => $category->product_type,
                     'unit_type' => $category->config['unit_type'] ?? 'weight',
                     'has_variants' => count($productData['variants']) > 1,

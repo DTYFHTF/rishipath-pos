@@ -62,8 +62,10 @@ $PHP -d memory_limit=512M "$COMPOSER_BIN" install \
 echo "$LOG Running migrations..."
 $PHP artisan migrate --force
 
-echo "$LOG Seeding (safe – skip on error)..."
-$PHP artisan db:seed --force 2>/dev/null || true
+# Seeding is intentionally NOT run automatically here. ProductCatalogSeeder
+# deactivates every product not in its own list, which would silently hide
+# anything added via the admin panel between deploys. Run seeders manually
+# (php artisan db:seed --force) when a deliberate catalog sync is needed.
 
 echo "$LOG Linking storage..."
 $PHP artisan storage:link 2>/dev/null || true

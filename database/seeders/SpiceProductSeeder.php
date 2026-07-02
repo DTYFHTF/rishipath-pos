@@ -671,8 +671,9 @@ class SpiceProductSeeder extends Seeder
 
             $sku = 'RSH-'.$productData['sku_code'];
 
-            // Skip if product already exists
-            if (Product::where('organization_id', $this->org->id)->where('sku', $sku)->exists()) {
+            // Skip if a product with this name already exists (may have been created
+            // by another seeder, e.g. ProductCatalogSeeder, under a different SKU scheme)
+            if (Product::where('organization_id', $this->org->id)->where('name', $productData['name'])->exists()) {
                 $this->command->line("  Skipping existing: {$productData['name']}");
 
                 continue;
