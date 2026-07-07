@@ -129,13 +129,40 @@ class InventoryService
             ->orderBy('expiry_date', 'asc')
             ->get();
 
+        $stockQty = $stock->quantity;
+
         if ($batches->isEmpty()) {
+            // No batch exists to hold this stock (e.g. it was added via a
+            // manual 'adjustment' rather than a Purchase receipt). Without one,
+            // a later FIFO sale/transfer has nothing to allocate from. Batches
+            // normally require a purchase_id (see ProductBatch::creating()) -
+            // a system-generated adjustment batch is a sanctioned exception.
+            if ($stockQty > 0) {
+                $variant = ProductVariant::find($productVariantId);
+                ProductBatch::withoutEvents(fn () => ProductBatch::create([
+                    'purchase_id' => null,
+                    'product_variant_id' => $productVariantId,
+                    'store_id' => $storeId,
+                    'batch_number' => 'ADJ-'.now()->format('YmdHis').'-'.$productVariantId,
+                    'manufactured_date' => null,
+                    'expiry_date' => null,
+                    'purchase_date' => now(),
+                    'purchase_price' => $variant?->cost_price ?? 0,
+                    'supplier_id' => null,
+                    'quantity_received' => (int) $stockQty,
+                    'quantity_remaining' => (int) $stockQty,
+                    'quantity_sold' => 0,
+                    'quantity_damaged' => 0,
+                    'quantity_returned' => 0,
+                    'notes' => 'Auto-created to track stock adjusted outside a purchase receipt.',
+                ]));
+            }
+
             return;
         }
 
         // Calculate total batch quantity
         $totalBatchQty = $batches->sum('quantity_remaining');
-        $stockQty = $stock->quantity;
 
         // If stock and batch totals match, no sync needed
         if ($totalBatchQty === $stockQty) {
@@ -337,7 +364,7 @@ class InventoryService
         });
 
         if ($remaining > 0) {
-            throw new \Exception("Insufficient batch stock. Needed {$quantity}, allocated ".($quantity - $remaining));
+            throw new \Exception("Insufficient stock. Needed {$quantity}, allocated ".($quantity - $remaining));
         }
 
         return $allocatedBatches;
@@ -396,8 +423,11 @@ class InventoryService
 
             // Create a receiving ProductBatch record at the destination store
             // so transferred stock has traceability and can be allocated later.
+            // ProductBatch::creating() normally requires a purchase_id (batches
+            // must trace to a Purchase Order) - a store transfer is a sanctioned
+            // exception to that rule, so it's created via withoutEvents().
             $variant = ProductVariant::find($productVariantId);
-            $batch = ProductBatch::create([
+            $batch = ProductBatch::withoutEvents(fn () => ProductBatch::create([
                 'purchase_id' => null,
                 'product_variant_id' => $productVariantId,
                 'store_id' => $toStoreId,
@@ -413,7 +443,7 @@ class InventoryService
                 'quantity_damaged' => 0,
                 'quantity_returned' => 0,
                 'notes' => "Transfer from store {$fromStoreId}".($notes ? ": {$notes}" : ''),
-            ]);
+            ]));
 
             // Now increase stock at destination (this will sync batch quantities)
             $toStock = self::increaseStock(
