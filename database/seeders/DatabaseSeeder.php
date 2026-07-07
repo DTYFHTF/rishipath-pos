@@ -28,6 +28,14 @@ class DatabaseSeeder extends Seeder
             ProductCatalogSeeder::class,
             ProductImageSeeder::class,
             JeeraPowderSeeder::class,
+            // Must run after ProductCatalogSeeder: re-activates the blend
+            // products its deactivation sweep would otherwise hide.
+            IngredientKnowledgeBaseSeeder::class,
+            BlendProductsSeeder::class,
+            // Runs last: sets up the live Shuddhidham accounts (Super Admin +
+            // sales agents) and deactivates any other users so the panel ships
+            // with exactly the intended logins.
+            ShuddhidhamUsersSeeder::class,
         ]);
     }
 }

@@ -22,6 +22,11 @@ class CustomerAnalyticsReport extends Page
 
     protected static string $view = 'filament.pages.customer-analytics-report';
 
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasPermission('view_sales_reports') ?? false;
+    }
+
     public $startDate;
 
     public $endDate;

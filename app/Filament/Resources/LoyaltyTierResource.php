@@ -15,6 +15,11 @@ class LoyaltyTierResource extends Resource
 {
     protected static ?string $model = LoyaltyTier::class;
 
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->hasPermission('manage_loyalty_tiers') ?? false;
+    }
+
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
 
     public static function form(Form $form): Form

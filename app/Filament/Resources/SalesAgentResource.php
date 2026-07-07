@@ -15,6 +15,26 @@ class SalesAgentResource extends Resource
 {
     protected static ?string $model = SalesAgent::class;
 
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->hasPermission('view_sales_agents') ?? false;
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()?->hasPermission('manage_sales_agents') ?? false;
+    }
+
+    public static function canEdit($record): bool
+    {
+        return auth()->user()?->hasPermission('manage_sales_agents') ?? false;
+    }
+
+    public static function canDelete($record): bool
+    {
+        return auth()->user()?->hasPermission('manage_sales_agents') ?? false;
+    }
+
     protected static ?string $navigationIcon = 'heroicon-o-identification';
 
     protected static ?string $navigationGroup = 'Sales';

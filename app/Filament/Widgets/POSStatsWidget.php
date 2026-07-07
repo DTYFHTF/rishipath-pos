@@ -16,6 +16,11 @@ class POSStatsWidget extends BaseWidget
 {
     protected static ?int $sort = 2;
 
+    public static function canView(): bool
+    {
+        return auth()->user()?->hasPermission('view_pos_stats') ?? false;
+    }
+
     #[On('organization-switched')]
     #[On('store-switched')]
     public function refresh(): void

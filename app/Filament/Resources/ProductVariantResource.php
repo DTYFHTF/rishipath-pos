@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ProductVariantResource\Pages;
+use App\Filament\Traits\HasPermissionCheck;
 use App\Models\ProductVariant;
 use App\Services\BarcodeService;
 use App\Services\PricingService;
@@ -17,6 +18,8 @@ use Filament\Tables\Table;
 
 class ProductVariantResource extends Resource
 {
+    use HasPermissionCheck;
+
     protected static ?string $model = ProductVariant::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';

@@ -15,6 +15,26 @@ class CustomerLedgerEntryResource extends Resource
 {
     protected static ?string $model = CustomerLedgerEntry::class;
 
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->hasPermission('view_customer_ledger') ?? false;
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()?->hasPermission('record_customer_payments') ?? false;
+    }
+
+    public static function canEdit($record): bool
+    {
+        return auth()->user()?->isSuperAdmin() ?? false;
+    }
+
+    public static function canDelete($record): bool
+    {
+        return auth()->user()?->isSuperAdmin() ?? false;
+    }
+
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
 
     protected static ?string $navigationGroup = 'Customers';

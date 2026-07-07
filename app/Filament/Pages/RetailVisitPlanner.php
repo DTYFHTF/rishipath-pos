@@ -47,7 +47,7 @@ class RetailVisitPlanner extends Page
 
     public static function canAccess(): bool
     {
-        return auth()->check();
+        return auth()->user()?->hasPermission('view_retail_stores') ?? false;
     }
 
     public function mount(): void

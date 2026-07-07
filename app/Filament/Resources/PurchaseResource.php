@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\PurchaseResource\Pages;
+use App\Filament\Traits\HasPermissionCheck;
 use App\Models\ProductVariant;
 use App\Models\Purchase;
 use App\Models\Store;
@@ -21,6 +22,8 @@ use Illuminate\Support\Facades\Auth;
 
 class PurchaseResource extends Resource
 {
+    use HasPermissionCheck;
+
     protected static ?string $model = Purchase::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-shopping-bag';

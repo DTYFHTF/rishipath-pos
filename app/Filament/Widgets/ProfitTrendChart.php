@@ -21,7 +21,7 @@ class ProfitTrendChart extends ChartWidget
 
     public static function canView(): bool
     {
-        return auth()->user()?->hasPermission('view_dashboard') ?? false;
+        return auth()->user()?->hasPermission('view_profit_reports') ?? false;
     }
 
     #[On('organization-switched')]

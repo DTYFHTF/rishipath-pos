@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\SupplierResource\Pages;
+use App\Filament\Traits\HasPermissionCheck;
 use App\Models\Supplier;
 use App\Services\OrganizationContext;
 use Filament\Forms;
@@ -13,6 +14,8 @@ use Filament\Tables\Table;
 
 class SupplierResource extends Resource
 {
+    use HasPermissionCheck;
+
     protected static ?string $model = Supplier::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';

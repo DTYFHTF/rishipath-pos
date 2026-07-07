@@ -104,6 +104,7 @@ trait HasPermissionCheck
             'category' => 'categories',
             'customer' => 'customers',
             'sale' => 'sales',
+            'purchase' => 'purchases',
             'productbatch' => 'product_batches',
             'supplier' => 'suppliers',
             'store' => 'stores',

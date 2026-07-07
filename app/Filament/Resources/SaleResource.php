@@ -24,6 +24,52 @@ class SaleResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->hasAnyPermission(['view_sales', 'view_own_sales_only']) ?? false;
+    }
+
+    public static function canCreate(): bool
+    {
+        // Sales are created through the POS, not manually
+        return auth()->user()?->hasPermission('void_sales') ?? false;
+    }
+
+    public static function canEdit($record): bool
+    {
+        return auth()->user()?->hasPermission('void_sales') ?? false;
+    }
+
+    public static function canDelete($record): bool
+    {
+        return auth()->user()?->hasPermission('void_sales') ?? false;
+    }
+
+    /**
+     * Users with only view_own_sales_only see just the sales they made
+     * (as cashier) or that are attributed to their SalesAgent profile.
+     */
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+        $user = auth()->user();
+
+        if ($user && ! $user->hasPermission('view_sales') && $user->hasPermission('view_own_sales_only')) {
+            $agentId = \App\Models\SalesAgent::where('organization_id', $user->organization_id)
+                ->where('email', $user->email)
+                ->value('id');
+
+            $query->where(function (Builder $q) use ($user, $agentId) {
+                $q->where('cashier_id', $user->id);
+                if ($agentId) {
+                    $q->orWhere('sales_agent_id', $agentId);
+                }
+            });
+        }
+
+        return $query;
+    }
+
     public static function form(Form $form): Form
     {
         return $form

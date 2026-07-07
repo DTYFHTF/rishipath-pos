@@ -33,26 +33,13 @@ class ShuddhidhamUsersSeeder extends Seeder
             ->where('slug', 'super-admin')
             ->firstOrFail();
 
-        $agentRole = Role::firstOrCreate(
+        // updateOrCreate so re-running this seeder re-applies the reduced
+        // allow-list even if the role already exists with broader permissions.
+        $agentRole = Role::updateOrCreate(
             ['organization_id' => $org->id, 'slug' => 'sales-agent'],
             [
                 'name' => 'Sales Agent',
-                'permissions' => [
-                    'view_dashboard',
-                    'access_pos_billing',
-                    'create_sales',
-                    'apply_discounts',
-                    'view_own_sales_only',
-                    'view_products',
-                    'view_product_variants',
-                    'view_categories',
-                    'view_customers',
-                    'create_customers',
-                    'edit_customers',
-                    'view_customer_purchase_history',
-                    'view_customer_ledger',
-                    'view_loyalty_program',
-                ],
+                'permissions' => RolePermissionSeeder::getSalesAgentPermissions(),
                 'is_system_role' => true,
             ]
         );

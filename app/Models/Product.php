@@ -64,6 +64,37 @@ class Product extends Model
     }
 
     /**
+     * Blend recipe lines (for composed products like Garam Masala).
+     */
+    public function compositions(): HasMany
+    {
+        return $this->hasMany(ProductComposition::class)->orderBy('sort');
+    }
+
+    /**
+     * Raw-material cost per kg, derived from the cheapest-per-gram costed
+     * variant (prefers the largest pack). Null when no variant has a cost.
+     */
+    public function costPerKg(): ?float
+    {
+        $variant = $this->variants
+            ->where('active', true)
+            ->filter(fn ($v) => (float) $v->cost_price > 0)
+            ->sortByDesc(fn ($v) => strtoupper($v->unit ?? 'GMS') === 'KG' ? (float) $v->pack_size : (float) $v->pack_size / 1000)
+            ->first();
+
+        if (! $variant) {
+            return null;
+        }
+
+        $kg = strtoupper($variant->unit ?? 'GMS') === 'KG'
+            ? (float) $variant->pack_size
+            : (float) $variant->pack_size / 1000;
+
+        return $kg > 0 ? (float) $variant->cost_price / $kg : null;
+    }
+
+    /**
      * Generate semantic SKU: [Category]-[Type]-[Product]
      * Example: AYU-OIL-AML (Ayurveda Oil - Amla)
      */

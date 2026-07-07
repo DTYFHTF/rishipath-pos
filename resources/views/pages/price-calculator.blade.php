@@ -35,6 +35,15 @@
     .margin-low   { background: #fee2e2; color: #991b1b; }
     input[type=number]::-webkit-inner-spin-button { opacity: .6; }
     .blend-row td { padding: 4px 6px; }
+    .b-drop {
+      position: absolute; left: 0; right: 0; top: 100%; z-index: 60;
+      background: white; border: 1px solid #e5e7eb; border-radius: 0 0 8px 8px;
+      max-height: 220px; overflow-y: auto; box-shadow: 0 4px 16px rgba(0,0,0,.10);
+    }
+    .chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 99px;
+            font-size: 12px; border: 1.5px dashed #86efac; background: #f0fdf4; color: #15803d;
+            cursor: pointer; transition: all .15s; }
+    .chip:hover { background: #dcfce7; border-style: solid; }
   </style>
 </head>
 <body class="min-h-screen">
@@ -239,23 +248,57 @@
         </div>
       </div>
 
-      <div class="flex gap-3 mb-4 flex-wrap">
+      <div class="flex gap-3 mb-4 flex-wrap items-end">
+        <div class="w-full sm:w-64">
+          <label class="block text-xs font-medium text-gray-500 mb-1">&#x1F4D6; Load Saved Recipe</label>
+          <div class="flex gap-2">
+            <select id="recipeSelect" class="flex-1 min-w-0 px-2 py-2 border border-green-200 bg-green-50 rounded-lg text-sm">
+              <option value="">— choose recipe —</option>
+            </select>
+            <button onclick="loadRecipe()" class="shrink-0 whitespace-nowrap text-xs font-medium bg-green-600 text-white rounded-lg px-4 py-2 hover:bg-green-700">Load</button>
+          </div>
+        </div>
         <div class="flex-1 min-w-48">
           <label class="block text-xs font-medium text-gray-500 mb-1">Blend / Mix Name</label>
           <input id="blendName" type="text" placeholder="e.g. Garam Masala, Dry Fruit Mix&#x2026;"
-            class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" oninput="calcBlend()" />
+            class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
         </div>
         <div class="w-36">
           <label class="block text-xs font-medium text-gray-500 mb-1">Final Pack Size (g)</label>
           <input id="blendPackSize" type="number" value="100" min="1" step="1"
-            class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-right num" oninput="calcBlend()" />
+            class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-right num" oninput="updateBlendTotals()" />
         </div>
         <div class="w-36">
           <label class="block text-xs font-medium text-gray-500 mb-1">Target Margin %</label>
           <input id="blendMargin" type="number" value="50" min="1" max="99" step="1"
-            class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-right num" oninput="calcBlend()" />
+            class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-right num" oninput="updateBlendTotals()" />
         </div>
       </div>
+
+      <!-- Value-added / processing cost -->
+      <div class="bg-amber-50 border border-amber-100 rounded-xl p-3 mb-4">
+        <div class="text-xs font-semibold text-amber-700 mb-2">&#x1F3ED; Value-added cost
+          <span class="font-normal text-amber-500">&#x2014; रू per kg of finished blend, added on top of ingredient cost</span></div>
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Labour रू/kg</label>
+            <input id="blendLabor" type="number" value="50" min="0" step="5"
+              class="w-full px-3 py-2 border border-amber-200 rounded-lg text-sm text-right num" oninput="updateBlendTotals()" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Grinding रू/kg</label>
+            <input id="blendGrinding" type="number" value="50" min="0" step="5"
+              class="w-full px-3 py-2 border border-amber-200 rounded-lg text-sm text-right num" oninput="updateBlendTotals()" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Transport रू/kg</label>
+            <input id="blendTransport" type="number" value="50" min="0" step="5"
+              class="w-full px-3 py-2 border border-amber-200 rounded-lg text-sm text-right num" oninput="updateBlendTotals()" />
+          </div>
+        </div>
+      </div>
+
+      <p class="text-xs text-gray-400 mb-3 -mt-1">&#x1F4A1; Type in the Ingredient column to search your POS products &#x2014; picking one auto-fills its cost per 100g from the latest purchase cost.</p>
 
       <div class="overflow-x-auto mb-4">
         <table class="w-full text-sm">
@@ -272,6 +315,11 @@
           <tbody id="blendTbody"></tbody>
           <tfoot id="blendFoot"></tfoot>
         </table>
+      </div>
+
+      <div id="blendSuggest" class="hidden mb-4">
+        <div class="text-xs font-semibold text-green-700 mb-2">&#x1F33F; Goes well with &#x2014; click to add:</div>
+        <div id="blendSuggestChips" class="flex flex-wrap gap-2"></div>
       </div>
 
       <div id="blendResults" class="hidden grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4"></div>
@@ -339,7 +387,7 @@ const DEFAULT_PACKS = [
   { size: 1,   unit: 'g',  margin: 75, yourPrice: null },
   { size: 5,   unit: 'g',  margin: 70, yourPrice: null },
   { size: 10,  unit: 'g',  margin: 65, yourPrice: null },
-  { size: 20,  unit: 'g',  margin: 60, yourPrice: null },
+  { size: 20,  unit: 'g',  margin: 52, yourPrice: null },
   { size: 50,  unit: 'g',  margin: 52, yourPrice: null },
   { size: 100, unit: 'g',  margin: 45, yourPrice: null },
   { size: 250, unit: 'g',  margin: 38, yourPrice: null },
@@ -360,11 +408,15 @@ const UNIT_G = {
 //  STATE
 // ─────────────────────────────
 let packRows   = JSON.parse(JSON.stringify(DEFAULT_PACKS));
-let blendRows  = [{ name:'', qty:0, costPer100:0 }, { name:'', qty:0, costPer100:0 }];
+let blendRows  = [{ name:'', qty:0, costPer100:0, product_id:null }, { name:'', qty:0, costPer100:0, product_id:null }];
 let packChart  = null;
 let selProduct = null;
 let selVariant = null;
 let searchTmr  = null;
+let recipes    = [];
+let blendSearchTmr  = null;
+let blendSuggestTmr = null;
+let blendResults    = {};   // row index -> last fetched products
 
 // ─────────────────────────────
 //  HELPERS
@@ -701,38 +753,184 @@ function resetPackRows() { packRows = JSON.parse(JSON.stringify(DEFAULT_PACKS));
 // ─────────────────────────────
 //  TAB 3: BLEND CALCULATOR
 // ─────────────────────────────
-function addBlendRow() {
-  blendRows.push({ name:'', qty:0, costPer100:0 });
+function addBlendRow(preset) {
+  blendRows.push(preset || { name:'', qty:0, costPer100:0, product_id:null });
   calcBlend();
 }
 function clearBlend() {
-  blendRows = [{ name:'', qty:0, costPer100:0 }, { name:'', qty:0, costPer100:0 }];
+  blendRows = [{ name:'', qty:0, costPer100:0, product_id:null }, { name:'', qty:0, costPer100:0, product_id:null }];
   calcBlend();
 }
+
+// Full re-render (row add/remove, recipe load, tab switch) …
 function calcBlend() {
-  var tbody    = document.getElementById('blendTbody');
+  renderBlendRows();
+  updateBlendTotals();
+}
+
+function renderBlendRows() {
+  var tbody = document.getElementById('blendTbody');
+  tbody.innerHTML = blendRows.map(function(row, i) {
+    return '<tr class="blend-row border-b border-gray-100 hover:bg-gray-50">' +
+      '<td class="relative">' +
+        '<input id="bName-' + i + '" type="text" value="' + (row.name||'').replace(/"/g,'&quot;') + '" placeholder="Search product… e.g. Cloves, Cumin" autocomplete="off" class="w-full px-2 py-1 border ' + (row.product_id ? 'border-green-300 bg-green-50' : 'border-gray-200') + ' rounded text-xs" oninput="blendRows[' + i + '].name=this.value; blendRows[' + i + '].product_id=null; onBlendSearch(' + i + ');" onfocus="onBlendSearch(' + i + ')" />' +
+        '<div id="bDrop-' + i + '" class="b-drop hidden"></div>' +
+      '</td>' +
+      '<td><input type="number" value="' + (row.qty||'') + '" min="0" step="0.1" placeholder="g" class="w-full px-2 py-1 border border-gray-200 rounded text-xs text-right num" oninput="blendRows[' + i + '].qty=parseFloat(this.value)||0; updateBlendTotals();" /></td>' +
+      '<td><div class="flex items-center gap-1"><span class="text-gray-400 text-xs sym-s">' + sym() + '</span><input type="number" value="' + (row.costPer100||'') + '" min="0" step="0.01" placeholder="cost/100g" class="flex-1 px-2 py-1 border border-gray-200 rounded text-xs text-right num" oninput="blendRows[' + i + '].costPer100=parseFloat(this.value)||0; updateBlendTotals();" /></div></td>' +
+      '<td id="bCost-' + i + '" class="text-right text-xs num text-gray-300">—</td>' +
+      '<td id="bPct-' + i + '" class="text-right text-xs text-gray-500">—</td>' +
+      '<td class="no-print text-center"><button onclick="blendRows.splice(' + i + ',1); calcBlend();" class="text-gray-300 hover:text-red-400 text-xs">✕</button></td>' +
+      '</tr>';
+  }).join('');
+}
+
+// Per-row product search
+function onBlendSearch(i) {
+  clearTimeout(blendSearchTmr);
+  var q = (blendRows[i].name || '').trim();
+  var drop = document.getElementById('bDrop-' + i);
+  if (!drop) return;
+  if (q.length < 1 || blendRows[i].product_id) { drop.classList.add('hidden'); return; }
+  blendSearchTmr = setTimeout(async function() {
+    drop.innerHTML = '<div class="s-item text-xs text-gray-400">Searching…</div>';
+    drop.classList.remove('hidden');
+    try {
+      var res  = await fetch('/api/price-calculator/products?q=' + encodeURIComponent(q), { credentials:'same-origin', headers:{ Accept:'application/json' } });
+      var data = await res.json().catch(function(){ return null; });
+      if (!data || data.auth_required) {
+        drop.innerHTML = '<div class="s-item text-xs text-amber-700">&#x1F512; <a href="/admin/login" target="_blank" class="underline">Log in</a> to search POS products</div>';
+        return;
+      }
+      var products = data.products || [];
+      blendResults[i] = products;
+      if (!products.length) { drop.innerHTML = '<div class="s-item text-xs text-gray-400">No products found — you can still type a name and cost manually</div>'; return; }
+      drop.innerHTML = products.map(function(p, j) {
+        var cph = productCostPer100(p);
+        return '<div class="s-item" onclick="pickBlendIngredient(' + i + ',' + j + ')">' +
+          '<div class="font-semibold text-gray-800 text-xs">' + p.name + '</div>' +
+          '<div class="text-[11px] text-gray-400">' + (cph !== null ? 'Cost: ' + fmt(cph) + ' / 100g' : 'no cost on file') + '</div>' +
+          '</div>';
+      }).join('');
+    } catch(e) {
+      drop.innerHTML = '<div class="s-item text-xs text-red-400">&#x26A0;&#xFE0F; Network error</div>';
+    }
+  }, 280);
+}
+
+// Cheapest-per-gram costed variant (largest pack) → cost per 100g
+function productCostPer100(p) {
+  var best = null;
+  (p.variants || []).forEach(function(v) {
+    if (!(v.cost_price > 0)) return;
+    var grams = toG(v.pack_size, v.unit);
+    if (grams <= 0) return;
+    if (!best || grams > best.grams) best = { grams: grams, cost: v.cost_price };
+  });
+  return best ? best.cost / best.grams * 100 : null;
+}
+
+function pickBlendIngredient(i, j) {
+  var p = (blendResults[i] || [])[j];
+  if (!p) return;
+  var cph = productCostPer100(p);
+  blendRows[i].name = p.name;
+  blendRows[i].product_id = p.id;
+  if (cph !== null) blendRows[i].costPer100 = Math.round(cph * 100) / 100;
+  calcBlend();
+}
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.b-drop') && !e.target.closest('[id^="bName-"]')) {
+    document.querySelectorAll('.b-drop').forEach(function(el) { el.classList.add('hidden'); });
+  }
+});
+
+// Saved recipes (product compositions from the POS)
+async function fetchRecipes() {
+  try {
+    var res  = await fetch('/api/price-calculator/recipes', { credentials:'same-origin', headers:{ Accept:'application/json' } });
+    var data = await res.json().catch(function(){ return null; });
+    recipes  = (data && data.recipes) || [];
+    var sel  = document.getElementById('recipeSelect');
+    sel.innerHTML = '<option value="">— choose recipe —</option>' + recipes.map(function(r, i) {
+      return '<option value="' + i + '">' + r.name + (r.name_nepali ? ' (' + r.name_nepali + ')' : '') + '</option>';
+    }).join('');
+  } catch(e) { /* stay silent — manual entry still works */ }
+}
+
+function loadRecipe() {
+  var idx = document.getElementById('recipeSelect').value;
+  if (idx === '') return;
+  var r = recipes[parseInt(idx)];
+  if (!r) return;
+  document.getElementById('blendName').value = r.name;
+  blendRows = r.components.map(function(c) {
+    return { name: c.name, qty: c.qty, costPer100: c.cost_per_100g || 0, product_id: c.product_id };
+  });
+  calcBlend();
+}
+
+// KB pairing suggestions for the current mix
+function updateBlendSuggestions() {
+  clearTimeout(blendSuggestTmr);
+  var ids = blendRows.map(function(r) { return r.product_id; }).filter(Boolean);
+  var box = document.getElementById('blendSuggest');
+  if (!ids.length) { box.classList.add('hidden'); return; }
+  blendSuggestTmr = setTimeout(async function() {
+    try {
+      var res  = await fetch('/api/price-calculator/suggestions?products=' + ids.join(','), { credentials:'same-origin', headers:{ Accept:'application/json' } });
+      var data = await res.json().catch(function(){ return null; });
+      var sugg = (data && data.suggestions) || [];
+      if (!sugg.length) { box.classList.add('hidden'); return; }
+      window._blendSugg = sugg;
+      document.getElementById('blendSuggestChips').innerHTML = sugg.map(function(s, i) {
+        return '<span class="chip" title="' + (s.reason || '') + '" onclick="addSuggestedIngredient(' + i + ')">+ ' + s.name +
+          (s.cost_per_100g ? ' <span class="text-green-500">' + fmt(s.cost_per_100g, 0) + '/100g</span>' : '') + '</span>';
+      }).join('');
+      box.classList.remove('hidden');
+    } catch(e) { box.classList.add('hidden'); }
+  }, 500);
+}
+
+function addSuggestedIngredient(i) {
+  var s = (window._blendSugg || [])[i];
+  if (!s) return;
+  // drop trailing empty rows so the suggestion lands next to real ones
+  blendRows = blendRows.filter(function(r) { return (r.name||'').trim() !== '' || r.qty > 0; });
+  addBlendRow({ name: s.name, qty: 0, costPer100: s.cost_per_100g || 0, product_id: s.product_id });
+}
+
+// Totals only — never rebuilds the rows, so typing keeps focus
+function updateBlendTotals() {
   var totalQty = blendRows.reduce(function(s,r) { return s + (parseFloat(r.qty)||0); }, 0);
 
-  tbody.innerHTML = blendRows.map(function(row, i) {
+  blendRows.forEach(function(row, i) {
     var qty  = parseFloat(row.qty) || 0;
     var cph  = parseFloat(row.costPer100) || 0;
     var cost = qty * cph / 100;
     var pct  = totalQty > 0 ? qty / totalQty * 100 : 0;
-    return '<tr class="blend-row border-b border-gray-100 hover:bg-gray-50">' +
-      '<td><input type="text" value="' + row.name + '" placeholder="e.g. Turmeric, Cumin, Coriander…" class="w-full px-2 py-1 border border-gray-200 rounded text-xs" oninput="blendRows[' + i + '].name=this.value; calcBlend();" /></td>' +
-      '<td><input type="number" value="' + (row.qty||'') + '" min="0" step="0.1" placeholder="g" class="w-full px-2 py-1 border border-gray-200 rounded text-xs text-right num" oninput="blendRows[' + i + '].qty=parseFloat(this.value)||0; calcBlend();" /></td>' +
-      '<td><div class="flex items-center gap-1"><span class="text-gray-400 text-xs sym-s">' + sym() + '</span><input type="number" value="' + (row.costPer100||'') + '" min="0" step="0.01" placeholder="cost/100g" class="flex-1 px-2 py-1 border border-gray-200 rounded text-xs text-right num" oninput="blendRows[' + i + '].costPer100=parseFloat(this.value)||0; calcBlend();" /></div></td>' +
-      '<td class="text-right text-xs num ' + (cost>0?'text-gray-700 font-medium':'text-gray-300') + '">' + (cost>0?fmt(cost):'—') + '</td>' +
-      '<td class="text-right text-xs text-gray-500">' + (qty>0?n(pct,1)+'%':'—') + '</td>' +
-      '<td class="no-print text-center"><button onclick="blendRows.splice(' + i + ',1); calcBlend();" class="text-gray-300 hover:text-red-400 text-xs">✕</button></td>' +
-      '</tr>';
-  }).join('');
+    var cEl  = document.getElementById('bCost-' + i);
+    var pEl  = document.getElementById('bPct-' + i);
+    if (cEl) { cEl.textContent = cost > 0 ? fmt(cost) : '—'; cEl.className = 'text-right text-xs num ' + (cost>0?'text-gray-700 font-medium':'text-gray-300'); }
+    if (pEl) { pEl.textContent = qty > 0 ? n(pct,1) + '%' : '—'; }
+  });
+
+  updateBlendSuggestions();
 
   var totalCost   = blendRows.reduce(function(s,r) { return s + ((parseFloat(r.qty)||0) * (parseFloat(r.costPer100)||0) / 100); }, 0);
-  var cpg         = totalQty > 0 && totalCost > 0 ? totalCost / totalQty : 0;
+  var cpg         = totalQty > 0 && totalCost > 0 ? totalCost / totalQty : 0;   // raw material cost per gram
   var blendMargin = parseFloat(document.getElementById('blendMargin').value) || 50;
   var packSize    = parseFloat(document.getElementById('blendPackSize').value) || 100;
-  var packCost    = cpg * packSize;
+
+  // Value-added processing (labour + grinding + transport) — रू per kg of blend
+  var procPerKg   = (parseFloat(document.getElementById('blendLabor').value)||0)
+                  + (parseFloat(document.getElementById('blendGrinding').value)||0)
+                  + (parseFloat(document.getElementById('blendTransport').value)||0);
+  var procCpg     = procPerKg / 1000;              // processing cost per gram
+  var loadedCpg   = cpg > 0 ? cpg + procCpg : 0;   // fully-loaded cost per gram
+
+  var packCost    = loadedCpg * packSize;          // material + processing for the pack
   var blendPrice  = packCost > 0 && blendMargin < 100 ? packCost / (1 - blendMargin / 100) : 0;
 
   document.getElementById('blendFoot').innerHTML = totalQty > 0
@@ -748,10 +946,10 @@ function calcBlend() {
   if (totalCost > 0 && totalQty > 0) {
     res.classList.remove('hidden');
     var cards2 = [
-      { l:'Total Blend Cost',           v:fmt(totalCost),         s:'for '+n(totalQty)+'g', c:'gray'  },
-      { l:'Cost per 100g',              v:fmt(cpg*100),           s:'blend cost',            c:'blue'  },
-      { l:'Cost for '+packSize+'g pack', v:fmt(packCost),          s:'raw material only',    c:'amber' },
-      { l:'Suggested Sell Price',       v:blendPrice>0?fmt(blendPrice):'—', s:'at '+blendMargin+'% margin', c:'green' },
+      { l:'Material Cost',              v:fmt(totalCost),           s:'for '+n(totalQty)+'g',                    c:'gray'  },
+      { l:'Loaded Cost / 100g',        v:fmt(loadedCpg*100),       s:'+ रू '+n(procPerKg,0)+'/kg processing',   c:'blue'  },
+      { l:'Cost for '+packSize+'g pack', v:fmt(packCost),          s:'material + processing',                   c:'amber' },
+      { l:'Suggested Sell Price',       v:blendPrice>0?fmt(blendPrice):'—', s:'at '+blendMargin+'% margin',      c:'green' },
     ];
     res.innerHTML = cards2.map(function(c) {
       return '<div class="bg-' + c.c + '-50 rounded-xl border border-' + c.c + '-100 p-3 text-center">' +
@@ -764,21 +962,21 @@ function calcBlend() {
   }
 
   var bd = document.getElementById('blendBreakdown');
-  if (cpg > 0) {
+  if (loadedCpg > 0) {
     bd.classList.remove('hidden');
-    var bps = [10, 25, 50, 100, 200, 250, 500];
+    var bps = [10, 20, 25, 50, 100, 200, 250, 500];
     document.getElementById('blendBreakdownTable').innerHTML =
       '<table class="w-full text-sm">' +
       '<thead><tr class="bg-gray-50 text-gray-400 text-xs uppercase tracking-wide">' +
       '<th class="text-left px-3 py-2 font-medium">Pack Size</th>' +
-      '<th class="text-right px-3 py-2 font-medium">Blend Cost</th>' +
+      '<th class="text-right px-3 py-2 font-medium">Loaded Cost</th>' +
       '<th class="text-right px-3 py-2 font-medium">Price @ 50%</th>' +
       '<th class="text-right px-3 py-2 font-medium">Price @ 40%</th>' +
       '<th class="text-right px-3 py-2 font-medium">Price @ 30%</th>' +
       '<th class="text-right px-3 py-2 font-medium">Profit @ 50%</th>' +
       '</tr></thead><tbody>' +
       bps.map(function(ps) {
-        var cost = cpg * ps;
+        var cost = loadedCpg * ps;
         var p50  = cost / 0.50;
         var p40  = cost / 0.60;
         var p30  = cost / 0.70;
@@ -858,6 +1056,7 @@ function switchTab(t) {
 renderPacks();
 calcBlend();
 refreshAll();
+fetchRecipes();
 </script>
 </body>
 </html>

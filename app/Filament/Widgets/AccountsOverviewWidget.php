@@ -14,6 +14,11 @@ class AccountsOverviewWidget extends BaseWidget
 {
     protected static ?int $sort = 3;
 
+    public static function canView(): bool
+    {
+        return auth()->user()?->hasPermission('view_supplier_ledger') ?? false;
+    }
+
     #[On('organization-switched')]
     #[On('store-switched')]
     public function refresh(): void

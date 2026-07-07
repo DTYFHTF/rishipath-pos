@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ProductBatchResource\Pages;
+use App\Filament\Traits\HasPermissionCheck;
 use App\Models\ProductBatch;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -13,6 +14,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 class ProductBatchResource extends Resource
 {
+    use HasPermissionCheck;
+
     protected static ?string $model = ProductBatch::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-cube-transparent';

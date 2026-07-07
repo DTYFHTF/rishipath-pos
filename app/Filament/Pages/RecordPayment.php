@@ -29,6 +29,11 @@ class RecordPayment extends Page implements HasForms
 
     protected static ?string $title = 'Record Customer Payment';
 
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasPermission('record_customer_payments') ?? false;
+    }
+
     public ?array $data = [];
 
     public ?float $outstandingBalance = null;

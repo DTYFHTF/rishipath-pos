@@ -34,6 +34,11 @@ class SupplierLedgerReport extends Page implements HasForms
 
     protected static ?string $title = 'Supplier Ledger';
 
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasPermission('view_supplier_ledger') ?? false;
+    }
+
     public ?int $supplier_id = null;
 
     public ?string $start_date = null;

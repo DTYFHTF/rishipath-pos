@@ -38,11 +38,10 @@ class PricingService
             return 35.0;
         }
 
-        if ($normalizedSize < 50) {
-            return 90.0;
-        }
-
-        if (abs($normalizedSize - 50.0) < 0.001) {
+        // Small packs (< 50 g, e.g. 20 g) previously carried a 90% markup which
+        // made them disproportionately expensive. Align them with the 50 g rate
+        // so a 20 g pack earns the same margin as a 50 g pack.
+        if ($normalizedSize <= 50.0) {
             return 65.0;
         }
 

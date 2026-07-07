@@ -24,6 +24,11 @@ class InventoryTurnoverReport extends Page
 
     protected static string $view = 'filament.pages.inventory-turnover-report';
 
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasPermission('view_inventory_reports') ?? false;
+    }
+
     public $startDate;
 
     public $endDate;

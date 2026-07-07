@@ -32,6 +32,11 @@ class CustomerLedgerReport extends Page implements HasForms
 
     protected static ?string $title = 'Customer Ledger';
 
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasPermission('view_customer_ledger') ?? false;
+    }
+
     public ?int $customer_id = null;
 
     public ?string $start_date = null;

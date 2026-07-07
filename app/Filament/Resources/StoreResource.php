@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\StoreResource\Pages;
+use App\Filament\Traits\HasPermissionCheck;
 use App\Models\Store;
 use App\Services\OrganizationContext;
 use Filament\Forms;
@@ -13,6 +14,8 @@ use Filament\Tables\Table;
 
 class StoreResource extends Resource
 {
+    use HasPermissionCheck;
+
     protected static ?string $model = Store::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-building-storefront';

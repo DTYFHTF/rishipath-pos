@@ -20,9 +20,12 @@ Laravel 12 + Filament 3 admin/POS for a Nepali spice & dry-fruit wholesale/retai
 - `RecordPayment` closes credit: adds a ledger credit entry, flips the sale to `paid`.
 - Sales agents (`SalesAgent` model, linked to user by email) earn commission tracked via `SalesAgentLedger`.
 - Invoices/receipts render via dompdf; credit invoices show an amber "ORDER CONFIRMED — Payment due on delivery" banner instead of a paid receipt.
+- **Deploy auto-seeds**: `scripts/deploy.sh` runs `migrate --force` + `db:seed --force` (DatabaseSeeder). `ProductCatalogSeeder` deactivates ALL products not in its rate list on every run — products added outside it must be re-activated by a later seeder (see `BlendProductsSeeder`).
+- **Permission gating**: resources use the `HasPermissionCheck` trait (or explicit `canViewAny`), pages `canAccess()`, widgets `canView()`. The sales-agent allow-list lives in `RolePermissionSeeder::getSalesAgentPermissions()` (shared with ShuddhidhamUsersSeeder). Never leave a new Resource/Page/Widget ungated — ungated means visible to sales agents.
+- **Price calculator** (`/price-calculator`): blend tab searches POS products per row, loads saved recipes from `product_compositions`, and suggests pairings from the Ingredient KB (`/api/price-calculator/{products,recipes,suggestions}`).
 
 ## Key models
-User, Role, Organization, Store · Product, ProductVariant, ProductStorePricing, ProductBatch, StockLevel, InventoryMovement · Supplier, Purchase, SupplierLedgerEntry · Customer, CustomerLedgerEntry, Sale, SaleItem, SalePayment · SalesAgent, SalesAgentLedger · LoyaltyTier/Point, Reward.
+User, Role, Organization, Store · Product, ProductVariant, ProductStorePricing, ProductBatch, StockLevel, InventoryMovement · Supplier, Purchase, SupplierLedgerEntry · Customer, CustomerLedgerEntry, Sale, SaleItem, SalePayment · SalesAgent, SalesAgentLedger · LoyaltyTier/Point, Reward · Ingredient (knowledge base, `/admin/ingredients`), ProductComposition (blend recipes, e.g. Garam Masala/Rishipeya).
 
 ## Test accounts (seeded by `ShuddhidhamUsersSeeder`, password `shuddhidham`)
 - `admin@shuddhidham.com` — Super Admin (full access)

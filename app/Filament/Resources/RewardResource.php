@@ -15,6 +15,11 @@ class RewardResource extends Resource
 {
     protected static ?string $model = Reward::class;
 
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->hasPermission('manage_rewards') ?? false;
+    }
+
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
 
     public static function form(Form $form): Form

@@ -16,6 +16,11 @@ class LowStockAlertsWidget extends BaseWidget
 
     protected static ?int $sort = 3;
 
+    public static function canView(): bool
+    {
+        return auth()->user()?->hasPermission('view_low_stock_alerts') ?? false;
+    }
+
     #[On('organization-switched')]
     #[On('store-switched')]
     public function refresh(): void

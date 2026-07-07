@@ -47,11 +47,8 @@ class AgentEarningsSettlement extends Page
             return true;
         }
 
-        return $user->hasAnyPermission([
-            'access_pos_billing',
-            'view_inventory_reports',
-            'view_reports',
-        ]);
+        // Settlement pays out commissions — restrict to agent management
+        return $user->hasPermission('manage_sales_agents');
     }
 
     public function getAgentsProperty(): Collection

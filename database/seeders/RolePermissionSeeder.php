@@ -75,6 +75,29 @@ class RolePermissionSeeder extends Seeder
             'edit_customers',
             'delete_customers',
             'view_customer_purchase_history',
+            'record_customer_payments',
+
+            // Sales Agents
+            'view_sales_agents',
+            'manage_sales_agents',
+
+            // Field Sales (retail stores, bulk orders, feedback)
+            'view_retail_stores',
+            'create_retail_stores',
+            'edit_retail_stores',
+            'delete_retail_stores',
+            'view_bulk_order_inquiries',
+            'create_bulk_order_inquiries',
+            'edit_bulk_order_inquiries',
+            'delete_bulk_order_inquiries',
+            'view_feedbacks',
+            'create_feedbacks',
+            'edit_feedbacks',
+            'delete_feedbacks',
+
+            // Ingredient Knowledge Base
+            'view_ingredients',
+            'manage_ingredients',
 
             // Reporting
             'view_sales_reports',
@@ -122,6 +145,51 @@ class RolePermissionSeeder extends Seeder
             'access_system_logs',
             'manage_backups',
             'manage_integrations',
+        ];
+    }
+
+    /**
+     * Canonical (reduced) permission allow-list for the Sales Agent role.
+     * Also used by ShuddhidhamUsersSeeder so the two seeders never drift.
+     */
+    public static function getSalesAgentPermissions(): array
+    {
+        return [
+            // Dashboard (limited view — most widgets require extra permissions)
+            'view_dashboard',
+
+            // POS — core function
+            'access_pos_billing',
+            'create_sales',
+            'apply_discounts',
+            'view_own_sales_only',
+
+            // Products (read-only for POS search)
+            'view_products',
+            'view_product_variants',
+            'view_categories',
+
+            // Customers (create & manage their own) + credit collection
+            'view_customers',
+            'create_customers',
+            'edit_customers',
+            'view_customer_purchase_history',
+            'view_customer_ledger',
+            'record_customer_payments',
+
+            // Field sales — retail visits, bulk order leads, customer feedback
+            'view_retail_stores',
+            'create_retail_stores',
+            'view_bulk_order_inquiries',
+            'create_bulk_order_inquiries',
+            'view_feedbacks',
+            'create_feedbacks',
+
+            // Loyalty (apply rewards at checkout)
+            'view_loyalty_program',
+
+            // Ingredient Knowledge Base (read-only selling aid)
+            'view_ingredients',
         ];
     }
 
@@ -208,6 +276,23 @@ class RolePermissionSeeder extends Seeder
                     'view_customer_purchase_history',
                     'view_customer_ledger',
                     'view_supplier_ledger',
+                    'record_customer_payments',
+
+                    // Sales agents & field sales
+                    'view_sales_agents',
+                    'manage_sales_agents',
+                    'view_retail_stores',
+                    'create_retail_stores',
+                    'edit_retail_stores',
+                    'view_bulk_order_inquiries',
+                    'create_bulk_order_inquiries',
+                    'edit_bulk_order_inquiries',
+                    'view_feedbacks',
+                    'edit_feedbacks',
+
+                    // Ingredient Knowledge Base
+                    'view_ingredients',
+                    'manage_ingredients',
 
                     // Reporting
                     'view_sales_reports',
@@ -245,6 +330,7 @@ class RolePermissionSeeder extends Seeder
                     'view_customers',
                     'create_customers',
                     'view_customer_purchase_history',
+                    'record_customer_payments',
 
                     // Loyalty (apply rewards at checkout)
                     'view_loyalty_program',
@@ -269,6 +355,11 @@ class RolePermissionSeeder extends Seeder
                     'manage_loyalty_tiers',
                     'manage_loyalty_points',
                     'manage_rewards',
+                    // Field sales & knowledge base
+                    'view_retail_stores',
+                    'view_bulk_order_inquiries',
+                    'view_feedbacks',
+                    'view_ingredients',
                 ],
                 'is_system_role' => true,
             ],
@@ -333,6 +424,7 @@ class RolePermissionSeeder extends Seeder
                     'view_customer_purchase_history',
                     'view_customer_ledger',
                     'view_supplier_ledger',
+                    'record_customer_payments',
 
                     // Reporting (full access)
                     'view_sales_reports',
@@ -350,31 +442,7 @@ class RolePermissionSeeder extends Seeder
             [
                 'name' => 'Sales Agent',
                 'slug' => 'sales-agent',
-                'permissions' => [
-                    // Dashboard (limited view)
-                    'view_dashboard',
-
-                    // POS — core function
-                    'access_pos_billing',
-                    'create_sales',
-                    'apply_discounts',
-                    'view_own_sales_only',
-
-                    // Products (read-only for POS search)
-                    'view_products',
-                    'view_product_variants',
-                    'view_categories',
-
-                    // Customers (create & manage their own)
-                    'view_customers',
-                    'create_customers',
-                    'edit_customers',
-                    'view_customer_purchase_history',
-                    'view_customer_ledger',
-
-                    // Loyalty (apply rewards at checkout)
-                    'view_loyalty_program',
-                ],
+                'permissions' => $this->getSalesAgentPermissions(),
                 'is_system_role' => true,
             ],
         ];

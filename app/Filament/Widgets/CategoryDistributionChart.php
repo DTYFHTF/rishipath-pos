@@ -27,7 +27,7 @@ class CategoryDistributionChart extends ChartWidget
 
     public static function canView(): bool
     {
-        return auth()->user()?->hasPermission('view_dashboard') ?? false;
+        return auth()->user()?->hasPermission('view_sales_reports') ?? false;
     }
 
     protected function getData(): array
