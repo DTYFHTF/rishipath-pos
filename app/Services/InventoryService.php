@@ -50,7 +50,8 @@ class InventoryService
         ?float $costPrice = null,
         ?string $notes = null,
         ?int $userId = null,
-        bool $skipBatchSync = false
+        bool $skipBatchSync = false,
+        bool $skipMovementLog = false
     ): StockLevel {
         $variant = ProductVariant::findOrFail($productVariantId);
 
@@ -84,23 +85,27 @@ class InventoryService
             self::syncBatchQuantities($productVariantId, $storeId);
         }
 
-        // Create movement record
-        InventoryMovement::create([
-            'organization_id' => $variant->product->organization_id ?? Auth::user()?->organization_id ?? 1,
-            'store_id' => $storeId,
-            'product_variant_id' => $productVariantId,
-            'batch_id' => null,
-            'type' => $type,
-            'quantity' => abs($quantityChange),
-            'unit' => $variant->unit ?? 'pcs',
-            'from_quantity' => $fromQuantity,
-            'to_quantity' => $toQuantity,
-            'reference_type' => $referenceType,
-            'reference_id' => $referenceId,
-            'cost_price' => $costPrice ?? $variant->cost_price,
-            'user_id' => $userId ?? Auth::id(),
-            'notes' => $notes,
-        ]);
+        // Create movement record. Skipped when the caller already logged a
+        // per-batch movement for this operation (FIFO sale/transfer) - otherwise
+        // the audit trail would show a duplicate row for the same deduction.
+        if (! $skipMovementLog) {
+            InventoryMovement::create([
+                'organization_id' => $variant->product->organization_id ?? Auth::user()?->organization_id ?? 1,
+                'store_id' => $storeId,
+                'product_variant_id' => $productVariantId,
+                'batch_id' => null,
+                'type' => $type,
+                'quantity' => abs($quantityChange),
+                'unit' => $variant->unit ?? 'pcs',
+                'from_quantity' => $fromQuantity,
+                'to_quantity' => $toQuantity,
+                'reference_type' => $referenceType,
+                'reference_id' => $referenceId,
+                'cost_price' => $costPrice ?? $variant->cost_price,
+                'user_id' => $userId ?? Auth::id(),
+                'notes' => $notes,
+            ]);
+        }
 
         return $stock;
     }
@@ -222,12 +227,15 @@ class InventoryService
     ): StockLevel {
         return DB::transaction(function () use ($productVariantId, $storeId, $quantity, $type, $referenceType, $referenceId, $costPrice, $notes, $userId) {
             // For sales and transfers, allocate from batches using FIFO (oldest expiring first)
+            $allocatedFromBatches = false;
             if (in_array($type, ['sale', 'transfer'], true)) {
-                self::allocateFromBatches($productVariantId, $storeId, $quantity, $referenceType, $referenceId, $notes, $userId);
+                self::allocateFromBatches($productVariantId, $storeId, $quantity, $type, $referenceType, $referenceId, $notes, $userId);
+                $allocatedFromBatches = true;
             }
 
             // Update stock_levels (skip batch sync since we already allocated via FIFO)
-            // Use internal method to avoid nested transactions
+            // Use internal method to avoid nested transactions. Skip the movement
+            // log when allocateFromBatches already recorded per-batch movements.
             return self::adjustStockInternal(
                 $productVariantId,
                 $storeId,
@@ -238,7 +246,8 @@ class InventoryService
                 $costPrice,
                 $notes,
                 $userId,
-                true // skipBatchSync = true (batches already allocated above)
+                true, // skipBatchSync = true (batches already allocated above)
+                $allocatedFromBatches // skipMovementLog = true when per-batch movements were logged
             );
         });
     }
@@ -262,12 +271,15 @@ class InventoryService
             $allocatedBatches = [];
 
             // For sales and transfers, allocate from batches using FIFO (oldest expiring first)
+            $allocatedFromBatches = false;
             if (in_array($type, ['sale', 'transfer'], true)) {
-                $allocatedBatches = self::allocateFromBatches($productVariantId, $storeId, $quantity, $referenceType, $referenceId, $notes, $userId);
+                $allocatedBatches = self::allocateFromBatches($productVariantId, $storeId, $quantity, $type, $referenceType, $referenceId, $notes, $userId);
+                $allocatedFromBatches = true;
             }
 
             // Update stock_levels (skip batch sync since we already allocated via FIFO)
-            // Use internal method to avoid nested transactions
+            // Use internal method to avoid nested transactions. Skip the movement
+            // log when allocateFromBatches already recorded per-batch movements.
             $stockLevel = self::adjustStockInternal(
                 $productVariantId,
                 $storeId,
@@ -278,7 +290,8 @@ class InventoryService
                 $costPrice,
                 $notes,
                 $userId,
-                true // skipBatchSync = true (batches already allocated above)
+                true, // skipBatchSync = true (batches already allocated above)
+                $allocatedFromBatches // skipMovementLog = true when per-batch movements were logged
             );
 
             return [
@@ -297,6 +310,7 @@ class InventoryService
         int $productVariantId,
         int $storeId,
         float $quantity,
+        string $type = 'sale',
         ?string $referenceType = null,
         ?int $referenceId = null,
         ?string $notes = null,
@@ -320,7 +334,7 @@ class InventoryService
 
         // Disable ProductBatchObserver to prevent automatic StockLevel sync during batch updates
         // We'll manually update StockLevel after all batches are allocated
-        ProductBatch::withoutEvents(function () use ($batches, &$remaining, $productVariantId, $storeId, $referenceType, $referenceId, $notes, $userId, &$allocatedBatches) {
+        ProductBatch::withoutEvents(function () use ($batches, &$remaining, $productVariantId, $storeId, $type, $referenceType, $referenceId, $notes, $userId, &$allocatedBatches) {
             foreach ($batches as $batch) {
                 if ($remaining <= 0) {
                     break;
@@ -347,7 +361,7 @@ class InventoryService
                     'store_id' => $storeId,
                     'product_variant_id' => $productVariantId,
                     'batch_id' => $batch->id,
-                    'type' => 'sale',
+                    'type' => $type,
                     'quantity' => $allocate,
                     'unit' => $variant->unit ?? 'pcs',
                     'from_quantity' => $batch->quantity_remaining + $allocate,
