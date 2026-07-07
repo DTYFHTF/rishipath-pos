@@ -48,14 +48,14 @@ class ShuddhidhamUsersSeeder extends Seeder
         User::updateOrCreate(
             ['organization_id' => $org->id, 'email' => 'admin@shuddhidham.com'],
             [
-                'name'        => 'Super Admin',
-                'phone'       => '+977-9808450422',
-                'password'    => Hash::make('shuddhidham'),
-                'pin'         => '1234',
-                'role_id'     => $superAdminRole->id,
-                'stores'      => [$store->id],
+                'name' => 'Super Admin',
+                'phone' => '+977-9808450422',
+                'password' => Hash::make('shuddhidham'),
+                'pin' => '1234',
+                'role_id' => $superAdminRole->id,
+                'stores' => [$store->id],
                 'permissions' => null,
-                'active'      => true,
+                'active' => true,
             ]
         );
 
@@ -63,30 +63,30 @@ class ShuddhidhamUsersSeeder extends Seeder
         $bina = User::updateOrCreate(
             ['organization_id' => $org->id, 'email' => 'bina@shuddhidham.com'],
             [
-                'name'        => 'Bina Shrestha',
-                'phone'       => '+977-9800000001',
-                'password'    => Hash::make('shuddhidham'),
-                'pin'         => '1111',
-                'role_id'     => $agentRole->id,
-                'stores'      => [$store->id],
+                'name' => 'Bina Shrestha',
+                'phone' => '+977-9800000001',
+                'password' => Hash::make('shuddhidham'),
+                'pin' => '1111',
+                'role_id' => $agentRole->id,
+                'stores' => [$store->id],
                 'permissions' => null,
-                'active'      => true,
+                'active' => true,
             ]
         );
 
         SalesAgent::updateOrCreate(
             ['organization_id' => $org->id, 'email' => 'bina@shuddhidham.com'],
             [
-                'agent_code'                    => 'AGT-BINA',
-                'name'                          => 'Bina Shrestha',
-                'phone'                         => '+977-9800000001',
-                'address'                       => 'Kathmandu',
-                'territory'                     => 'Thamel / Asan',
-                'commission_retail_pct'         => 5.00,
+                'agent_code' => 'AGT-BINA',
+                'name' => 'Bina Shrestha',
+                'phone' => '+977-9800000001',
+                'address' => 'Kathmandu',
+                'territory' => 'Thamel / Asan',
+                'commission_retail_pct' => 5.00,
                 'commission_wholesale_profit_pct' => 30.00,
-                'min_wholesale_amount'          => 5000.00,
-                'active'                        => true,
-                'notes'                         => 'Route: Thamel restaurant belt, Asan mithai lane',
+                'min_wholesale_amount' => 5000.00,
+                'active' => true,
+                'notes' => 'Route: Thamel restaurant belt, Asan mithai lane',
             ]
         );
 
@@ -94,30 +94,30 @@ class ShuddhidhamUsersSeeder extends Seeder
         $bishal = User::updateOrCreate(
             ['organization_id' => $org->id, 'email' => 'bishal@shuddhidham.com'],
             [
-                'name'        => 'Bishal Karki',
-                'phone'       => '+977-9800000002',
-                'password'    => Hash::make('shuddhidham'),
-                'pin'         => '2222',
-                'role_id'     => $agentRole->id,
-                'stores'      => [$store->id],
+                'name' => 'Bishal Karki',
+                'phone' => '+977-9800000002',
+                'password' => Hash::make('shuddhidham'),
+                'pin' => '2222',
+                'role_id' => $agentRole->id,
+                'stores' => [$store->id],
                 'permissions' => null,
-                'active'      => true,
+                'active' => true,
             ]
         );
 
         SalesAgent::updateOrCreate(
             ['organization_id' => $org->id, 'email' => 'bishal@shuddhidham.com'],
             [
-                'agent_code'                    => 'AGT-BISHAL',
-                'name'                          => 'Bishal Karki',
-                'phone'                         => '+977-9800000002',
-                'address'                       => 'Lalitpur',
-                'territory'                     => 'Patan / Lalitpur',
-                'commission_retail_pct'         => 5.00,
+                'agent_code' => 'AGT-BISHAL',
+                'name' => 'Bishal Karki',
+                'phone' => '+977-9800000002',
+                'address' => 'Lalitpur',
+                'territory' => 'Patan / Lalitpur',
+                'commission_retail_pct' => 5.00,
                 'commission_wholesale_profit_pct' => 30.00,
-                'min_wholesale_amount'          => 5000.00,
-                'active'                        => true,
-                'notes'                         => 'Route: Patan restaurant corridor, Lalitpur market',
+                'min_wholesale_amount' => 5000.00,
+                'active' => true,
+                'notes' => 'Route: Patan restaurant corridor, Lalitpur market',
             ]
         );
 
@@ -134,8 +134,8 @@ class ShuddhidhamUsersSeeder extends Seeder
             ->whereNotIn('email', $keepEmails)
             ->update(['active' => false]);
 
-        $this->command->info("✅ 3 users created/updated (admin, bina, bishal).");
+        $this->command->info('✅ 3 users created/updated (admin, bina, bishal).');
         $this->command->info("🚫 {$deactivated} other user(s) deactivated (not deleted, to preserve historical data).");
-        $this->command->info("👤 SalesAgent profiles created for Bina (AGT-BINA) and Bishal (AGT-BISHAL).");
+        $this->command->info('👤 SalesAgent profiles created for Bina (AGT-BINA) and Bishal (AGT-BISHAL).');
     }
 }

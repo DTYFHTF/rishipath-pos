@@ -49,7 +49,6 @@ class Sale extends Model
         'synced_at',
     ];
 
-    
     protected $casts = [
         'date' => 'date',
         'subtotal' => 'decimal:2',
@@ -118,6 +117,7 @@ class Sale extends Model
             ->orderBy('id', 'desc')
             ->first();
         $sequence = $lastSale ? (int) substr($lastSale->receipt_number, -4) + 1 : 1;
+
         return sprintf('%s-%s-%04d', $prefix, $date, $sequence);
     }
 
@@ -128,8 +128,8 @@ class Sale extends Model
     {
         $this->loadMissing('items');
         // Sum using the actual SaleItem columns created by POS: 'subtotal' and 'tax_amount'.
-        $itemsSubtotal = (float) $this->items->sum(fn($item) => $item->subtotal ?? ($item->quantity * ($item->price_per_unit ?? 0)));
-        $itemsTax = (float) $this->items->sum(fn($item) => $item->tax_amount ?? 0);
+        $itemsSubtotal = (float) $this->items->sum(fn ($item) => $item->subtotal ?? ($item->quantity * ($item->price_per_unit ?? 0)));
+        $itemsTax = (float) $this->items->sum(fn ($item) => $item->tax_amount ?? 0);
 
         $this->subtotal = $itemsSubtotal;
         $this->tax_amount = $itemsTax;
@@ -209,6 +209,7 @@ class Sale extends Model
         if ($agentId) {
             return $query->where('sales_agent_id', $agentId);
         }
+
         return $query;
     }
 
@@ -220,6 +221,7 @@ class Sale extends Model
         if ($customerId) {
             return $query->where('customer_id', $customerId);
         }
+
         return $query;
     }
 
@@ -239,6 +241,7 @@ class Sale extends Model
                 + (float) ($this->tax_amount ?? 0)
                 + (float) ($this->discount_amount ?? 0)
                 + (float) $this->delivery_charge;
+
             return $chargeAmount;
         }
 
