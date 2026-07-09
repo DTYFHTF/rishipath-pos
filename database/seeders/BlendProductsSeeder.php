@@ -19,8 +19,14 @@ use Illuminate\Database\Seeder;
  * Also creates Black Cumin (Syah Jeera) — a Garam Masala component that was
  * missing from the catalog (rate list row 30: कालो जिरा / स्याँ, CP 600/kg).
  *
+ * Pricing: Garam Masala is priced to hit a flat रू2000/kg retail target; the
+ * margin that implies is reused for Rishipeya so both blends get the same
+ * percentage discount rather than the same रू/kg number.
+ *
  * Idempotent: products/variants use firstOrCreate (never overwrite manual
- * edits); compositions use updateOrCreate keyed by (product_id, name).
+ * edits); pack-variant pricing uses updateOrCreate keyed by SKU so price
+ * changes here always take effect on reseed; compositions use updateOrCreate
+ * keyed by (product_id, name).
  */
 class BlendProductsSeeder extends Seeder
 {
@@ -32,11 +38,20 @@ class BlendProductsSeeder extends Seeder
      */
     private const PROCESSING_PER_KG = 150.0;
 
-    /** Target gross margin on the fully-loaded cost (material + processing). */
-    private const MARGIN = 0.50;
+    /**
+     * Garam Masala's flat target retail price per kg. The margin this implies
+     * (computed at runtime from its own loaded cost) is reused as-is for
+     * Rishipeya, so both blends get the same percentage discount rather than
+     * being forced to the same रू/kg number — Rishipeya's higher material
+     * cost still lands it at a higher, but similarly-reduced, price.
+     */
+    private const GARAM_MASALA_TARGET_PER_KG = 2000.0;
 
     /** Pack sizes (grams) seeded for each house blend. */
     private const PACK_SIZES = [20, 50, 100, 250, 500, 1000];
+
+    /** Margin fraction derived from Garam Masala's target; reused for Rishipeya. */
+    private float $margin;
 
     public function run(): void
     {
@@ -149,13 +164,20 @@ class BlendProductsSeeder extends Seeder
         ];
 
         $materialPerKg = $this->attachComposition($product, $recipe);
+
+        // Solve for the margin that lands the 1kg pack at the flat target -
+        // this margin (not the target रू/kg) is what Rishipeya reuses.
+        $loadedPerKg = $materialPerKg + self::PROCESSING_PER_KG;
+        $this->margin = 1 - ($loadedPerKg / self::GARAM_MASALA_TARGET_PER_KG);
+
         $created = $this->priceVariants($product, 'SP-GRM', $materialPerKg);
 
         $this->command->info(sprintf(
-            '✅ Garam Masala priced (material ≈ रू %.0f/kg + रू %.0f processing, %d%% margin, %d variant(s) upserted)',
+            '✅ Garam Masala priced (material ≈ रू %.0f/kg + रू %.0f processing, %.1f%% margin → रू %.0f/kg, %d variant(s) upserted)',
             $materialPerKg,
             self::PROCESSING_PER_KG,
-            (int) (self::MARGIN * 100),
+            $this->margin * 100,
+            self::GARAM_MASALA_TARGET_PER_KG,
             $created
         ));
     }
@@ -201,14 +223,17 @@ class BlendProductsSeeder extends Seeder
         ];
 
         $materialPerKg = $this->attachComposition($product, $recipe);
+        // Reuses the margin fraction Garam Masala's target implied - same
+        // percentage discount, but Rishipeya's own (higher) cost still yields
+        // a higher रू/kg than Garam Masala's.
         $created = $this->priceVariants($product, 'HT-RSP', $materialPerKg);
 
         $this->command->info(sprintf(
-            '✅ Rishipeya priced (product_id=%d, material ≈ रू %.0f/kg + रू %.0f processing, %d%% margin, %d variant(s) upserted)',
+            '✅ Rishipeya priced (product_id=%d, material ≈ रू %.0f/kg + रू %.0f processing, %.1f%% margin, %d variant(s) upserted)',
             $product->id,
             $materialPerKg,
             self::PROCESSING_PER_KG,
-            (int) (self::MARGIN * 100),
+            $this->margin * 100,
             $created
         ));
     }
@@ -231,7 +256,7 @@ class BlendProductsSeeder extends Seeder
         foreach (self::PACK_SIZES as $grams) {
             $isKg = $grams === 1000;
             $cost = round($loadedPerKg * $grams / 1000, 2);
-            $sell = (float) (ceil(($cost / (1 - self::MARGIN)) / 5) * 5);
+            $sell = (float) (ceil(($cost / (1 - $this->margin)) / 5) * 5);
 
             ProductVariant::updateOrCreate(
                 ['sku' => $skuPrefix.'-'.($isKg ? '1KG' : $grams.'GMS')],

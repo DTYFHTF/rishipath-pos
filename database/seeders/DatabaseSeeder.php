@@ -32,6 +32,7 @@ class DatabaseSeeder extends Seeder
             // products its deactivation sweep would otherwise hide.
             IngredientKnowledgeBaseSeeder::class,
             BlendProductsSeeder::class,
+            MultaniMittiSeeder::class,
             // Runs last: sets up the live Shuddhidham accounts (Super Admin +
             // sales agents) and deactivates any other users so the panel ships
             // with exactly the intended logins.

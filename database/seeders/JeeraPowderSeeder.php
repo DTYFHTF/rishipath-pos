@@ -3,11 +3,12 @@
 /**
  * JeeraPowderSeeder — adds Jeera Powder if it does not already exist.
  *
- * Uses firstOrCreate for product AND variants → safe to re-run,
- * will never overwrite manually edited records.
+ * Uses firstOrCreate for the product → safe to re-run without duplicating it.
+ * Variant pricing uses updateOrCreate keyed by SKU so a CP change here always
+ * takes effect on reseed, computed via PricingService's standard markup-by-
+ * pack-size rules (same rules the rest of the weight-based catalog uses).
  *
- * CP = 620 / kg.  MRP derived from same markup ratios as other spice powders
- * (Turmeric Powder CP=450 → MRP scale proportionally to CP=620).
+ * CP = 575 / kg.
  */
 
 namespace Database\Seeders;
@@ -15,11 +16,14 @@ namespace Database\Seeders;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Services\PricingService;
 use Illuminate\Database\Seeder;
 
 class JeeraPowderSeeder extends Seeder
 {
     private const ORG_ID = 1;
+
+    private const COST_PER_KG = 575.0;
 
     public function run(): void
     {
@@ -30,20 +34,21 @@ class JeeraPowderSeeder extends Seeder
 
         [$product, $created] = $this->firstOrCreateProduct($category->id);
 
+        // ProductCatalogSeeder (runs earlier in DatabaseSeeder) deactivates
+        // every product outside its own rate list, and Jeera Powder isn't in
+        // it - reactivate so a `db:seed` on top of an already-seeded database
+        // (i.e. production deploys, which never run migrate:fresh) doesn't
+        // leave this product permanently hidden after its first deploy.
+        if (! $product->active) {
+            $product->update(['active' => true]);
+        }
+
         $this->command->info(($created ? '[NEW]' : '[EXISTS]')." Jeera Powder (product_id={$product->id})");
 
-        $packs = [
-            // grams => [mrp, cost]
-            20 => [35,  12],
-            50 => [55,  31],
-            100 => [95,  62],
-            200 => [180, 124],
-            500 => [415, 310],
-            1000 => [775, 620],
-        ];
+        $packs = [20, 50, 100, 200, 500, 1000];
 
-        $variantsCreated = 0;
-        foreach ($packs as $grams => [$mrp, $cost]) {
+        $variantsUpserted = 0;
+        foreach ($packs as $grams) {
             if ($grams === 1000) {
                 $packSize = 1.000;
                 $unit = 'KG';
@@ -54,27 +59,29 @@ class JeeraPowderSeeder extends Seeder
                 $sfx = $grams.'G';
             }
 
+            $cost = round(self::COST_PER_KG * $grams / 1000, 2);
+            $suggested = PricingService::suggestVariantPrices($cost, $packSize, $unit);
+
             $sku = 'SHD-'.$product->id.'-'.$sfx;
 
-            $variant = ProductVariant::firstOrCreate(
+            ProductVariant::updateOrCreate(
                 ['sku' => $sku],
                 [
                     'product_id' => $product->id,
                     'pack_size' => $packSize,
                     'unit' => $unit,
                     'cost_price' => $cost,
-                    'mrp_india' => $mrp,
-                    'base_price' => $mrp,
+                    'mrp_india' => $suggested['mrp_india'],
+                    'base_price' => $suggested['base_price'],
+                    'selling_price_nepal' => $suggested['selling_price_nepal'],
                     'active' => true,
                 ]
             );
 
-            if ($variant->wasRecentlyCreated) {
-                $variantsCreated++;
-            }
+            $variantsUpserted++;
         }
 
-        $this->command->info("  Variants created: {$variantsCreated} / ".count($packs));
+        $this->command->info("  Variants upserted: {$variantsUpserted} / ".count($packs).' (CP रू'.self::COST_PER_KG.'/kg)');
     }
 
     private function firstOrCreateProduct(int $categoryId): array
