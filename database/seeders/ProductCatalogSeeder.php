@@ -98,11 +98,12 @@ class ProductCatalogSeeder extends Seeder
         $product->active = true;
         $product->save();
 
-        // Replace all variants with fresh data from CSV
-        ProductVariant::where('product_id', $product->id)->delete();
-
+        // Upsert variants by SKU (matched, not deleted+recreated) so IDs — and the
+        // stock_levels/product_batches/inventory_movements/purchase_items rows that
+        // cascade-delete on variant removal — survive repeated seeding on every deploy.
         $cpPerKg = $d['cp'];
         $costOverrides = $d['cost_overrides'] ?? [];
+        $keepSkus = [];
 
         foreach ($d['packs'] as $grams => $mrp) {
             if ($grams === 1000) {
@@ -127,17 +128,27 @@ class ProductCatalogSeeder extends Seeder
                 $cost = (float) $costOverrides[$grams];
             }
 
-            ProductVariant::create([
-                'product_id' => $product->id,
-                'sku' => 'SHD-'.$product->id.'-'.$sfx,
-                'pack_size' => $packSize,
-                'unit' => $unit,
-                'cost_price' => $cost,
-                'mrp_india' => $mrp,
-                'base_price' => $mrp,
-                'active' => true,
-            ]);
+            $sku = 'SHD-'.$product->id.'-'.$sfx;
+            $keepSkus[] = $sku;
+
+            ProductVariant::updateOrCreate(
+                ['sku' => $sku],
+                [
+                    'product_id' => $product->id,
+                    'pack_size' => $packSize,
+                    'unit' => $unit,
+                    'cost_price' => $cost,
+                    'mrp_india' => $mrp,
+                    'base_price' => $mrp,
+                    'active' => true,
+                ]
+            );
         }
+
+        // Remove only variants no longer present in this product's pack list
+        ProductVariant::where('product_id', $product->id)
+            ->whereNotIn('sku', $keepSkus)
+            ->delete();
 
         $flag = $isNew ? '[NEW]' : '[UPD]';
         $mrp1 = $d['packs'][1000] ?? $d['packs'][array_key_first($d['packs'])];

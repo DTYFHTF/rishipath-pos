@@ -1088,6 +1088,34 @@ class EnhancedPOS extends Page
             return;
         }
 
+        // Cart items can be parked for a long time; a variant referenced by an item may
+        // since have been deleted/recreated (e.g. a catalog reseed), leaving a stale id
+        // that would otherwise crash the sale_items insert. Re-resolve by SKU, or bail
+        // out with a clear message instead of a raw FK violation.
+        $cart = $session['cart'];
+        foreach ($cart as $key => $item) {
+            if (ProductVariant::find($item['variant_id'])) {
+                continue;
+            }
+
+            $replacement = ! empty($item['sku']) ? ProductVariant::where('sku', $item['sku'])->first() : null;
+
+            if ($replacement) {
+                $cart[$key]['variant_id'] = $replacement->id;
+            } else {
+                $this->processingSale = false;
+
+                Notification::make()
+                    ->danger()
+                    ->title('Item No Longer Available')
+                    ->body(($item['product_name'] ?? 'An item').' in the cart is no longer available. Please remove it and re-add the product.')
+                    ->send();
+
+                return;
+            }
+        }
+        $session['cart'] = $cart;
+
         DB::beginTransaction();
 
         try {
