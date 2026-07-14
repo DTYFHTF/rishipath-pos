@@ -228,8 +228,8 @@ class ProductCatalogSeeder extends Seeder
             ['name' => 'Dry Ginger Powder', 'existing_name' => 'Dried Ginger Powder (Sutho)', 'nepali' => 'सुठो पाउडर', 'romanized' => 'Sutho Powder', 'category' => 'Spice Powders', 'cp' => 700,
                 'packs' => [1000 => 875, 500 => 465, 200 => 205, 100 => 105, 50 => 65, 20 => 35]],
 
-            ['name' => 'Mirchi Dhulo', 'existing_name' => 'Chilli Powder (Khorsani Powder)', 'nepali' => 'मिर्ची धुलो', 'romanized' => 'Mirchi Dhulo', 'category' => 'Spice Powders', 'cp' => 480,
-                'packs' => [1000 => 600, 500 => 320, 200 => 140, 100 => 75, 50 => 45, 20 => 25]],
+            ['name' => 'Red Chilli Powder', 'existing_name' => 'Mirchi Dhulo', 'nepali' => 'रातो मिर्ची धुलो', 'romanized' => 'Rato Mirchi Dhulo', 'category' => 'Spice Powders', 'cp' => 550,
+                'packs' => [1000 => 690, 500 => 370, 200 => 165, 100 => 90, 50 => 55, 20 => 30]],
 
             // =================================================================
             // PREMIUM SPICES
@@ -352,8 +352,11 @@ class ProductCatalogSeeder extends Seeder
             ['name' => 'Pistachio', 'existing_name' => 'Pistachio (Pista)', 'nepali' => 'पिस्ता', 'romanized' => 'Pista', 'category' => 'Dry Fruits & Nuts', 'cp' => 2450,
                 'packs' => [1000 => 3065, 500 => 1625, 200 => 705, 100 => 370, 50 => 215, 20 => 125]],
 
-            ['name' => 'Anjeer / Figs', 'existing_name' => 'Figs (Anjeer)', 'nepali' => 'अञ्जीर', 'romanized' => 'Anjir', 'category' => 'Dry Fruits & Nuts', 'cp' => 1300,
-                'packs' => [1000 => 1625, 500 => 865, 200 => 375, 100 => 195, 50 => 115, 20 => 65]],
+            ['name' => 'Anjeer / Figs', 'existing_name' => 'Figs (Anjeer)', 'nepali' => 'अञ्जीर', 'romanized' => 'Anjir', 'category' => 'Dry Fruits & Nuts', 'cp' => 1600,
+                'packs' => [1000 => 2000, 500 => 1065, 200 => 465, 100 => 240, 50 => 145, 20 => 80]],
+
+            ['name' => 'Almond', 'nepali' => 'बादाम', 'romanized' => 'Badam', 'category' => 'Dry Fruits & Nuts', 'cp' => 1600,
+                'packs' => [1000 => 2000, 500 => 1065, 200 => 465, 100 => 240, 50 => 145, 20 => 80]],
 
             ['name' => 'Kishmish / Raisins', 'existing_name' => 'Raisins (Kishmish)', 'nepali' => 'किसमिस', 'romanized' => 'Kishmish', 'category' => 'Dry Fruits & Nuts', 'cp' => 580,
                 'packs' => [1000 => 725, 500 => 385, 200 => 170, 100 => 90, 50 => 55, 20 => 30]],

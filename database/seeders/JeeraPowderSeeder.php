@@ -8,7 +8,7 @@
  * takes effect on reseed, computed via PricingService's standard markup-by-
  * pack-size rules (same rules the rest of the weight-based catalog uses).
  *
- * CP = 575 / kg.
+ * CP = 520 / kg.
  */
 
 namespace Database\Seeders;
@@ -23,7 +23,7 @@ class JeeraPowderSeeder extends Seeder
 {
     private const ORG_ID = 1;
 
-    private const COST_PER_KG = 575.0;
+    private const COST_PER_KG = 520.0;
 
     public function run(): void
     {
