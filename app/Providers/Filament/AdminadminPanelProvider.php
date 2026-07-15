@@ -54,6 +54,16 @@ class AdminadminPanelProvider extends PanelProvider
                 PanelsRenderHook::STYLES_AFTER,
                 fn (): string => Blade::render(<<<'BLADE'
                     <style>
+                        /* Let the main content column shrink to fit beside the sticky
+                           desktop sidebar. .fi-main-ctn is a flex item with the browser
+                           default min-width:auto, so on pages with a wide table it refuses
+                           to shrink below the table's width and renders on top of the
+                           sidebar. min-width:0 lets flexbox size it correctly; the table
+                           then scrolls inside its own container instead of overflowing. */
+                        .fi-main-ctn {
+                            min-width: 0 !important;
+                        }
+
                         /* Prevent sidebar/content overlap on tablet and mobile. */
                         @media (max-width: 1279px) {
                             .fi-sidebar {
