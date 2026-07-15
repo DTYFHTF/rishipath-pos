@@ -145,10 +145,14 @@ class ProductCatalogSeeder extends Seeder
             );
         }
 
-        // Remove only variants no longer present in this product's pack list
+        // Deactivate (don't hard-delete) variants no longer in this product's
+        // pack list. A delete would throw on any variant already referenced by
+        // sale_items (restrictOnDelete), aborting the whole seed run; the POS
+        // and price list both hide inactive variants, so this is equivalent for
+        // display while preserving sales history.
         ProductVariant::where('product_id', $product->id)
             ->whereNotIn('sku', $keepSkus)
-            ->delete();
+            ->update(['active' => false]);
 
         $flag = $isNew ? '[NEW]' : '[UPD]';
         $mrp1 = $d['packs'][1000] ?? $d['packs'][array_key_first($d['packs'])];
@@ -334,8 +338,8 @@ class ProductCatalogSeeder extends Seeder
             // =================================================================
             // DRY FRUITS & NUTS
             // =================================================================
-            ['name' => 'Walnut Premium', 'existing_name' => 'Walnut Premium (Okhar Premium)', 'nepali' => 'अखरोट', 'romanized' => 'Akharot', 'category' => 'Dry Fruits & Nuts', 'cp' => 620,
-                'packs' => [1000 => 775, 500 => 415, 200 => 180, 100 => 95, 50 => 55, 20 => 35]],
+            ['name' => 'Walnut Premium', 'existing_name' => 'Walnut Premium (Okhar Premium)', 'nepali' => 'अखरोट', 'romanized' => 'Akharot', 'category' => 'Dry Fruits & Nuts', 'cp' => 660,
+                'packs' => [1000 => 825, 500 => 430, 200 => 200, 100 => 100, 50 => 55, 20 => 25]],
 
             ['name' => 'Walnut Standard', 'existing_name' => 'Walnut Standard (Okhar Standard)', 'nepali' => 'अखरोट', 'romanized' => 'Akharot', 'category' => 'Dry Fruits & Nuts', 'cp' => 440,
                 'packs' => [1000 => 550, 500 => 295, 200 => 130, 100 => 70, 50 => 40, 20 => 25]],
@@ -352,8 +356,14 @@ class ProductCatalogSeeder extends Seeder
             ['name' => 'Pistachio', 'existing_name' => 'Pistachio (Pista)', 'nepali' => 'पिस्ता', 'romanized' => 'Pista', 'category' => 'Dry Fruits & Nuts', 'cp' => 2450,
                 'packs' => [1000 => 3065, 500 => 1625, 200 => 705, 100 => 370, 50 => 215, 20 => 125]],
 
-            ['name' => 'Anjeer / Figs', 'existing_name' => 'Figs (Anjeer)', 'nepali' => 'अञ्जीर', 'romanized' => 'Anjir', 'category' => 'Dry Fruits & Nuts', 'cp' => 1600,
-                'packs' => [1000 => 2000, 500 => 1065, 200 => 465, 100 => 240, 50 => 145, 20 => 80]],
+            // Anjeer split into Premium/Standard grades. The former single
+            // "Anjeer / Figs" product is renamed to Premium (its CP was closest);
+            // Standard is added as a new, cheaper grade.
+            ['name' => 'Anjeer Premium / Figs', 'existing_name' => 'Anjeer / Figs', 'nepali' => 'अञ्जीर', 'romanized' => 'Anjir', 'category' => 'Dry Fruits & Nuts', 'cp' => 1500,
+                'packs' => [1000 => 1875, 500 => 975, 200 => 450, 100 => 225, 50 => 125, 20 => 50]],
+
+            ['name' => 'Anjeer Standard / Figs', 'nepali' => 'अञ्जीर', 'romanized' => 'Anjir', 'category' => 'Dry Fruits & Nuts', 'cp' => 1400,
+                'packs' => [1000 => 1750, 500 => 910, 200 => 420, 100 => 210, 50 => 120, 20 => 50]],
 
             ['name' => 'Almond', 'nepali' => 'बादाम', 'romanized' => 'Badam', 'category' => 'Dry Fruits & Nuts', 'cp' => 1600,
                 'packs' => [1000 => 2000, 500 => 1065, 200 => 465, 100 => 240, 50 => 145, 20 => 80]],
@@ -364,17 +374,22 @@ class ProductCatalogSeeder extends Seeder
             ['name' => 'Dates / Khajur', 'existing_name' => 'Dates (Khajur)', 'nepali' => 'खजुर', 'romanized' => 'Khajur', 'category' => 'Dry Fruits & Nuts', 'cp' => 350,
                 'packs' => [1000 => 440, 500 => 235, 200 => 105, 100 => 55, 50 => 35, 20 => 20]],
 
-            ['name' => 'AlKhalifa Dates Pkt', 'nepali' => 'अलखलिफा खजुर', 'romanized' => 'AlKhalifa Khajur', 'category' => 'Dry Fruits & Nuts', 'cp' => 160,
-                'packs' => [1000 => 200, 500 => 110, 200 => 50, 100 => 25, 50 => 15, 20 => 10]],
+            // Brand-neutral (was "AlKhalifa Dates Pkt" — brand keeps changing).
+            // Sold only as the sealed 500 g packet: CP रू180/pkt (= रू360/kg).
+            ['name' => 'Premium Dates Pkt', 'existing_name' => 'AlKhalifa Dates Pkt', 'nepali' => 'खजुर', 'romanized' => 'Khajur', 'category' => 'Dry Fruits & Nuts', 'cp' => 360,
+                'packs' => [500 => 235]],
 
             ['name' => 'Coconut', 'existing_name' => 'Coconut', 'nepali' => 'नरिवल', 'romanized' => 'Narival', 'category' => 'Dry Fruits & Nuts', 'cp' => 780,
                 'packs' => [1000 => 975, 500 => 520, 200 => 225, 100 => 120, 50 => 70, 20 => 40]],
 
-            ['name' => 'Makhana Madhur', 'existing_name' => 'Fox Nuts Regular (Makhana Madhur)', 'nepali' => 'मखाना', 'romanized' => 'Makhana', 'category' => 'Dry Fruits & Nuts', 'cp' => 460,
-                'packs' => [1000 => 575, 500 => 305, 200 => 135, 100 => 70, 50 => 45, 20 => 25]],
+            ['name' => 'Makhana Madhur', 'existing_name' => 'Fox Nuts Regular (Makhana Madhur)', 'nepali' => 'मखाना', 'romanized' => 'Makhana', 'category' => 'Dry Fruits & Nuts', 'cp' => 1840,
+                'packs' => [1000 => 2300, 500 => 1200, 200 => 555, 100 => 280, 50 => 155, 20 => 65]],
 
-            ['name' => 'Makhana Kanaiya', 'existing_name' => 'Fox Nuts Large (Makhana Kanaiya)', 'nepali' => 'मखाना', 'romanized' => 'Makhana', 'category' => 'Dry Fruits & Nuts', 'cp' => 340,
-                'packs' => [1000 => 425, 500 => 230, 200 => 100, 100 => 55, 50 => 30, 20 => 20]],
+            ['name' => 'Makhana Kanaiya', 'existing_name' => 'Fox Nuts Large (Makhana Kanaiya)', 'nepali' => 'मखाना', 'romanized' => 'Makhana', 'category' => 'Dry Fruits & Nuts', 'cp' => 1360,
+                'packs' => [1000 => 1700, 500 => 885, 200 => 410, 100 => 205, 50 => 115, 20 => 45]],
+
+            ['name' => 'Makhana Balgopal', 'nepali' => 'मखाना', 'romanized' => 'Makhana', 'category' => 'Dry Fruits & Nuts', 'cp' => 2000,
+                'packs' => [1000 => 2500, 500 => 1300, 200 => 600, 100 => 300, 50 => 165, 20 => 70]],
 
             ['name' => 'Areca Nut', 'existing_name' => 'Areca Nut (Supari)', 'nepali' => 'सुपारी', 'romanized' => 'Supari', 'category' => 'Dry Fruits & Nuts', 'cp' => 875,
                 'packs' => [1000 => 1095, 500 => 585, 200 => 255, 100 => 135, 50 => 80, 20 => 45]],
