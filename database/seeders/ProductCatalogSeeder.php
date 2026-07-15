@@ -140,6 +140,12 @@ class ProductCatalogSeeder extends Seeder
                     'cost_price' => $cost,
                     'mrp_india' => $mrp,
                     'base_price' => $mrp,
+                    // Must be set explicitly: the live org is Nepal, so POS and the
+                    // price list read selling_price_nepal. The model's fillSuggestedPrices
+                    // hook only fills it when null, so on a reseed a variant that already
+                    // had a (now stale) Nepal price would keep it while mrp/base updated —
+                    // leaving the customer-facing price wrong. Keep all three in sync.
+                    'selling_price_nepal' => $mrp,
                     'active' => true,
                 ]
             );
