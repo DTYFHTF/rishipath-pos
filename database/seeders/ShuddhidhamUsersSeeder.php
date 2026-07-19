@@ -13,13 +13,14 @@ use Illuminate\Support\Facades\Hash;
 /**
  * Shuddhidham Production Users Seeder
  *
- * Sets up exactly 3 users:
+ * Sets up exactly 4 users:
  *  1. admin@shuddhidham.com  — Super Admin
  *  2. bina@shuddhidham.com   — Sales Agent (+ SalesAgent profile)
  *  3. bishal@shuddhidham.com — Sales Agent (+ SalesAgent profile)
+ *  4. roshan@shuddhidham.com — Sales Agent (+ SalesAgent profile)
  *
- * Deletes all other user accounts for this organisation.
- * Safe to re-run (idempotent for the 3 kept accounts).
+ * Deactivates all other user accounts for this organisation.
+ * Safe to re-run (idempotent for the 4 kept accounts).
  */
 class ShuddhidhamUsersSeeder extends Seeder
 {
@@ -121,6 +122,38 @@ class ShuddhidhamUsersSeeder extends Seeder
             ]
         );
 
+        // ── 4. Roshan ─────────────────────────────────────────────────────────
+        $roshan = User::updateOrCreate(
+            ['organization_id' => $org->id, 'email' => 'roshan@shuddhidham.com'],
+            [
+                'name' => 'Roshan Tamang',
+                'phone' => '+977-9800000003',
+                'password' => Hash::make('shuddhidham'),
+                'pin' => '3333',
+                'role_id' => $agentRole->id,
+                'stores' => [$store->id],
+                'permissions' => null,
+                'active' => true,
+            ]
+        );
+
+        SalesAgent::updateOrCreate(
+            ['organization_id' => $org->id, 'email' => 'roshan@shuddhidham.com'],
+            [
+                'agent_code' => 'AGT-ROSHAN',
+                'name' => 'Roshan Tamang',
+                'phone' => '+977-9800000003',
+                'address' => 'Bhaktapur',
+                // Placeholder territory — adjust to Roshan's actual route.
+                'territory' => 'Bhaktapur / Madhyapur',
+                'commission_retail_pct' => 5.00,
+                'commission_wholesale_profit_pct' => 30.00,
+                'min_wholesale_amount' => 5000.00,
+                'active' => true,
+                'notes' => 'Route: Bhaktapur durbar area, Madhyapur Thimi market',
+            ]
+        );
+
         // ── Remove all other users for this organisation ───────────────────
         // Deactivate rather than hard-delete to avoid FK constraint violations
         // from existing sales/movements that reference cashier_id / user_id.
@@ -128,14 +161,15 @@ class ShuddhidhamUsersSeeder extends Seeder
             'admin@shuddhidham.com',
             'bina@shuddhidham.com',
             'bishal@shuddhidham.com',
+            'roshan@shuddhidham.com',
         ];
 
         $deactivated = User::where('organization_id', $org->id)
             ->whereNotIn('email', $keepEmails)
             ->update(['active' => false]);
 
-        $this->command->info('✅ 3 users created/updated (admin, bina, bishal).');
+        $this->command->info('✅ 4 users created/updated (admin, bina, bishal, roshan).');
         $this->command->info("🚫 {$deactivated} other user(s) deactivated (not deleted, to preserve historical data).");
-        $this->command->info('👤 SalesAgent profiles created for Bina (AGT-BINA) and Bishal (AGT-BISHAL).');
+        $this->command->info('👤 SalesAgent profiles created for Bina (AGT-BINA), Bishal (AGT-BISHAL) and Roshan (AGT-ROSHAN).');
     }
 }

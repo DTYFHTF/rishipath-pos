@@ -171,6 +171,9 @@ class RolePermissionSeeder extends Seeder
 
             // Customers (create & manage their own) + credit collection
             'view_customers',
+            // Restricts the customer list to the ones this agent brought in
+            // (CustomerResource scopes the query when this permission is present).
+            'view_own_customers_only',
             'create_customers',
             'edit_customers',
             'view_customer_purchase_history',

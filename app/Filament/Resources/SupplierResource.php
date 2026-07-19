@@ -24,27 +24,35 @@ class SupplierResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\Select::make('organization_id')
-                    ->relationship('organization', 'name')
-                    ->required(),
-                Forms\Components\Placeholder::make('supplier_code')
-                    ->label('Supplier Code')
-                    ->content(fn ($record) => $record?->supplier_code ?? 'Will be auto-generated')
-                    ->visible(fn ($record) => $record !== null),
-                Forms\Components\TextInput::make('name')
-                    ->required()
-                    ->maxLength(255)
-                    ->unique(
-                        table: 'suppliers',
-                        column: 'name',
-                        ignoreRecord: true,
-                        modifyRuleUsing: fn ($rule) => $rule->where(
-                            'organization_id',
-                            OrganizationContext::getCurrentOrganizationId() ?? auth()->user()?->organization_id
-                        )
-                    ),
-                Forms\Components\TextInput::make('contact_person'),
-                Forms\Components\Grid::make(2)
+                Forms\Components\Section::make('Identity')
+                    ->icon('heroicon-o-identification')
+                    ->columns(2)
+                    ->schema([
+                        Forms\Components\Select::make('organization_id')
+                            ->relationship('organization', 'name')
+                            ->required(),
+                        Forms\Components\Placeholder::make('supplier_code')
+                            ->label('Supplier Code')
+                            ->content(fn ($record) => $record?->supplier_code ?? 'Will be auto-generated')
+                            ->visible(fn ($record) => $record !== null),
+                        Forms\Components\TextInput::make('name')
+                            ->required()
+                            ->maxLength(255)
+                            ->unique(
+                                table: 'suppliers',
+                                column: 'name',
+                                ignoreRecord: true,
+                                modifyRuleUsing: fn ($rule) => $rule->where(
+                                    'organization_id',
+                                    OrganizationContext::getCurrentOrganizationId() ?? auth()->user()?->organization_id
+                                )
+                            ),
+                        Forms\Components\TextInput::make('contact_person'),
+                    ]),
+
+                Forms\Components\Section::make('Contact')
+                    ->icon('heroicon-o-phone')
+                    ->columns(2)
                     ->schema([
                         Forms\Components\Select::make('country_code')
                             ->options([
@@ -55,8 +63,7 @@ class SupplierResource extends Resource
                                 'CN' => '🇨🇳 +86 China',
                             ])
                             ->default('NP')
-                            ->searchable()
-                            ->columnSpan(1),
+                            ->searchable(),
                         Forms\Components\TextInput::make('phone')
                             ->tel()
                             ->required()
@@ -69,47 +76,46 @@ class SupplierResource extends Resource
                                     OrganizationContext::getCurrentOrganizationId() ?? auth()->user()?->organization_id
                                 )
                             )
-                            ->columnSpan(1)
                             ->helperText('Required. Must be unique within your organization.'),
+                        Forms\Components\TextInput::make('email')
+                            ->email(),
+                        Forms\Components\TextInput::make('city')
+                            ->datalist([
+                                'Mumbai', 'Delhi', 'Bangalore', 'Kolkata', 'Chennai', 'Kathmandu', 'Pokhara',
+                            ])
+                            ->helperText('City/region where supplier is located'),
+                        Forms\Components\Select::make('state')
+                            ->options([
+                                'Bagmati' => 'Bagmati',
+                                'Madhesh' => 'Madhesh',
+                                'Gandaki' => 'Gandaki',
+                                'Lumbini' => 'Lumbini',
+                                'Koshi' => 'Koshi',
+                                'Karnali' => 'Karnali',
+                                'Sudurpashchim' => 'Sudurpashchim',
+                            ])
+                            ->searchable()
+                            ->helperText('Province / state for supplier address'),
+                        Forms\Components\TextInput::make('tax_number')
+                            ->helperText('VAT or PAN number (if available)'),
+                        Forms\Components\Textarea::make('address')
+                            ->columnSpanFull()
+                            ->helperText('Address helps distinguish multiple suppliers with same name. Include street, area, and postal code.'),
                     ]),
-                Forms\Components\TextInput::make('email')
-                    ->email(),
-                Forms\Components\Textarea::make('address')
-                    ->columnSpanFull()
-                    ->helperText('Address helps distinguish multiple suppliers with same name. Include street, area, and postal code.'),
-                Forms\Components\TextInput::make('city')
-                    ->datalist([
-                        'Mumbai', 'Delhi', 'Bangalore', 'Kolkata', 'Chennai', 'Kathmandu', 'Pokhara',
-                    ])
-                    ->helperText('City/region where supplier is located'),
-                Forms\Components\TextInput::make('email')
-                    ->email(),
-                Forms\Components\Textarea::make('address')
-                    ->columnSpanFull(),
-                Forms\Components\TextInput::make('city')
-                    ->datalist([
-                        'Mumbai', 'Delhi', 'Bangalore', 'Kolkata', 'Chennai',
+
+                Forms\Components\Section::make('Notes & Status')
+                    ->icon('heroicon-o-information-circle')
+                    ->columns(2)
+                    ->collapsed()
+                    ->schema([
+                        Forms\Components\RichEditor::make('notes')
+                            ->toolbarButtons(['bold', 'italic', 'bulletList', 'link'])
+                            ->helperText('Payment terms, delivery notes, etc.')
+                            ->columnSpanFull(),
+                        Forms\Components\Toggle::make('active')
+                            ->default(true)
+                            ->inline(false),
                     ]),
-                Forms\Components\Select::make('state')
-                    ->options([
-                        'Bagmati' => 'Bagmati',
-                        'Madhesh' => 'Madhesh',
-                        'Gandaki' => 'Gandaki',
-                        'Lumbini' => 'Lumbini',
-                        'Koshi' => 'Koshi',
-                        'Karnali' => 'Karnali',
-                        'Sudurpashchim' => 'Sudurpashchim',
-                    ])
-                    ->searchable()
-                    ->helperText('Province / state for supplier address'),
-                Forms\Components\TextInput::make('tax_number')
-                    ->helperText('VAT or PAN number (if available)'),
-                Forms\Components\RichEditor::make('notes')
-                    ->toolbarButtons(['bold', 'italic', 'bulletList', 'link'])
-                    ->helperText('Payment terms, delivery notes, etc.')
-                    ->columnSpanFull(),
-                Forms\Components\Toggle::make('active')
-                    ->required(),
             ]);
     }
 

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\CustomerResource\Pages;
 
 use App\Filament\Resources\CustomerResource;
+use App\Models\SalesAgent;
 use App\Services\OrganizationContext;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
@@ -14,6 +15,14 @@ class CreateCustomer extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $data['organization_id'] = OrganizationContext::getCurrentOrganizationId();
+
+        // Attribute the customer to the sales agent who created them. Agents
+        // can only bring in their own customers; admins may set/leave it via
+        // the form field, so only force it when the creator is an agent.
+        $user = auth()->user();
+        if ($user && ! $user->isSuperAdmin() && $user->hasPermission('view_own_customers_only')) {
+            $data['sales_agent_id'] = SalesAgent::currentAgentId($user);
+        }
 
         return $data;
     }

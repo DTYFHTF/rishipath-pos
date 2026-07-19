@@ -33,6 +33,24 @@ class SalesAgent extends Model
         'active' => 'boolean',
     ];
 
+    /**
+     * Resolve the SalesAgent profile for a user (linked by email within the org),
+     * returning its id. Central helper so attribution/scoping logic stays in sync
+     * across the POS, resources and reports.
+     */
+    public static function currentAgentId(?User $user = null): ?int
+    {
+        $user = $user ?? auth()->user();
+
+        if (! $user) {
+            return null;
+        }
+
+        return static::where('organization_id', $user->organization_id)
+            ->where('email', $user->email)
+            ->value('id');
+    }
+
     public function organization(): BelongsTo
     {
         return $this->belongsTo(Organization::class);

@@ -49,7 +49,13 @@ class ProductResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\Section::make('Basic Information')
+                Forms\Components\Tabs::make('Product')
+                    ->columnSpanFull()
+                    ->persistTabInQueryString()
+                    ->tabs([
+                        Forms\Components\Tabs\Tab::make('Basic Info')
+                    ->icon('heroicon-o-identification')
+                    ->columns(2)
                     ->schema([
                         Forms\Components\Placeholder::make('sku_info')
                             ->label('SKU')
@@ -101,10 +107,11 @@ class ProductResource extends Resource
                             ->toolbarButtons(['bold', 'italic', 'bulletList', 'orderedList', 'link'])
                             ->helperText('Product description for online catalog and labels')
                             ->columnSpanFull(),
-                    ])
-                    ->columns(2),
+                    ]),
 
-                Forms\Components\Section::make('Product Details')
+                        Forms\Components\Tabs\Tab::make('Details')
+                    ->icon('heroicon-o-adjustments-horizontal')
+                    ->columns(2)
                     ->schema([
                         Forms\Components\Select::make('tax_category')
                             ->required()
@@ -136,9 +143,11 @@ class ProductResource extends Resource
                             ->toolbarButtons(['bold', 'italic', 'bulletList', 'orderedList'])
                             ->helperText('Dosage, timing, and usage guidelines')
                             ->columnSpanFull(),
-                    ])
-                    ->columns(2),
+                    ]),
 
+                        Forms\Components\Tabs\Tab::make('Images')
+                    ->icon('heroicon-o-photo')
+                    ->schema([
                 Forms\Components\Section::make('Price List Image')
                     ->description('This image is shown in the Price List PDF and the POS screen.')
                     ->schema([
@@ -203,12 +212,15 @@ class ProductResource extends Resource
                     ])
                     ->columns(3)
                     ->collapsed(),
+                    ]),
 
-                Forms\Components\Section::make('Status')
+                        Forms\Components\Tabs\Tab::make('Status')
+                    ->icon('heroicon-o-check-circle')
                     ->schema([
                         Forms\Components\Toggle::make('active')
                             ->label('Active')
                             ->default(true),
+                    ]),
                     ]),
             ]);
     }
