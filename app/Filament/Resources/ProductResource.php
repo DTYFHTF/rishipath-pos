@@ -54,173 +54,173 @@ class ProductResource extends Resource
                     ->persistTabInQueryString()
                     ->tabs([
                         Forms\Components\Tabs\Tab::make('Basic Info')
-                    ->icon('heroicon-o-identification')
-                    ->columns(2)
-                    ->schema([
-                        Forms\Components\Placeholder::make('sku_info')
-                            ->label('SKU')
-                            ->content(fn ($record) => $record?->sku ?? 'Will be auto-generated')
-                            ->visible(fn ($record) => $record !== null),
+                            ->icon('heroicon-o-identification')
+                            ->columns(2)
+                            ->schema([
+                                Forms\Components\Placeholder::make('sku_info')
+                                    ->label('SKU')
+                                    ->content(fn ($record) => $record?->sku ?? 'Will be auto-generated')
+                                    ->visible(fn ($record) => $record !== null),
 
-                        Forms\Components\Select::make('category_id')
-                            ->relationship('category', 'name')
-                            ->required()
-                            ->searchable()
-                            ->preload(),
-                        Forms\Components\TextInput::make('name')
-                            ->required()
-                            ->maxLength(255),
-                        Forms\Components\TextInput::make('name_sanskrit')
-                            ->label('Sanskrit Name')
-                            ->maxLength(255),
-                        Forms\Components\TextInput::make('name_hindi')
-                            ->label('Hindi Name')
-                            ->maxLength(255),
-                        Forms\Components\TextInput::make('name_romanized')
-                            ->label('Transliteration (Romanized)')
-                            ->helperText('Example: Nariwal for नरिवल')
-                            ->maxLength(255),
-                        Forms\Components\Select::make('product_type')
-                            ->required()
-                            ->options([
-                                'choorna' => '🌾 Choorna (Powder)',
-                                'tailam' => '🪧 Tailam (Oil)',
-                                'ghritam' => '🧈 Ghritam (Ghee)',
-                                'rasayana' => '💊 Rasayana',
-                                'capsules' => '💊 Capsules/Tablets',
-                                'tea' => '🍵 Tea',
-                                'honey' => '🍯 Honey',
-                                'others' => '🧾 Others',
-                            ])
-                            ->searchable()
-                            ->helperText('Traditional Ayurvedic product classification'),
-                        Forms\Components\Select::make('unit_type')
-                            ->required()
-                            ->options([
-                                'weight' => '⚖️ Weight (GMS/KG)',
-                                'volume' => '🧪 Volume (ML/L)',
-                                'piece' => '📦 Piece',
-                            ])
-                            ->reactive()
-                            ->helperText('Base measurement unit for this product'),
-                        Forms\Components\RichEditor::make('description')
-                            ->toolbarButtons(['bold', 'italic', 'bulletList', 'orderedList', 'link'])
-                            ->helperText('Product description for online catalog and labels')
-                            ->columnSpanFull(),
-                    ]),
+                                Forms\Components\Select::make('category_id')
+                                    ->relationship('category', 'name')
+                                    ->required()
+                                    ->searchable()
+                                    ->preload(),
+                                Forms\Components\TextInput::make('name')
+                                    ->required()
+                                    ->maxLength(255),
+                                Forms\Components\TextInput::make('name_sanskrit')
+                                    ->label('Sanskrit Name')
+                                    ->maxLength(255),
+                                Forms\Components\TextInput::make('name_hindi')
+                                    ->label('Hindi Name')
+                                    ->maxLength(255),
+                                Forms\Components\TextInput::make('name_romanized')
+                                    ->label('Transliteration (Romanized)')
+                                    ->helperText('Example: Nariwal for नरिवल')
+                                    ->maxLength(255),
+                                Forms\Components\Select::make('product_type')
+                                    ->required()
+                                    ->options([
+                                        'choorna' => '🌾 Choorna (Powder)',
+                                        'tailam' => '🪧 Tailam (Oil)',
+                                        'ghritam' => '🧈 Ghritam (Ghee)',
+                                        'rasayana' => '💊 Rasayana',
+                                        'capsules' => '💊 Capsules/Tablets',
+                                        'tea' => '🍵 Tea',
+                                        'honey' => '🍯 Honey',
+                                        'others' => '🧾 Others',
+                                    ])
+                                    ->searchable()
+                                    ->helperText('Traditional Ayurvedic product classification'),
+                                Forms\Components\Select::make('unit_type')
+                                    ->required()
+                                    ->options([
+                                        'weight' => '⚖️ Weight (GMS/KG)',
+                                        'volume' => '🧪 Volume (ML/L)',
+                                        'piece' => '📦 Piece',
+                                    ])
+                                    ->reactive()
+                                    ->helperText('Base measurement unit for this product'),
+                                Forms\Components\RichEditor::make('description')
+                                    ->toolbarButtons(['bold', 'italic', 'bulletList', 'orderedList', 'link'])
+                                    ->helperText('Product description for online catalog and labels')
+                                    ->columnSpanFull(),
+                            ]),
 
                         Forms\Components\Tabs\Tab::make('Details')
-                    ->icon('heroicon-o-adjustments-horizontal')
-                    ->columns(2)
-                    ->schema([
-                        Forms\Components\Select::make('tax_category')
-                            ->required()
-                            ->options([
-                                'essential' => 'Essential',
-                                'standard' => 'Standard',
-                                'luxury' => 'Luxury',
-                            ])
-                            ->default('standard'),
-                        Forms\Components\Toggle::make('has_variants')
-                            ->label('Has Multiple Variants'),
-                        Forms\Components\Toggle::make('requires_batch')
-                            ->label('Batch Tracking Required')
-                            ->default(true),
-                        Forms\Components\Toggle::make('requires_expiry')
-                            ->label('Expiry Tracking Required')
-                            ->default(true),
-                        Forms\Components\TextInput::make('shelf_life_months')
-                            ->label('Shelf Life (Months)')
-                            ->numeric()
-                            ->minValue(1),
-                        Forms\Components\Toggle::make('is_prescription_required')
-                            ->label('Prescription Required'),
-                        Forms\Components\TagsInput::make('ingredients')
-                            ->placeholder('Add ingredient (press Enter)')
-                            ->helperText('List all ingredients')
-                            ->columnSpanFull(),
-                        Forms\Components\RichEditor::make('usage_instructions')
-                            ->toolbarButtons(['bold', 'italic', 'bulletList', 'orderedList'])
-                            ->helperText('Dosage, timing, and usage guidelines')
-                            ->columnSpanFull(),
-                    ]),
+                            ->icon('heroicon-o-adjustments-horizontal')
+                            ->columns(2)
+                            ->schema([
+                                Forms\Components\Select::make('tax_category')
+                                    ->required()
+                                    ->options([
+                                        'essential' => 'Essential',
+                                        'standard' => 'Standard',
+                                        'luxury' => 'Luxury',
+                                    ])
+                                    ->default('standard'),
+                                Forms\Components\Toggle::make('has_variants')
+                                    ->label('Has Multiple Variants'),
+                                Forms\Components\Toggle::make('requires_batch')
+                                    ->label('Batch Tracking Required')
+                                    ->default(true),
+                                Forms\Components\Toggle::make('requires_expiry')
+                                    ->label('Expiry Tracking Required')
+                                    ->default(true),
+                                Forms\Components\TextInput::make('shelf_life_months')
+                                    ->label('Shelf Life (Months)')
+                                    ->numeric()
+                                    ->minValue(1),
+                                Forms\Components\Toggle::make('is_prescription_required')
+                                    ->label('Prescription Required'),
+                                Forms\Components\TagsInput::make('ingredients')
+                                    ->placeholder('Add ingredient (press Enter)')
+                                    ->helperText('List all ingredients')
+                                    ->columnSpanFull(),
+                                Forms\Components\RichEditor::make('usage_instructions')
+                                    ->toolbarButtons(['bold', 'italic', 'bulletList', 'orderedList'])
+                                    ->helperText('Dosage, timing, and usage guidelines')
+                                    ->columnSpanFull(),
+                            ]),
 
                         Forms\Components\Tabs\Tab::make('Images')
-                    ->icon('heroicon-o-photo')
-                    ->schema([
-                Forms\Components\Section::make('Price List Image')
-                    ->description('This image is shown in the Price List PDF and the POS screen.')
-                    ->schema([
-                        Forms\Components\Placeholder::make('image_url_preview')
-                            ->label('Current Image')
-                            ->content(function ($record) {
-                                if (! $record?->image_url) {
-                                    return new HtmlString('<span class="text-sm text-gray-400">No image set yet. Upload one below.</span>');
-                                }
-                                $src = str_starts_with($record->image_url, '/')
-                                    ? asset(ltrim($record->image_url, '/'))
-                                    : Storage::disk('public')->url($record->image_url);
+                            ->icon('heroicon-o-photo')
+                            ->schema([
+                                Forms\Components\Section::make('Price List Image')
+                                    ->description('This image is shown in the Price List PDF and the POS screen.')
+                                    ->schema([
+                                        Forms\Components\Placeholder::make('image_url_preview')
+                                            ->label('Current Image')
+                                            ->content(function ($record) {
+                                                if (! $record?->image_url) {
+                                                    return new HtmlString('<span class="text-sm text-gray-400">No image set yet. Upload one below.</span>');
+                                                }
+                                                $src = str_starts_with($record->image_url, '/')
+                                                    ? asset(ltrim($record->image_url, '/'))
+                                                    : Storage::disk('public')->url($record->image_url);
 
-                                return new HtmlString(
-                                    '<img src="'.e($src).'" style="max-height:200px;border-radius:10px;border:1px solid #e5e7eb;box-shadow:0 1px 4px rgba(0,0,0,.12)">'
-                                );
-                            })
-                            ->visible(fn ($record) => $record !== null),
-                        Forms\Components\FileUpload::make('image_url')
-                            ->label('Upload New Image')
-                            ->image()
-                            ->disk('public')
-                            ->directory('product-images')
-                            ->maxSize(4096)
-                            ->helperText('Uploading a new file will replace the current image. Square images (1:1) recommended.')
-                            ->afterStateHydrated(function (\Filament\Forms\Components\FileUpload $component, $state) {
-                                // Seeder-set paths like /images/productv2-webp/... cannot be loaded
-                                // by Filament\'s FileUpload (different disk). Clear so widget shows empty;
-                                // dehydrated(false) below ensures the DB value is NOT overwritten on save.
-                                if (is_string($state) && str_starts_with($state, '/')) {
-                                    $component->state(null);
-                                }
-                            })
-                            ->dehydrated(fn ($state) => $state !== null),
-                    ])
-                    ->columns(1),
+                                                return new HtmlString(
+                                                    '<img src="'.e($src).'" style="max-height:200px;border-radius:10px;border:1px solid #e5e7eb;box-shadow:0 1px 4px rgba(0,0,0,.12)">'
+                                                );
+                                            })
+                                            ->visible(fn ($record) => $record !== null),
+                                        Forms\Components\FileUpload::make('image_url')
+                                            ->label('Upload New Image')
+                                            ->image()
+                                            ->disk('public')
+                                            ->directory('product-images')
+                                            ->maxSize(4096)
+                                            ->helperText('Uploading a new file will replace the current image. Square images (1:1) recommended.')
+                                            ->afterStateHydrated(function (\Filament\Forms\Components\FileUpload $component, $state) {
+                                                // Seeder-set paths like /images/productv2-webp/... cannot be loaded
+                                                // by Filament\'s FileUpload (different disk). Clear so widget shows empty;
+                                                // dehydrated(false) below ensures the DB value is NOT overwritten on save.
+                                                if (is_string($state) && str_starts_with($state, '/')) {
+                                                    $component->state(null);
+                                                }
+                                            })
+                                            ->dehydrated(fn ($state) => $state !== null),
+                                    ])
+                                    ->columns(1),
 
-                Forms\Components\Section::make('Gallery Images')
-                    ->description('Additional product photos for catalog display (not used in price list).')
-                    ->schema([
-                        Forms\Components\FileUpload::make('image_1')
-                            ->label('Gallery Image 1')
-                            ->image()
-                            ->directory('product-images')
-                            ->imageEditor()
-                            ->imageEditorAspectRatios(['1:1', '4:3'])
-                            ->maxSize(2048),
-                        Forms\Components\FileUpload::make('image_2')
-                            ->label('Gallery Image 2')
-                            ->image()
-                            ->directory('product-images')
-                            ->imageEditor()
-                            ->imageEditorAspectRatios(['1:1', '4:3'])
-                            ->maxSize(2048),
-                        Forms\Components\FileUpload::make('image_3')
-                            ->label('Gallery Image 3')
-                            ->image()
-                            ->directory('product-images')
-                            ->imageEditor()
-                            ->imageEditorAspectRatios(['1:1', '4:3'])
-                            ->maxSize(2048),
-                    ])
-                    ->columns(3)
-                    ->collapsed(),
-                    ]),
+                                Forms\Components\Section::make('Gallery Images')
+                                    ->description('Additional product photos for catalog display (not used in price list).')
+                                    ->schema([
+                                        Forms\Components\FileUpload::make('image_1')
+                                            ->label('Gallery Image 1')
+                                            ->image()
+                                            ->directory('product-images')
+                                            ->imageEditor()
+                                            ->imageEditorAspectRatios(['1:1', '4:3'])
+                                            ->maxSize(2048),
+                                        Forms\Components\FileUpload::make('image_2')
+                                            ->label('Gallery Image 2')
+                                            ->image()
+                                            ->directory('product-images')
+                                            ->imageEditor()
+                                            ->imageEditorAspectRatios(['1:1', '4:3'])
+                                            ->maxSize(2048),
+                                        Forms\Components\FileUpload::make('image_3')
+                                            ->label('Gallery Image 3')
+                                            ->image()
+                                            ->directory('product-images')
+                                            ->imageEditor()
+                                            ->imageEditorAspectRatios(['1:1', '4:3'])
+                                            ->maxSize(2048),
+                                    ])
+                                    ->columns(3)
+                                    ->collapsed(),
+                            ]),
 
                         Forms\Components\Tabs\Tab::make('Status')
-                    ->icon('heroicon-o-check-circle')
-                    ->schema([
-                        Forms\Components\Toggle::make('active')
-                            ->label('Active')
-                            ->default(true),
-                    ]),
+                            ->icon('heroicon-o-check-circle')
+                            ->schema([
+                                Forms\Components\Toggle::make('active')
+                                    ->label('Active')
+                                    ->default(true),
+                            ]),
                     ]),
             ]);
     }
