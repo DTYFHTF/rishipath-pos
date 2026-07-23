@@ -59,30 +59,44 @@ class AdminadminPanelProvider extends PanelProvider
                            default min-width:auto, so on pages with a wide table it refuses
                            to shrink below the table's width and renders on top of the
                            sidebar. min-width:0 lets flexbox size it correctly; the table
-                           then scrolls inside its own container instead of overflowing. */
+                           then scrolls inside its own container instead of overflowing.
+                           Applies at all breakpoints: below lg (1024px) Filament already
+                           renders the sidebar as an off-canvas overlay (translate-x-full
+                           when closed), so there's no separate mobile overlap to fix here
+                           — forcing `.fi-sidebar { display: none }` for that range (as this
+                           hook used to) fights the Alpine translate classes the hamburger
+                           button relies on and leaves the drawer permanently hidden. */
                         .fi-main-ctn {
                             min-width: 0 !important;
                         }
-
-                        /* Prevent sidebar/content overlap on tablet and mobile. */
-                        @media (max-width: 1279px) {
-                            .fi-sidebar {
-                                display: none !important;
-                            }
-
-                            .fi-topbar,
-                            .fi-main,
-                            .fi-main-ctn,
-                            .fi-page,
-                            .fi-body {
-                                left: 0 !important;
-                                margin-left: 0 !important;
-                                padding-left: 0 !important;
-                                width: 100% !important;
-                                max-width: 100% !important;
-                            }
-                        }
                     </style>
+                BLADE),
+            )
+            ->renderHook(
+                PanelsRenderHook::SCRIPTS_AFTER,
+                fn (): string => Blade::render(<<<'BLADE'
+                    <script>
+                        // iOS WebKit (Safari, and Brave/Chrome on iOS which use the same
+                        // engine) doesn't reliably fire an `input` event when a field is
+                        // filled via the QuickType/AutoFill suggestion bar. Livewire's
+                        // wire:model only syncs on that event, so the browser shows the
+                        // autofilled value but Livewire's component state stays empty,
+                        // and submitting trips "field is required". Re-dispatch input and
+                        // change events for every field right before Livewire's own
+                        // wire:submit handler runs, so the synced value makes it into the
+                        // request. Capture phase guarantees this runs first.
+                        document.addEventListener('submit', function (event) {
+                            var form = event.target;
+                            if (!(form instanceof HTMLFormElement)) {
+                                return;
+                            }
+
+                            form.querySelectorAll('input, textarea, select').forEach(function (field) {
+                                field.dispatchEvent(new Event('input', {bubbles: true}));
+                                field.dispatchEvent(new Event('change', {bubbles: true}));
+                            });
+                        }, true);
+                    </script>
                 BLADE),
             )
             ->middleware([
