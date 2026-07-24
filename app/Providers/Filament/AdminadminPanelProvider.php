@@ -82,20 +82,29 @@ class AdminadminPanelProvider extends PanelProvider
                         // wire:model only syncs on that event, so the browser shows the
                         // autofilled value but Livewire's component state stays empty,
                         // and submitting trips "field is required". Re-dispatch input and
-                        // change events for every field right before Livewire's own
-                        // wire:submit handler runs, so the synced value makes it into the
-                        // request. Capture phase guarantees this runs first.
-                        document.addEventListener('submit', function (event) {
-                            var form = event.target;
-                            if (!(form instanceof HTMLFormElement)) {
-                                return;
-                            }
+                        // change events for plain text-like fields right before Livewire's
+                        // own wire:submit handler runs, so the synced value makes it into
+                        // the request. Capture phase guarantees this runs first.
+                        //
+                        // Scoped to the login form only, and to plain text-like inputs:
+                        // Filament's Select/Repeater widgets elsewhere in the admin (e.g.
+                        // Users' role/store pickers, Bulk Order Inquiries' product rows)
+                        // are driven by Choices.js + Alpine over hidden <select>/<input>
+                        // elements, and a blind synthetic 'change' there can desync their
+                        // internal state from what actually gets submitted.
+                        if (window.location.pathname === @js(parse_url(filament()->getLoginUrl(), PHP_URL_PATH))) {
+                            document.addEventListener('submit', function (event) {
+                                var form = event.target;
+                                if (!(form instanceof HTMLFormElement)) {
+                                    return;
+                                }
 
-                            form.querySelectorAll('input, textarea, select').forEach(function (field) {
-                                field.dispatchEvent(new Event('input', {bubbles: true}));
-                                field.dispatchEvent(new Event('change', {bubbles: true}));
-                            });
-                        }, true);
+                                form.querySelectorAll('input[type="email"], input[type="password"], input[type="text"]').forEach(function (field) {
+                                    field.dispatchEvent(new Event('input', {bubbles: true}));
+                                    field.dispatchEvent(new Event('change', {bubbles: true}));
+                                });
+                            }, true);
+                        }
                     </script>
                 BLADE),
             )

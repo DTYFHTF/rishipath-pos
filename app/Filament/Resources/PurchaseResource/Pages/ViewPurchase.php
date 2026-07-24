@@ -208,6 +208,7 @@ class ViewPurchase extends ViewRecord
                                 'partial' => 'info',
                                 'received' => 'success',
                                 'cancelled' => 'danger',
+                                default => 'gray',
                             }),
                         Infolists\Components\TextEntry::make('payment_status')
                             ->label('Payment Status')
@@ -216,6 +217,7 @@ class ViewPurchase extends ViewRecord
                                 'unpaid' => 'danger',
                                 'partial' => 'warning',
                                 'paid' => 'success',
+                                default => 'gray',
                             }),
                     ])
                     ->columns(3),
@@ -286,6 +288,7 @@ class ViewPurchase extends ViewRecord
                                         'pending' => 'warning',
                                         'approved' => 'success',
                                         'refunded' => 'info',
+                                        default => 'gray',
                                     }),
                                 Infolists\Components\TextEntry::make('notes')
                                     ->placeholder('—')

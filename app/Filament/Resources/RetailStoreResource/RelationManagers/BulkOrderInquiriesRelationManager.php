@@ -50,6 +50,7 @@ class BulkOrderInquiriesRelationManager extends RelationManager
                         'contacted' => 'warning',
                         'quoted' => 'success',
                         'closed' => 'gray',
+                        default => 'gray',
                     }),
 
                 Tables\Columns\TextColumn::make('created_at')

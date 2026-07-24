@@ -199,6 +199,7 @@ class RetailStoreResource extends Resource
                         'active' => 'success',
                         'prospect' => 'warning',
                         'inactive' => 'danger',
+                        default => 'gray',
                     }),
 
                 Tables\Columns\TextColumn::make('assignedTo.name')

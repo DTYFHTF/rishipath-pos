@@ -337,6 +337,7 @@ class BulkOrderInquiryResource extends Resource
                         'contacted' => 'warning',
                         'quoted' => 'success',
                         'closed' => 'gray',
+                        default => 'gray',
                     }),
 
                 Tables\Columns\TextColumn::make('created_at')
