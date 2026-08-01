@@ -87,7 +87,79 @@ class RetailStoreResource extends Resource
                     ])->columns(2),
 
                 Forms\Components\Section::make('Location')
+                    ->description('Pin the shop on the map (or paste its Google Maps link) — the address fields fill themselves.')
                     ->schema([
+                        // Paste-a-link shortcut: the field team almost always has
+                        // a Google Maps link before it has coordinates, and the
+                        // Visit Planner needs coordinates to cluster and route.
+                        Forms\Components\TextInput::make('google_location_url')
+                            ->label('Google Maps link')
+                            ->placeholder('Paste a maps.app.goo.gl or google.com/maps link — coordinates are read from it')
+                            ->url()
+                            ->live(onBlur: true)
+                            ->afterStateUpdated(function (?string $state, Forms\Set $set, Forms\Get $get) {
+                                if (blank($state)) {
+                                    return;
+                                }
+
+                                $coords = app(\App\Services\GoogleMapsLink::class)->coordinatesFor($state);
+
+                                if (! $coords) {
+                                    Notification::make()
+                                        ->title('No coordinates in that link')
+                                        ->body('Drop a pin on the map below instead.')
+                                        ->warning()
+                                        ->send();
+
+                                    return;
+                                }
+
+                                $set('latitude', number_format($coords['lat'], 7, '.', ''));
+                                $set('longitude', number_format($coords['lng'], 7, '.', ''));
+                                $set('map_location', $coords['lat'].','.$coords['lng']);
+
+                                if (isset($coords['expanded_url'])) {
+                                    $set('google_location_url', $coords['expanded_url']);
+                                }
+
+                                Notification::make()
+                                    ->title('Location found')
+                                    ->body('Pin moved to '.round($coords['lat'], 5).', '.round($coords['lng'], 5).'. Confirm the address fields below.')
+                                    ->success()
+                                    ->send();
+                            })
+                            ->columnSpanFull(),
+
+                        MapPicker::make('map_location')
+                            ->label('Pin the shop')
+                            ->hiddenLabel()
+                            ->mapHeight('320px')
+                            ->defaultLocation(['lat' => 27.7172, 'lng' => 85.3240])
+                            ->defaultZoom(13)
+                            ->draggable()
+                            ->showGeolocationButton()
+                            ->reactiveFields([
+                                'latitude' => 'latitude',
+                                'longitude' => 'longitude',
+                                'address' => 'address',
+                                'area' => 'area',
+                                'landmark' => 'landmark',
+                                'city' => 'city',
+                                'state' => 'state',
+                                'country' => 'country',
+                                'pincode' => 'pincode',
+                                'google_url' => 'google_location_url',
+                            ])
+                            // Not a real column — seed it from the saved
+                            // coordinates so editing opens on the right pin.
+                            ->dehydrated(false)
+                            ->afterStateHydrated(function (MapPicker $component, ?RetailStore $record) {
+                                if ($record?->latitude && $record?->longitude) {
+                                    $component->state($record->latitude.','.$record->longitude);
+                                }
+                            })
+                            ->columnSpanFull(),
+
                         Forms\Components\Textarea::make('address')
                             ->rows(2)
                             ->columnSpanFull(),
@@ -111,31 +183,6 @@ class RetailStoreResource extends Resource
                         Forms\Components\TextInput::make('pincode')
                             ->label('PIN Code')
                             ->maxLength(20),
-
-                        Forms\Components\TextInput::make('google_location_url')
-                            ->label('Google Maps URL')
-                            ->url()
-                            ->columnSpanFull(),
-
-                        MapPicker::make('map_location')
-                            ->label('Pick Location on Map')
-                            ->mapHeight('350px')
-                            ->defaultLocation(['lat' => 27.7172, 'lng' => 85.3240])
-                            ->defaultZoom(13)
-                            ->draggable()
-                            ->showGeolocationButton()
-                            ->reactiveFields([
-                                'latitude' => 'latitude',
-                                'longitude' => 'longitude',
-                                'address' => 'address',
-                                'area' => 'area',
-                                'landmark' => 'landmark',
-                                'city' => 'city',
-                                'state' => 'state',
-                                'country' => 'country',
-                                'pincode' => 'pincode',
-                            ])
-                            ->columnSpanFull(),
 
                         Forms\Components\TextInput::make('latitude')
                             ->numeric()

@@ -41,6 +41,8 @@ class MapPicker extends Field
 
     protected string|\Closure|null $pincodeField = null;
 
+    protected string|\Closure|null $googleUrlField = null;
+
     public function mapHeight(string|\Closure $height): static
     {
         $this->mapHeight = $height;
@@ -127,6 +129,7 @@ class MapPicker extends Field
         $this->stateField = $fields['state'] ?? null;
         $this->countryField = $fields['country'] ?? null;
         $this->pincodeField = $fields['pincode'] ?? null;
+        $this->googleUrlField = $fields['google_url'] ?? null;
 
         return $this;
     }
@@ -174,5 +177,10 @@ class MapPicker extends Field
     public function getPincodeField(): ?string
     {
         return $this->evaluate($this->pincodeField);
+    }
+
+    public function getGoogleUrlField(): ?string
+    {
+        return $this->evaluate($this->googleUrlField);
     }
 }
