@@ -28,6 +28,9 @@ class RolePermissionSeeder extends Seeder
             'process_refunds',
             'view_sales',
             'view_own_sales_only',
+            // Bill a retail store at dealer rates instead of MRP. Deliberately
+            // absent from the manager and sales-agent lists.
+            'use_wholesale_billing',
 
             // Product Management
             'view_products',

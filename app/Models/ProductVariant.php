@@ -42,6 +42,48 @@ class ProductVariant extends Model
         'active' => 'boolean',
     ];
 
+    /**
+     * Human pack label — "500 G", "1 KG".
+     *
+     * pack_size is cast to decimal:3, so concatenating it raw renders
+     * "500.000 g" on screen. Every surface that shows a pack size (POS search,
+     * cart, dealer price list) goes through here so they cannot drift apart.
+     */
+    public function getPackLabelAttribute(): string
+    {
+        $size = (float) $this->pack_size;
+
+        $displaySize = floor($size) == $size
+            ? (string) (int) $size
+            : rtrim(rtrim(number_format($size, 3, '.', ''), '0'), '.');
+
+        $displayUnit = match (strtoupper(trim((string) $this->unit))) {
+            'GMS', 'GM', 'GRAM', 'GRAMS' => 'G',
+            'KGS', 'KILOGRAM', 'KILOGRAMS' => 'KG',
+            default => strtoupper(trim((string) $this->unit)),
+        };
+
+        return trim($displaySize.' '.$displayUnit);
+    }
+
+    /**
+     * Pack size normalised to grams/ml for sorting and comparison.
+     *
+     * Ordering by the raw pack_size column puts "1 KG" before "20 G", because
+     * it only sees 1 < 20. Null for packs measured in units we cannot compare
+     * (pcs, packets), which sort last.
+     */
+    public function getComparableSizeAttribute(): ?float
+    {
+        $size = (float) $this->pack_size;
+
+        return match (strtoupper(trim((string) $this->unit))) {
+            'G', 'GM', 'GMS', 'GRAM', 'GRAMS', 'ML' => $size,
+            'KG', 'KGS', 'KILOGRAM', 'KILOGRAMS', 'L' => $size * 1000,
+            default => null,
+        };
+    }
+
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);

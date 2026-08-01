@@ -23,6 +23,7 @@ class PosSession extends Model
         'discount_amount',
         'tax_amount',
         'total_amount',
+        'is_wholesale',
         'status',
         'parked_at',
         'completed_at',
@@ -36,6 +37,7 @@ class PosSession extends Model
         'discount_amount' => 'decimal:2',
         'tax_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
+        'is_wholesale' => 'boolean',
         'parked_at' => 'datetime',
         'completed_at' => 'datetime',
     ];

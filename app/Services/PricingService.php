@@ -7,6 +7,14 @@ use App\Models\ProductVariant;
 
 class PricingService
 {
+    /**
+     * Margin applied over cost for wholesale (retail-store) billing.
+     *
+     * This is the same 13% used to print the dealer price list, so a wholesale
+     * bill raised in the POS always matches the sheet the shop was handed.
+     */
+    public const WHOLESALE_MARKUP = 1.13;
+
     public static function suggestVariantPrices(?float $costPrice, ?float $packSize, ?string $unit): array
     {
         if ($costPrice === null || $packSize === null || blank($unit)) {
@@ -237,6 +245,43 @@ class PricingService
 
         // Fall back to organization-based pricing
         return self::getSellingPrice($variant, $organization);
+    }
+
+    /**
+     * Dealer price for a variant — cost plus the standard wholesale margin,
+     * rounded up to a whole rupee so bills stay cash-friendly.
+     *
+     * Returns null when the variant has no cost price: guessing a wholesale
+     * rate from an unknown cost would silently sell below cost.
+     */
+    public static function getWholesalePrice(ProductVariant $variant): ?float
+    {
+        $cost = (float) ($variant->cost_price ?? 0);
+
+        if ($cost <= 0) {
+            return null;
+        }
+
+        return (float) ceil($cost * self::WHOLESALE_MARKUP);
+    }
+
+    /**
+     * Unit price for a POS line, honouring the wholesale toggle.
+     *
+     * Falls back to retail pricing when wholesale is requested but the variant
+     * has no cost on record, so the cashier is never handed a zero-rupee line.
+     */
+    public static function getPosPrice(
+        ProductVariant $variant,
+        int $storeId,
+        ?Organization $organization = null,
+        bool $wholesale = false,
+    ): float {
+        if ($wholesale && ($wholesalePrice = self::getWholesalePrice($variant)) !== null) {
+            return $wholesalePrice;
+        }
+
+        return self::getStorePricing($variant, $storeId, $organization);
     }
 
     /**

@@ -249,7 +249,14 @@
         </div>
         
         <!-- Invoice Title -->
-        <div class="invoice-title">TAX INVOICE</div>
+        <div class="invoice-title">
+            {{ ($sale->order_channel ?? 'retail') === 'wholesale' ? 'WHOLESALE INVOICE' : 'TAX INVOICE' }}
+        </div>
+        @if(($sale->order_channel ?? 'retail') === 'wholesale')
+            <div style="text-align:center; margin:-6px 0 10px; font-size:10px; letter-spacing:0.5px; color:#92400e;">
+                Dealer rates — not for retail resale pricing
+            </div>
+        @endif
         
         <!-- Invoice & Customer Info -->
         <div class="info-row">

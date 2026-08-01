@@ -58,6 +58,9 @@ class EnhancedPOS extends Page
 
     public $quickSearchInput = '';
 
+    /** Product chosen in search step 1, awaiting a pack size in step 2 */
+    public $selectedProductId = null;
+
     public $barcodeInput = '';
 
     public $customerSearch = '';
@@ -98,8 +101,15 @@ class EnhancedPOS extends Page
     ];
 
     /**
-     * Get product search results as you type
-     * Searches: Product name (priority), other names (Hindi/Sanskrit/Nepali), description, SKU, barcode
+     * Step 1 of search — matching PRODUCTS, not every pack size.
+     *
+     * Listing one row per variant meant a search for "cardamom" returned the
+     * same product five times (50 g, 100 g, 250 g, 500 g, 1 kg) and pushed
+     * other products off the list. Now each product appears once and the pack
+     * size is chosen in step 2 (see getSelectedProductProperty).
+     *
+     * Searches product name, Hindi/Sanskrit/Nepali/romanized names,
+     * description, and any variant's SKU or barcode.
      */
     public function getSearchResultsProperty()
     {
@@ -109,69 +119,147 @@ class EnhancedPOS extends Page
             return collect([]);
         }
 
-        // Use a single DRY query with weighted relevance
-        return ProductVariant::query()
-            ->with(['product', 'storePricing'])
+        return Product::query()
+            ->with(['variants' => fn ($q) => $q->where('active', true)])
             ->where('active', true)
-            ->whereHas('product', fn ($q) => $q->where('active', true))
+            ->whereHas('variants', fn ($q) => $q->where('active', true))
             ->where(function ($query) use ($search) {
-                $query
-                    // Product name fields
-                    ->whereHas('product', function ($q) use ($search) {
-                        $q->where('name', 'like', "%{$search}%")
-                            ->orWhere('name_hindi', 'like', "%{$search}%")
-                            ->orWhere('name_nepali', 'like', "%{$search}%")
-                            ->orWhere('name_romanized', 'like', "%{$search}%")
-                            ->orWhere('name_sanskrit', 'like', "%{$search}%")
-                            ->orWhere('description', 'like', "%{$search}%");
-                    })
-                    // Variant fields
-                    ->orWhere('sku', 'like', "%{$search}%")
-                    ->orWhere('barcode', 'like', "%{$search}%");
+                $query->where('name', 'like', "%{$search}%")
+                    ->orWhere('name_hindi', 'like', "%{$search}%")
+                    ->orWhere('name_nepali', 'like', "%{$search}%")
+                    ->orWhere('name_romanized', 'like', "%{$search}%")
+                    ->orWhere('name_sanskrit', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhereHas('variants', fn ($q) => $q
+                        ->where('sku', 'like', "%{$search}%")
+                        ->orWhere('barcode', 'like', "%{$search}%"));
             })
-            // Order by relevance: exact name match first, then partial matches
-            ->orderByRaw('
-                CASE 
-                    WHEN EXISTS (SELECT 1 FROM products WHERE products.id = product_variants.product_id AND products.name LIKE ?) THEN 1
-                    WHEN EXISTS (SELECT 1 FROM products WHERE products.id = product_variants.product_id AND products.name LIKE ?) THEN 2
-                    WHEN sku LIKE ? OR barcode LIKE ? THEN 3
-                    ELSE 4
-                END
-            ', ["{$search}%", "%{$search}%", "{$search}%", "{$search}%"])
-            ->limit(10)
+            // Names that start with the term rank above ones that merely contain it.
+            ->orderByRaw('CASE WHEN name LIKE ? THEN 1 WHEN name LIKE ? THEN 2 ELSE 3 END', ["{$search}%", "%{$search}%"])
+            ->orderBy('name')
+            ->limit(8)
             ->get()
-            ->map(function ($variant) {
-                $storeId = $this->resolveStoreId();
-                $organization = auth()->user()?->organization;
-                $price = PricingService::getStorePricing($variant, $storeId, $organization);
+            ->map(fn (Product $product) => [
+                'id' => $product->id,
+                'name' => $product->name,
+                'image' => $product->image_url,
+                'pack_count' => $product->variants->count(),
+                'price_from' => $product->variants
+                    ->map(fn ($v) => $this->resolveUnitPrice($v))
+                    ->filter()
+                    ->min(),
+                'other_names' => collect([
+                    $product->name_hindi,
+                    $product->name_nepali,
+                    $product->name_romanized,
+                    $product->name_sanskrit,
+                ])->filter()->implode(' / '),
+            ]);
+    }
 
-                // Get available stock for this store
-                $stockLevel = \App\Models\StockLevel::where('product_variant_id', $variant->id)
+    /**
+     * Step 2 of search — the pack sizes of the product picked in step 1.
+     */
+    public function getSelectedProductProperty(): ?array
+    {
+        if (! $this->selectedProductId) {
+            return null;
+        }
+
+        $product = Product::with(['variants' => fn ($q) => $q->where('active', true)])
+            ->find($this->selectedProductId);
+
+        if (! $product) {
+            return null;
+        }
+
+        $storeId = $this->resolveStoreId();
+
+        return [
+            'id' => $product->id,
+            'name' => $product->name,
+            'image' => $product->image_url,
+            'other_names' => collect([
+                $product->name_hindi,
+                $product->name_nepali,
+                $product->name_romanized,
+                $product->name_sanskrit,
+            ])->filter()->implode(' / '),
+            // Smallest pack first by real weight, so "20 G" precedes "1 KG".
+            'variants' => $this->sortVariantsBySize($product->variants)->map(function (ProductVariant $variant) use ($storeId) {
+                $stockLevel = StockLevel::where('product_variant_id', $variant->id)
                     ->where('store_id', $storeId)
                     ->first();
+
                 $totalStock = $stockLevel ? (int) $stockLevel->quantity : 0;
                 $reservedStock = $stockLevel ? (int) $stockLevel->reserved_quantity : 0;
-                $availableStock = max(0, $totalStock - $reservedStock);
 
                 return [
                     'id' => $variant->id,
-                    'product_name' => $variant->product->name,
-                    'variant_name' => $variant->pack_size.' '.$variant->unit,
+                    'pack_label' => $variant->pack_label,
                     'sku' => $variant->sku,
-                    'barcode' => $variant->barcode,
-                    'price' => $price,
-                    'image' => $variant->product->image_url,
-                    'available_stock' => $availableStock,
+                    'price' => $this->resolveUnitPrice($variant),
+                    'retail_price' => PricingService::getStorePricing($variant, $storeId, auth()->user()?->organization),
+                    'available_stock' => max(0, $totalStock - $reservedStock),
                     'total_stock' => $totalStock,
                     'reserved_stock' => $reservedStock,
-                    'other_names' => collect([
-                        $variant->product->name_hindi,
-                        $variant->product->name_nepali,
-                        $variant->product->name_romanized,
-                        $variant->product->name_sanskrit,
-                    ])->filter()->implode(' / '),
                 ];
-            });
+            })->values()->all(),
+        ];
+    }
+
+    /**
+     * Order packs by their gram-equivalent, with uncomparable units (pcs,
+     * packets) last. Sorting on the raw pack_size column would list "1 KG"
+     * ahead of "20 G".
+     *
+     * @param  \Illuminate\Support\Collection<int, ProductVariant>  $variants
+     * @return \Illuminate\Support\Collection<int, ProductVariant>
+     */
+    protected function sortVariantsBySize(\Illuminate\Support\Collection $variants): \Illuminate\Support\Collection
+    {
+        return $variants
+            ->sortBy(fn (ProductVariant $v) => $v->comparable_size ?? PHP_FLOAT_MAX)
+            ->values();
+    }
+
+    /**
+     * Pick a product (step 1 → step 2). Single-pack products skip straight to
+     * the cart — there is nothing to choose.
+     */
+    public function selectProduct($productId): void
+    {
+        $product = Product::with(['variants' => fn ($q) => $q->where('active', true)])->find($productId);
+
+        if (! $product) {
+            return;
+        }
+
+        if ($product->variants->count() === 1) {
+            $this->addToCart($product->variants->first()->id);
+
+            return;
+        }
+
+        $this->selectedProductId = $product->id;
+    }
+
+    /** Back out of the pack-size step without losing the search term. */
+    public function clearProductSelection(): void
+    {
+        $this->selectedProductId = null;
+    }
+
+    public function clearSearch(): void
+    {
+        $this->quickSearchInput = '';
+        $this->selectedProductId = null;
+    }
+
+    /** Reset the pack-size step whenever the search term changes. */
+    public function updatedQuickSearchInput(): void
+    {
+        $this->selectedProductId = null;
     }
 
     public function mount(): void
@@ -339,6 +427,7 @@ class EnhancedPOS extends Page
                 'payment_method' => 'cash',
                 'amount_received' => 0,
                 'delivery_charge' => 0,
+                'is_wholesale' => (bool) $session->is_wholesale,
                 'notes' => $session->notes,
             ];
         }
@@ -424,6 +513,22 @@ class EnhancedPOS extends Page
         }
 
         $this->customerSearch = '';
+
+        // A retail store is a dealer — bill it at wholesale rates by default.
+        // The cashier can still flip back with the toggle.
+        $isRetailStore = (bool) $this->sessions[$this->activeSessionKey]['customer_is_retail_store'];
+
+        if ($this->canUseWholesale() && $isRetailStore !== $this->isWholesale()) {
+            $this->setWholesale($isRetailStore);
+
+            Notification::make()
+                ->info()
+                ->title($isRetailStore ? 'Switched to wholesale billing' : 'Switched back to retail billing')
+                ->body($isRetailStore
+                    ? 'Retail store selected — dealer rates applied. Toggle off if this is a retail sale.'
+                    : null)
+                ->send();
+        }
 
         // Recalculate cart totals after customer change
         $this->recalculateCart();
@@ -646,6 +751,7 @@ class EnhancedPOS extends Page
             'payment_method' => 'cash',
             'amount_received' => 0,
             'delivery_charge' => 0,
+            'is_wholesale' => false,
             'notes' => '',
         ];
 
@@ -834,6 +940,7 @@ class EnhancedPOS extends Page
                 'discount_amount' => $sessionData['discount'] ?? 0,
                 'tax_amount' => $sessionData['tax'] ?? 0,
                 'total_amount' => $sessionData['total'] ?? 0,
+                'is_wholesale' => (bool) ($sessionData['is_wholesale'] ?? false),
             ]);
         }
     }
@@ -844,6 +951,89 @@ class EnhancedPOS extends Page
     protected function getCurrentSession(): ?array
     {
         return $this->activeSessionKey ? $this->sessions[$this->activeSessionKey] ?? null : null;
+    }
+
+    // ── Wholesale billing ─────────────────────────────────────────────────
+
+    /** Only roles holding the permission may bill at dealer rates. */
+    public function canUseWholesale(): bool
+    {
+        return auth()->user()?->hasPermission('use_wholesale_billing') ?? false;
+    }
+
+    /** Is the active cart being billed at wholesale rates? */
+    public function isWholesale(): bool
+    {
+        return (bool) ($this->getCurrentSession()['is_wholesale'] ?? false);
+    }
+
+    /**
+     * Unit price for a variant under the active cart's billing mode.
+     */
+    protected function resolveUnitPrice(ProductVariant $variant): float
+    {
+        return PricingService::getPosPrice(
+            $variant,
+            $this->resolveStoreId(),
+            auth()->user()?->organization,
+            $this->isWholesale(),
+        );
+    }
+
+    public function toggleWholesale(): void
+    {
+        if (! $this->activeSessionKey) {
+            return;
+        }
+
+        if (! $this->canUseWholesale()) {
+            Notification::make()
+                ->warning()
+                ->title('Not allowed')
+                ->body('Your role cannot issue wholesale bills.')
+                ->send();
+
+            return;
+        }
+
+        $this->setWholesale(! $this->isWholesale());
+
+        Notification::make()
+            ->success()
+            ->title($this->isWholesale() ? 'Wholesale billing on' : 'Retail billing on')
+            ->body($this->isWholesale()
+                ? 'Cart re-priced at dealer rates (cost + 13%).'
+                : 'Cart re-priced at retail rates.')
+            ->send();
+    }
+
+    /**
+     * Flip the mode and re-price every line already in the cart, so switching
+     * mid-sale never leaves a cart mixing retail and dealer rates.
+     */
+    protected function setWholesale(bool $wholesale): void
+    {
+        if (! $this->activeSessionKey) {
+            return;
+        }
+
+        $this->sessions[$this->activeSessionKey]['is_wholesale'] = $wholesale;
+
+        foreach ($this->sessions[$this->activeSessionKey]['cart'] as $index => $item) {
+            $variant = ProductVariant::find($item['variant_id']);
+
+            if (! $variant) {
+                continue;
+            }
+
+            $this->sessions[$this->activeSessionKey]['cart'][$index]['price'] = $this->resolveUnitPrice($variant);
+            // A discount sized against a retail price is meaningless once the
+            // line is re-priced to dealer rates.
+            $this->sessions[$this->activeSessionKey]['cart'][$index]['discount'] = 0;
+        }
+
+        $this->recalculateCart();
+        $this->saveCurrentSession();
     }
 
     /**
@@ -903,10 +1093,10 @@ class EnhancedPOS extends Page
                 'product_id' => $variant->product->id,
                 'variant_id' => $variant->id,
                 'product_name' => $variant->product->name,
-                'variant_name' => $variant->pack_size.$variant->unit,
+                'variant_name' => $variant->pack_label,
                 'sku' => $variant->sku,
                 'unit' => $variant->unit ?? 'pcs',
-                'price' => PricingService::getStorePricing($variant, $this->resolveStoreId(), auth()->user()?->organization),
+                'price' => $this->resolveUnitPrice($variant),
                 'cost_price' => $variant->cost_price ?? 0,
                 'quantity' => $quantity,
                 'discount' => 0,
@@ -918,8 +1108,8 @@ class EnhancedPOS extends Page
         $this->recalculateCart();
         $this->saveCurrentSession();
 
-        // Clear search
-        $this->quickSearchInput = '';
+        // Clear search and drop back to step 1
+        $this->clearSearch();
     }
 
     /**
@@ -934,23 +1124,22 @@ class EnhancedPOS extends Page
             return;
         }
 
-        // Try exact barcode/SKU match first (for barcode scanners)
+        // Exact barcode/SKU goes straight to the cart — a scanner must stay a
+        // one-step flow, never a two-step one.
         $variant = ProductVariant::where('barcode', $input)
             ->orWhere('sku', $input)
             ->first();
 
         if ($variant) {
             $this->addToCart($variant->id);
-            $this->quickSearchInput = '';
 
             return;
         }
 
-        // Use the search results if available (first match)
+        // Otherwise Enter picks the top product and shows its pack sizes.
         $results = $this->searchResults;
         if ($results->isNotEmpty()) {
-            $this->addToCart($results->first()['id']);
-            $this->quickSearchInput = '';
+            $this->selectProduct($results->first()['id']);
         } else {
             Notification::make()
                 ->warning()
@@ -1141,6 +1330,14 @@ class EnhancedPOS extends Page
             $paymentStatus = $isCredit ? 'unpaid' : 'paid';
             $amountPaid = $isCredit ? 0 : ($session['amount_received'] ?: $session['total']);
 
+            // Cost basis of the goods sold. Agent commission is a share of
+            // (total - base), so this must be recorded for the sale to settle
+            // correctly later.
+            $isWholesale = (bool) ($session['is_wholesale'] ?? false);
+            $costBasis = collect($session['cart'])->sum(
+                fn ($item) => (float) ($item['cost_price'] ?? 0) * (float) ($item['quantity'] ?? 0)
+            );
+
             $sale = Sale::create([
                 'organization_id' => OrganizationContext::getCurrentOrganizationId() ?? auth()->user()->organization_id,
                 'store_id' => $storeId,
@@ -1165,6 +1362,9 @@ class EnhancedPOS extends Page
                 'payment_status' => $paymentStatus,
                 'amount_paid' => $amountPaid,
                 'amount_change' => max(0, $amountPaid - $session['total']),
+                'order_channel' => $isWholesale ? 'wholesale' : 'retail',
+                'wholesale_base_amount' => round($costBasis, 2),
+                'company_profit_amount' => round(max(0, (float) $session['total'] - $costBasis), 2),
                 'notes' => $session['notes'],
                 'status' => 'completed',
             ]);
