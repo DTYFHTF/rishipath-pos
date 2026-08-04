@@ -36,11 +36,7 @@ class PreviewPackPricing extends Command
         $allowRises = (bool) $this->option('allow-rises');
 
         foreach ($products as $product) {
-            // Blends carry a higher markup for the processing work.
-            $markup = str_contains(strtolower($product->name), 'garam masala')
-                || str_contains(strtolower($product->name), 'rishipeya')
-                    ? PackPricing::BLEND_MARKUP
-                    : PackPricing::RETAIL_MARKUP;
+            $markup = PackPricing::markupFor($product);
 
             if (PackPricing::costPerKg($product) === null) {
                 if ($product->variants->isNotEmpty()) {

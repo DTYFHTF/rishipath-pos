@@ -39,7 +39,7 @@ class PackPricing
      */
     public const RETAIL_MARKUP = 1.30;
 
-    /** Blended products (Garam Masala, Rishipeya) cover processing labour. */
+    /** Blended products cover the processing labour on top of ingredients. */
     public const BLEND_MARKUP = 1.43;
 
     /** Flat packet charge added to every pack below 1 kg. */
@@ -81,6 +81,19 @@ class PackPricing
             : 0.0;
 
         return self::roundToStep($goods + $fee);
+    }
+
+    /**
+     * The markup a product is priced at.
+     *
+     * Read from the product itself so a rename cannot silently change a price;
+     * products with nothing set sit on the standard retail markup.
+     */
+    public static function markupFor(Product $product): float
+    {
+        $markup = $product->retail_markup !== null ? (float) $product->retail_markup : 0.0;
+
+        return $markup > 0 ? $markup : self::RETAIL_MARKUP;
     }
 
     /**
@@ -174,8 +187,9 @@ class PackPricing
      *                            discarded in favour of the cheaper current price
      * @return array<int, array{variant: ProductVariant, current: float, derived: ?float, locked: bool, capped: bool}>
      */
-    public static function previewProduct(Product $product, float $markup = self::RETAIL_MARKUP, bool $allowRises = false): array
+    public static function previewProduct(Product $product, ?float $markup = null, bool $allowRises = false): array
     {
+        $markup = $markup ?? self::markupFor($product);
         $costPerKg = self::costPerKg($product);
         $kilogramPrice = $costPerKg !== null ? self::kilogramPrice($costPerKg, $markup) : null;
 

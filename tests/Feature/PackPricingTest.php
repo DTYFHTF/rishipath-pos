@@ -107,6 +107,27 @@ class PackPricingTest extends TestCase
         $this->assertSame(2005.0, PackPricing::kilogramPrice(1399, PackPricing::BLEND_MARKUP));
     }
 
+    public function test_markup_is_read_from_the_product_not_its_name(): void
+    {
+        $p = $this->product('Rishipeya', ['1000' => [1596, 2285]]);
+
+        // Nothing set: the standard retail markup applies.
+        $this->assertSame(PackPricing::RETAIL_MARKUP, PackPricing::markupFor($p));
+
+        // A renamed premium product keeps its markup, because it is data.
+        $p->update(['retail_markup' => 1.88, 'name' => 'Renamed Blend']);
+        $this->assertSame(1.88, PackPricing::markupFor($p->fresh()));
+        $this->assertSame(3005.0, PackPricing::kilogramPrice(1596, PackPricing::markupFor($p->fresh())));
+    }
+
+    public function test_a_zero_markup_falls_back_to_the_standard_rate(): void
+    {
+        $p = $this->product('Odd Data', ['1000' => [400, 520]]);
+        $p->update(['retail_markup' => 0]);
+
+        $this->assertSame(PackPricing::RETAIL_MARKUP, PackPricing::markupFor($p->fresh()));
+    }
+
     public function test_zero_or_missing_inputs_return_null_rather_than_a_zero_price(): void
     {
         $this->assertNull(PackPricing::packPrice(0, 100));

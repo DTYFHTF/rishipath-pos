@@ -24,6 +24,7 @@ class Product extends Model
         'description',
         'product_type',
         'unit_type',
+        'retail_markup',
         'has_variants',
         'tax_category',
         'requires_batch',
@@ -40,6 +41,7 @@ class Product extends Model
     ];
 
     protected $casts = [
+        'retail_markup' => 'decimal:2',
         'has_variants' => 'boolean',
         'requires_batch' => 'boolean',
         'requires_expiry' => 'boolean',
