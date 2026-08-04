@@ -1,0 +1,206 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Category;
+use App\Models\Organization;
+use App\Models\Product;
+use App\Models\ProductVariant;
+use App\Services\PackPricing;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class PackPricingTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected Organization $org;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->org = Organization::factory()->create(['country_code' => 'NP']);
+    }
+
+    /** @param array<string,array{0:float,1:float}> $packs  pack "<grams>" => [cost, current mrp] */
+    private function product(string $name, array $packs): Product
+    {
+        $category = Category::firstOrCreate(
+            ['organization_id' => $this->org->id, 'name' => 'Spices'],
+            ['active' => true]
+        );
+
+        $product = Product::create([
+            'organization_id' => $this->org->id,
+            'category_id' => $category->id,
+            'sku' => 'P-'.str($name)->slug()->upper()->value(),
+            'name' => $name,
+            'product_type' => 'simple',
+            'unit_type' => 'weight',
+            'active' => true,
+        ]);
+
+        foreach ($packs as $grams => [$cost, $mrp]) {
+            ProductVariant::create([
+                'product_id' => $product->id,
+                'sku' => $product->sku.'-'.$grams,
+                'pack_size' => (float) $grams,
+                'unit' => 'g',
+                'cost_price' => $cost,
+                'base_price' => $mrp,
+                'mrp_india' => $mrp,
+                'selling_price_nepal' => $mrp,
+                'active' => true,
+            ]);
+        }
+
+        return $product->fresh('variants');
+    }
+
+    // ── The formula ───────────────────────────────────────────────────────
+
+    public function test_a_pack_is_its_share_of_the_kilo_price_plus_the_packet_charge(): void
+    {
+        // Rs400/kg: 500g = 200 + 5 = 205, 100g = 40 + 5 = 45
+        $this->assertSame(205.0, PackPricing::packPrice(400, 500));
+        $this->assertSame(45.0, PackPricing::packPrice(400, 100));
+        // 20g = 8 + 5 = 13, rounded up to the next Rs5
+        $this->assertSame(15.0, PackPricing::packPrice(400, 20));
+    }
+
+    public function test_the_kilo_pack_carries_no_packet_charge(): void
+    {
+        $this->assertSame(400.0, PackPricing::packPrice(400, 1000));
+    }
+
+    public function test_every_price_is_a_multiple_of_five(): void
+    {
+        foreach ([97, 250, 333, 1399, 2285] as $kilo) {
+            foreach ([20, 50, 100, 200, 500, 1000] as $grams) {
+                $price = PackPricing::packPrice($kilo, $grams);
+                $this->assertSame(0.0, fmod($price, 5.0), "Rs{$kilo}/kg at {$grams}g gave {$price}");
+            }
+        }
+    }
+
+    public function test_the_packet_charge_never_exceeds_the_value_of_the_goods(): void
+    {
+        // Gud at Rs125/kg: 20g of product is worth Rs2.50. A flat Rs5 fee would
+        // make it Rs7.50 -> Rs10, doubling the cheapest staple in the catalogue.
+        $this->assertSame(5.0, PackPricing::packPrice(125, 20));
+
+        // The cap only bites while the goods are worth less than the fee.
+        $this->assertSame(15.0, PackPricing::packPrice(400, 20));   // Rs8 of goods, full Rs5 fee
+    }
+
+    public function test_a_price_never_falls_below_one_step(): void
+    {
+        $this->assertSame(5.0, PackPricing::packPrice(10, 20));
+    }
+
+    public function test_kilo_price_is_cost_times_the_retail_markup(): void
+    {
+        $this->assertSame(1.30, PackPricing::RETAIL_MARKUP);
+        // 320 * 1.30 = 416 -> next Rs5
+        $this->assertSame(420.0, PackPricing::kilogramPrice(320));
+        // Blends carry the processing markup
+        $this->assertSame(2005.0, PackPricing::kilogramPrice(1399, PackPricing::BLEND_MARKUP));
+    }
+
+    public function test_zero_or_missing_inputs_return_null_rather_than_a_zero_price(): void
+    {
+        $this->assertNull(PackPricing::packPrice(0, 100));
+        $this->assertNull(PackPricing::packPrice(400, 0));
+        $this->assertNull(PackPricing::kilogramPrice(0));
+    }
+
+    // ── Derived from real product data ────────────────────────────────────
+
+    public function test_cost_per_kilo_is_read_from_any_convertible_pack(): void
+    {
+        $p = $this->product('Coriander Powder', [
+            '100' => [32, 50], '500' => [160, 215], '1000' => [320, 400],
+        ]);
+
+        $this->assertSame(320.0, PackPricing::costPerKg($p));
+    }
+
+    public function test_the_small_pack_premium_collapses(): void
+    {
+        // Today: 20g of Rs320/kg coriander sells at Rs20 — a 212% markup on a
+        // Rs6.40 cost, while the 1kg buyer pays 25%.
+        $p = $this->product('Coriander Powder', [
+            '20' => [6.40, 20], '1000' => [320, 400],
+        ]);
+
+        $preview = PackPricing::previewProduct($p, allowRises: true);
+        $small = collect($preview)->first(fn ($e) => (int) $e['variant']->comparable_size === 20);
+
+        // Rs320 x 1.30 = Rs420/kg -> 20g = 8.40 + 5 = Rs15
+        $this->assertSame(15.0, $small['derived']);
+        $markup = ($small['derived'] - 6.40) / 6.40;
+        $this->assertLessThan(1.5, $markup, 'the 20g markup must come down from 212%');
+    }
+
+    public function test_a_locked_price_survives_recalculation(): void
+    {
+        $p = $this->product('Garam Masala', ['20' => [28, 40], '1000' => [1399, 2000]]);
+        $p->variants->firstWhere('pack_size', 20.0)->update(['manual_price_locked' => true]);
+
+        $preview = PackPricing::previewProduct($p->fresh('variants'), allowRises: true);
+        $small = collect($preview)->first(fn ($e) => (int) $e['variant']->comparable_size === 20);
+
+        $this->assertSame(40.0, $small['derived'], 'a deliberate override must not be recalculated');
+        $this->assertTrue($small['locked']);
+    }
+
+    public function test_cheap_staples_are_never_raised_even_when_rises_are_allowed(): void
+    {
+        // Gud: Rs5 for 20g today. The formula would push it to Rs10.
+        $p = $this->product('Gud Normal', ['20' => [2, 5], '1000' => [100, 130]]);
+
+        $preview = PackPricing::previewProduct($p, allowRises: true);
+        $small = collect($preview)->first(fn ($e) => (int) $e['variant']->comparable_size === 20);
+
+        $this->assertSame(5.0, $small['derived'], 'a Rs5 staple pack must not double');
+        $this->assertTrue($small['capped']);
+    }
+
+    public function test_expensive_packs_may_rise_when_rises_are_allowed(): void
+    {
+        $p = $this->product('Walnut Premium', ['500' => [330, 430], '1000' => [660, 860]]);
+
+        $rises = PackPricing::previewProduct($p, allowRises: true);
+        $held = PackPricing::previewProduct($p, allowRises: false);
+
+        $mid = fn ($set) => collect($set)->first(fn ($e) => (int) $e['variant']->comparable_size === 500);
+
+        $this->assertGreaterThan(430.0, $mid($rises)['derived']);
+        $this->assertSame(430.0, $mid($held)['derived'], 'without --allow-rises the cheaper price stands');
+        $this->assertTrue($mid($held)['capped']);
+    }
+
+    public function test_a_product_with_no_cost_price_yields_no_derived_price(): void
+    {
+        $p = $this->product('Mystery Spice', ['100' => [0, 50], '1000' => [0, 400]]);
+
+        $this->assertNull(PackPricing::costPerKg($p));
+        foreach (PackPricing::previewProduct($p) as $entry) {
+            $this->assertNull($entry['derived']);
+        }
+    }
+
+    public function test_every_pack_is_derivable_from_the_kilo_price(): void
+    {
+        // The property the shopkeepers actually asked for: knowing the kilo
+        // price is enough to work out any pack.
+        $kilo = PackPricing::kilogramPrice(400);
+
+        foreach ([20, 50, 100, 200, 500] as $grams) {
+            $expected = PackPricing::roundToStep(
+                $kilo * ($grams / 1000) + min(5, $kilo * ($grams / 1000))
+            );
+            $this->assertSame($expected, PackPricing::packPrice($kilo, $grams));
+        }
+    }
+}

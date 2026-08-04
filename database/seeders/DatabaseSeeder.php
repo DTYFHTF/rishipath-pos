@@ -14,12 +14,11 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Call the main seeders
-        // NOTE: SpiceProductSeeder and DryFruitsSeeder are intentionally NOT
-        // included here - they add products outside the verified "May 2026
-        // Rate List" that ProductCatalogSeeder treats as the single source of
-        // truth (it deactivates anything not in its own list). Run them
-        // manually with --class if that older catalog is ever needed again.
+        // ProductCatalogSeeder is the single source of truth for the catalog:
+        // it deactivates any product absent from its own rate list. The older
+        // SpiceProductSeeder / DryFruitsSeeder / MandatoryPackVariantSeeder /
+        // SyncWeightVariantPricingSeeder were superseded by it and have been
+        // removed.
         $this->call([
             InitialSetupSeeder::class,
             RolePermissionSeeder::class,
