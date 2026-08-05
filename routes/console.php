@@ -16,13 +16,14 @@ Schedule::command('notifications:payment-reminders')->dailyAt('09:00');
 Schedule::command('loyalty:birthday-bonuses')->daily()->at('00:01');
 
 /*
- * Paused: no alert rule or report schedule has ever been created, so these ran
- * roughly 2,900 times a month over empty tables. The features and their admin
- * screens are untouched — create a rule under Alert Rules (or a schedule under
- * Report Schedules) and uncomment the matching line to switch them back on.
- * notifications:send-pending only has work once alerts start firing.
+ * These were paused while alert_rules and report_schedules were empty — they
+ * ran roughly 2,900 times a month over nothing. AutomationSeeder now creates
+ * the founders report and the three alert rules, so they have work to do.
  *
- * Schedule::command('alerts:check')->everyFifteenMinutes();
- * Schedule::command('reports:process-scheduled')->hourly();
- * Schedule::command('notifications:send-pending')->hourly();
+ * alerts:check runs hourly rather than every 15 minutes: the rules are daily
+ * or hourly, so a quarter-hourly sweep only re-asked a question already
+ * answered.
  */
+Schedule::command('alerts:check')->hourly();
+Schedule::command('reports:process-scheduled')->hourly();
+Schedule::command('notifications:send-pending')->hourly();

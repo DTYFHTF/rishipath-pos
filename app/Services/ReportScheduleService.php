@@ -7,6 +7,7 @@ use App\Models\Notification;
 use App\Models\ReportSchedule;
 use App\Models\Sale;
 use App\Models\ScheduledReportRun;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -94,6 +95,17 @@ class ReportScheduleService
     }
 
     /**
+     * The figures a schedule would report right now, without sending anything.
+     *
+     * Useful for previewing a report before committing to a schedule, and for
+     * asserting on the numbers rather than on a rendered PDF.
+     */
+    public function reportDataFor(ReportSchedule $schedule): array
+    {
+        return $this->generateReportData($schedule);
+    }
+
+    /**
      * Generate report data based on type
      */
     protected function generateReportData(ReportSchedule $schedule): array
@@ -105,6 +117,7 @@ class ReportScheduleService
             'inventory' => $this->generateInventoryReport($params),
             'customer_analytics' => $this->generateCustomerAnalyticsReport($params),
             'cashier_performance' => $this->generateCashierPerformanceReport($params),
+            'founders' => $this->generateFoundersReport($params),
             default => throw new \Exception("Unknown report type: {$schedule->report_type}"),
         };
     }
@@ -240,24 +253,25 @@ class ReportScheduleService
         $timestamp = now()->format('Y-m-d_His');
         $filename = str_replace(' ', '_', strtolower($schedule->name)).'_'.$timestamp;
 
-        // Generate PDF (if library is available)
-        if (in_array($schedule->format, ['pdf', 'both'])) {
-            try {
-                // For now, create a simple text file until PDF library is installed
-                $content = $this->generateSimpleReport($schedule, $reportData);
-                $pdfPath = "reports/scheduled/{$filename}.txt";
-                Storage::put($pdfPath, $content);
-                $files['pdf'] = $pdfPath;
-            } catch (\Exception $e) {
-                Log::warning('PDF generation skipped: '.$e->getMessage());
-            }
+        // Excel export was never implemented — it only registered a path
+        // without writing a file, which then failed to attach. The email body
+        // carries the figures either way.
+        if (! in_array($schedule->format, ['pdf', 'both'], true)) {
+            return $files;
         }
 
-        // Generate Excel (simplified - would use actual Excel export)
-        if (in_array($schedule->format, ['excel', 'both'])) {
-            $excelPath = "reports/scheduled/{$filename}.xlsx";
-            // In production, use Maatwebsite Excel package
-            $files['excel'] = $excelPath;
+        try {
+            $pdf = Pdf::loadView('reports.scheduled.template', [
+                'schedule' => $schedule,
+                'reportData' => $reportData,
+            ])->setPaper('a4');
+
+            $path = "reports/scheduled/{$filename}.pdf";
+            Storage::put($path, $pdf->output());
+            $files['pdf'] = $path;
+        } catch (\Throwable $e) {
+            // A broken attachment must not stop the figures reaching anyone.
+            Log::warning('Report PDF generation failed, sending without attachment: '.$e->getMessage());
         }
 
         return $files;
@@ -268,31 +282,39 @@ class ReportScheduleService
      */
     protected function sendReportEmails(ReportSchedule $schedule, array $files, array $reportData): void
     {
-        foreach ($schedule->recipients as $recipient) {
-            try {
-                // Skip actual email sending if mail is not configured
-                Log::info("Would send report email to {$recipient} for schedule: {$schedule->name}");
+        $sent = 0;
 
-                // Uncomment below when mail is configured
-                /*
+        foreach ($schedule->recipients ?? [] as $recipient) {
+            if (! filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
+                Log::warning("Skipping invalid report recipient '{$recipient}' on schedule {$schedule->id}");
+
+                continue;
+            }
+
+            try {
                 Mail::send('emails.scheduled-report', [
                     'schedule' => $schedule,
                     'reportData' => $reportData,
                 ], function ($message) use ($recipient, $schedule, $files) {
                     $message->to($recipient)
-                            ->subject($schedule->name . ' - ' . now()->format('M d, Y'));
+                        ->subject($schedule->name.' — '.now()->format('D, d M Y'));
 
-                    foreach ($files as $type => $path) {
+                    foreach ($files as $path) {
+                        // Only attach what actually reached disk.
                         if (Storage::exists($path)) {
-                            $message->attach(storage_path('app/' . $path));
+                            $message->attach(Storage::path($path));
                         }
                     }
                 });
-                */
-            } catch (\Exception $e) {
+
+                $sent++;
+            } catch (\Throwable $e) {
+                // One bad address must not stop the other recipients.
                 Log::error("Failed to send report email to {$recipient}: ".$e->getMessage());
             }
         }
+
+        Log::info("Report '{$schedule->name}' emailed to {$sent} recipient(s)");
     }
 
     /**
@@ -307,46 +329,91 @@ class ReportScheduleService
             ];
         }
 
-        // Default to last 30 days
-        return [
-            now()->subDays(30)->startOfDay(),
-            now()->endOfDay(),
-        ];
+        // A daily report sent at 8am is reporting on the day that just closed,
+        // so a rolling 30-day window would be the wrong answer for it.
+        return match ($params['period'] ?? null) {
+            'today' => [now()->startOfDay(), now()->endOfDay()],
+            'yesterday' => [now()->subDay()->startOfDay(), now()->subDay()->endOfDay()],
+            'this_week' => [now()->startOfWeek(), now()->endOfDay()],
+            'this_month' => [now()->startOfMonth(), now()->endOfDay()],
+            default => [now()->subDays(30)->startOfDay(), now()->endOfDay()],
+        };
     }
 
     /**
-     * Generate a simple text report (fallback when PDF library not available)
+     * Daily founders summary — the whole business on one page.
+     *
+     * Deliberately not just sales: the questions a founder opens their phone
+     * to answer are what came in, what it earned, who owes us, and what is
+     * about to run out.
      */
-    protected function generateSimpleReport(ReportSchedule $schedule, array $reportData): string
+    protected function generateFoundersReport(array $params): array
     {
-        $content = "═══════════════════════════════════════════════════\n";
-        $content .= strtoupper($reportData['title'])."\n";
-        $content .= "═══════════════════════════════════════════════════\n\n";
-        $content .= "Period: {$reportData['period']}\n";
-        $content .= 'Generated: '.now()->format('M d, Y h:i A')."\n";
-        $content .= "Schedule: {$schedule->name}\n\n";
+        $dateRange = $this->getDateRange($params);
 
-        if (isset($reportData['summary'])) {
-            $content .= "SUMMARY\n";
-            $content .= "-------\n";
-            foreach ($reportData['summary'] as $key => $value) {
-                $label = ucwords(str_replace('_', ' ', $key));
-                if (is_numeric($value)) {
-                    if (str_contains($key, 'amount') || str_contains($key, 'value')) {
-                        $value = '₹'.number_format($value, 2);
-                    } else {
-                        $value = number_format($value);
-                    }
-                }
-                $content .= "{$label}: {$value}\n";
-            }
-            $content .= "\n";
-        }
+        $sales = Sale::whereBetween('created_at', $dateRange)
+            ->where('status', 'completed')
+            ->with(['items', 'customer'])
+            ->get();
 
-        $content .= 'Record Count: '.($reportData['record_count'] ?? 0)."\n";
-        $content .= "\n";
-        $content .= "This is a simplified text report. Install barryvdh/laravel-dompdf for PDF generation.\n";
+        $paid = $sales->where('payment_status', 'paid');
+        $credit = $sales->where('payment_status', 'unpaid');
 
-        return $content;
+        // Revenue is paid sales only — credit is a promise, not money in.
+        $revenue = (float) $paid->sum('total_amount');
+        $cost = (float) $paid->flatMap->items->sum(
+            fn ($item) => (float) $item->cost_price * (float) $item->quantity
+        );
+
+        $topProducts = $paid->flatMap->items
+            ->groupBy('product_name')
+            ->map(fn ($items, $name) => [
+                'name' => $name,
+                'quantity' => $items->sum('quantity'),
+                'revenue' => $items->sum('total'),
+            ])
+            ->sortByDesc('revenue')
+            ->take(5)
+            ->values()
+            ->all();
+
+        $outstanding = (float) \App\Models\Sale::where('payment_status', 'unpaid')
+            ->where('status', 'completed')
+            ->sum('total_amount');
+
+        $visits = \App\Models\RetailStoreVisit::whereBetween('visit_date', $dateRange)->count();
+        $newStores = \App\Models\RetailStore::whereBetween('created_at', $dateRange)->count();
+
+        $lowStock = \App\Models\StockLevel::with('productVariant.product')
+            ->whereColumn('quantity', '<=', 'reorder_level')
+            ->where('quantity', '>', 0)
+            ->limit(10)
+            ->get()
+            ->map(fn ($s) => [
+                'name' => $s->productVariant?->product?->name.' '.$s->productVariant?->pack_label,
+                'quantity' => (int) $s->quantity,
+            ])
+            ->all();
+
+        return [
+            'title' => 'Founders Daily Report',
+            'period' => $dateRange[0]->format('D, d M Y'),
+            'sales' => $paid,
+            'top_products' => $topProducts,
+            'low_stock' => $lowStock,
+            'summary' => [
+                'revenue' => round($revenue, 2),
+                'transactions' => $paid->count(),
+                'average_sale' => $paid->count() > 0 ? round($revenue / $paid->count(), 2) : 0,
+                'gross_profit' => round($revenue - $cost, 2),
+                'margin_percent' => $revenue > 0 ? round(100 * ($revenue - $cost) / $revenue, 1) : 0,
+                'credit_sales_today' => $credit->count(),
+                'credit_amount_today' => round((float) $credit->sum('total_amount'), 2),
+                'total_outstanding' => round($outstanding, 2),
+                'store_visits' => $visits,
+                'new_stores' => $newStores,
+            ],
+            'record_count' => $paid->count(),
+        ];
     }
 }
