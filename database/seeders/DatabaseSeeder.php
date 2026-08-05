@@ -36,6 +36,9 @@ class DatabaseSeeder extends Seeder
             // sales agents) and deactivates any other users so the panel ships
             // with exactly the intended logins.
             ShuddhidhamUsersSeeder::class,
+            // Idempotent (firstOrNew) — safe to run on every deploy.
+            AutomationSeeder::class,
+            LoyaltyRewardSeeder::class,
         ]);
     }
 }
