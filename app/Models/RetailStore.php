@@ -76,11 +76,6 @@ class RetailStore extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    public function bulkOrderInquiries(): HasMany
-    {
-        return $this->hasMany(BulkOrderInquiry::class);
-    }
-
     public function visits(): HasMany
     {
         return $this->hasMany(RetailStoreVisit::class)->orderByDesc('visit_date');
@@ -89,11 +84,6 @@ class RetailStore extends Model
     public function latestVisit(): HasOne
     {
         return $this->hasOne(RetailStoreVisit::class)->latestOfMany('visit_date');
-    }
-
-    public function invoices(): HasMany
-    {
-        return $this->hasMany(Invoice::class);
     }
 
     public function linkedCustomer(): HasOne

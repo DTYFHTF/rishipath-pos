@@ -86,10 +86,6 @@ class ViewFeedback extends ViewRecord
                             ->label('Store Name')
                             ->visible(fn () => $this->record->feedbackable_type === \App\Models\RetailStore::class),
 
-                        Infolists\Components\TextEntry::make('feedbackable.company_name')
-                            ->label('Company Name')
-                            ->visible(fn () => $this->record->feedbackable_type === \App\Models\BulkOrderInquiry::class),
-
                         Infolists\Components\TextEntry::make('type')
                             ->badge()
                             ->color(fn (string $state) => match ($state) {

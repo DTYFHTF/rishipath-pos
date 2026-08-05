@@ -4,7 +4,6 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\FeedbackResource\Pages;
 use App\Filament\Traits\HasPermissionCheck;
-use App\Models\BulkOrderInquiry;
 use App\Models\Feedback;
 use App\Models\RetailStore;
 use App\Services\OrganizationContext;
@@ -58,8 +57,8 @@ class FeedbackResource extends Resource
                             ->label('Related To')
                             ->options([
                                 RetailStore::class => 'Retail Store',
-                                BulkOrderInquiry::class => 'Bulk Order Inquiry',
                             ])
+                            ->default(RetailStore::class)
                             ->required()
                             ->live()
                             ->afterStateUpdated(fn (Forms\Set $set) => $set('feedbackable_id', null)),
@@ -85,20 +84,6 @@ class FeedbackResource extends Resource
                                         ->toArray();
                                 }
 
-                                if ($type === BulkOrderInquiry::class) {
-                                    return BulkOrderInquiry::where('organization_id', $orgId)
-                                        ->where(function ($q) use ($search) {
-                                            $q->where('name', 'like', "%{$search}%")
-                                                ->orWhere('company_name', 'like', "%{$search}%");
-                                        })
-                                        ->limit(50)
-                                        ->get()
-                                        ->mapWithKeys(function ($item) {
-                                            return [$item->id => "{$item->company_name} ({$item->name})"];
-                                        })
-                                        ->toArray();
-                                }
-
                                 return [];
                             })
                             ->getOptionLabelUsing(function ($value, Forms\Get $get) {
@@ -109,12 +94,6 @@ class FeedbackResource extends Resource
 
                                 if ($type === RetailStore::class) {
                                     return RetailStore::find($value)?->store_name ?? '';
-                                }
-
-                                if ($type === BulkOrderInquiry::class) {
-                                    $item = BulkOrderInquiry::find($value);
-
-                                    return $item ? "{$item->company_name} ({$item->name})" : '';
                                 }
 
                                 return '';
@@ -205,7 +184,6 @@ class FeedbackResource extends Resource
                     ->badge()
                     ->color(fn (string $state) => match (class_basename($state)) {
                         'RetailStore' => 'info',
-                        'BulkOrderInquiry' => 'warning',
                         default => 'gray',
                     })
                     ->sortable(),
@@ -215,12 +193,6 @@ class FeedbackResource extends Resource
                     ->searchable()
                     ->toggleable()
                     ->visible(fn () => request()->get('feedbackable_type') === RetailStore::class),
-
-                Tables\Columns\TextColumn::make('feedbackable.company_name')
-                    ->label('Company')
-                    ->searchable()
-                    ->toggleable()
-                    ->visible(fn () => request()->get('feedbackable_type') === BulkOrderInquiry::class),
 
                 Tables\Columns\TextColumn::make('type')
                     ->badge()
@@ -302,7 +274,6 @@ class FeedbackResource extends Resource
                     ->label('Related To')
                     ->options([
                         RetailStore::class => 'Retail Stores',
-                        BulkOrderInquiry::class => 'Bulk Orders',
                     ]),
 
                 Tables\Filters\SelectFilter::make('type')
@@ -407,7 +378,6 @@ class FeedbackResource extends Resource
         return [
             'index' => Pages\ListFeedbacks::route('/'),
             'retail-stores' => Pages\ListRetailStoreFeedbacks::route('/retail-stores'),
-            'bulk-orders' => Pages\ListBulkOrderFeedbacks::route('/bulk-orders'),
             'create' => Pages\CreateFeedback::route('/create'),
             'edit' => Pages\EditFeedback::route('/{record}/edit'),
             'view' => Pages\ViewFeedback::route('/{record}'),

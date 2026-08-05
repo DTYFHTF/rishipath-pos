@@ -111,8 +111,6 @@ trait HasPermissionCheck
             'role' => 'roles',
             'user' => 'users',
             'retailstore' => 'retail_stores',
-            'bulkorderinquiry' => 'bulk_order_inquiries',
-            'invoice' => 'invoices',
             'feedback' => 'feedbacks',
         ];
 

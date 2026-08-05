@@ -47,7 +47,7 @@ class Feedback extends Model
     }
 
     /**
-     * The model this feedback belongs to (RetailStore, BulkOrderInquiry, etc.)
+     * The model this feedback belongs to (RetailStore, etc.)
      */
     public function feedbackable(): MorphTo
     {
@@ -129,11 +129,6 @@ class Feedback extends Model
     public function scopeForRetailStores($query)
     {
         return $query->where('feedbackable_type', RetailStore::class);
-    }
-
-    public function scopeForBulkOrders($query)
-    {
-        return $query->where('feedbackable_type', BulkOrderInquiry::class);
     }
 
     // ==================== Accessors ====================

@@ -265,12 +265,6 @@ class RetailStoreResource extends Resource
                     ->label('Visits')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('bulk_order_inquiries_count')
-                    ->counts('bulkOrderInquiries')
-                    ->label('Orders')
-                    ->sortable()
-                    ->toggleable(),
-
                 Tables\Columns\IconColumn::make('linkedCustomer.id')
                     ->label('Customer?')
                     ->boolean()
@@ -383,13 +377,6 @@ class RetailStoreResource extends Resource
                         ->openUrlInNewTab()
                         ->visible(fn (RetailStore $record) => $record->latitude && $record->longitude),
 
-                    // Create Bulk Order
-                    Tables\Actions\Action::make('createBulkOrder')
-                        ->label('Create Bulk Order')
-                        ->icon('heroicon-o-shopping-cart')
-                        ->color('warning')
-                        ->url(fn (RetailStore $record) => BulkOrderInquiryResource::getUrl('create', ['store' => $record->id])),
-
                     // Sync as Customer
                     Tables\Actions\Action::make('syncCustomer')
                         ->label(fn (RetailStore $record) => $record->linkedCustomer ? 'Re-sync Customer' : 'Create as Customer')
@@ -423,7 +410,6 @@ class RetailStoreResource extends Resource
     {
         return [
             RelationManagers\VisitsRelationManager::class,
-            RelationManagers\BulkOrderInquiriesRelationManager::class,
         ];
     }
 

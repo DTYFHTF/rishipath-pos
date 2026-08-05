@@ -2,13 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\BulkOrderInquiry;
-use App\Models\Invoice;
-use App\Models\InvoiceLine;
-use App\Models\Product;
 use App\Models\Sale;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class InvoiceService
@@ -102,97 +97,5 @@ class InvoiceService
         }
 
         return false;
-    }
-
-    // ─── Quotation from Bulk Order Inquiry ───────
-
-    /**
-     * Generate a quotation (Invoice record) from a BulkOrderInquiry.
-     *
-     * @param  array  $quotationData  [
-     *                                'products' => [ ['product_id'=>?, 'product_name'=>?, 'quantity'=>?, 'unit_price'=>?, 'tax_rate'=>0, 'discount'=>0] ],
-     *                                'discount_amount' => 0,
-     *                                'discount_type'   => 'fixed',
-     *                                'shipping_amount' => 0,
-     *                                'terms_and_conditions' => '',
-     *                                'notes' => '',
-     *                                'due_days' => 30,
-     *                                ]
-     */
-    public function generateQuotationFromBulkInquiry(BulkOrderInquiry $inquiry, array $quotationData): Invoice
-    {
-        return DB::transaction(function () use ($inquiry, $quotationData) {
-            $orgId = $inquiry->organization_id;
-
-            $invoice = Invoice::create([
-                'organization_id' => $orgId,
-                'invoice_number' => Invoice::generateNumber('quotation', $orgId),
-                'type' => 'quotation',
-                'status' => 'draft',
-                'invoiceable_type' => BulkOrderInquiry::class,
-                'invoiceable_id' => $inquiry->id,
-                'customer_id' => null,
-                'retail_store_id' => $inquiry->retail_store_id,
-                'recipient_name' => $inquiry->name,
-                'recipient_email' => $inquiry->email,
-                'recipient_phone' => $inquiry->phone,
-                'recipient_address' => implode(', ', array_filter([
-                    $inquiry->shipping_address,
-                    $inquiry->shipping_city,
-                    $inquiry->shipping_state,
-                    $inquiry->shipping_pincode,
-                ])),
-                'discount_amount' => $quotationData['discount_amount'] ?? 0,
-                'discount_type' => $quotationData['discount_type'] ?? 'fixed',
-                'shipping_amount' => $quotationData['shipping_amount'] ?? 0,
-                'currency' => 'NPR',
-                'issue_date' => now()->toDateString(),
-                'due_date' => now()->addDays($quotationData['due_days'] ?? 30)->toDateString(),
-                'terms_and_conditions' => $quotationData['terms_and_conditions'] ?? null,
-                'notes' => $quotationData['notes'] ?? null,
-            ]);
-
-            // Create line items with price snapshots
-            $products = $quotationData['products'] ?? [];
-            $sort = 0;
-
-            foreach ($products as $item) {
-                $product = isset($item['product_id']) ? Product::find($item['product_id']) : null;
-
-                $qty = (float) ($item['quantity'] ?? 0);
-                $unitPrice = (float) ($item['unit_price'] ?? 0);
-                $taxRate = (float) ($item['tax_rate'] ?? 0);
-                $discount = (float) ($item['discount'] ?? 0);
-                $base = $qty * $unitPrice;
-                $afterDiscount = $base - $discount;
-                $taxAmount = $afterDiscount * ($taxRate / 100);
-                $lineTotal = $afterDiscount + $taxAmount;
-
-                InvoiceLine::create([
-                    'invoice_id' => $invoice->id,
-                    'product_id' => $product?->id,
-                    'product_variant_id' => $item['product_variant_id'] ?? null,
-                    'item_name' => $item['product_name'] ?? $product?->name ?? 'Unknown',
-                    'item_sku' => $product?->sku ?? null,
-                    'item_description' => $item['description'] ?? $product?->description ?? null,
-                    'quantity' => $qty,
-                    'unit' => $item['unit'] ?? 'pcs',
-                    'unit_price' => $unitPrice,
-                    'discount_amount' => $discount,
-                    'tax_amount' => $taxAmount,
-                    'tax_rate' => $taxRate,
-                    'line_total' => $lineTotal,
-                    'sort_order' => $sort++,
-                ]);
-            }
-
-            // Recalculate totals
-            $invoice->recalculateTotals();
-
-            // Update inquiry status
-            $inquiry->update(['status' => 'quoted']);
-
-            return $invoice->fresh(['lines']);
-        });
     }
 }
