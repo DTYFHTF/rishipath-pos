@@ -15,6 +15,9 @@ class PricingService
      */
     public const WHOLESALE_MARKUP = 1.13;
 
+    /** Wholesale prices round up to the nearest multiple of this — cash-friendly. */
+    public const WHOLESALE_PRICE_STEP = 5.0;
+
     public static function suggestVariantPrices(?float $costPrice, ?float $packSize, ?string $unit): array
     {
         if ($costPrice === null || $packSize === null || blank($unit)) {
@@ -249,7 +252,11 @@ class PricingService
 
     /**
      * Dealer price for a variant — cost plus the standard wholesale margin,
-     * rounded up to a whole rupee so bills stay cash-friendly.
+     * rounded up to the nearest Rs5 so dealer bills settle in round cash
+     * amounts. The 1 g pack (Saffron — the only one in the catalogue) is
+     * priced in the hundreds for a few strands; stepping that to the nearest
+     * Rs5 loses the precision that pack is sold on, so it keeps whole-rupee
+     * rounding instead.
      *
      * Returns null when the variant has no cost price: guessing a wholesale
      * rate from an unknown cost would silently sell below cost.
@@ -262,7 +269,14 @@ class PricingService
             return null;
         }
 
-        return (float) ceil($cost * self::WHOLESALE_MARKUP);
+        $raw = $cost * self::WHOLESALE_MARKUP;
+        $isOneGramPack = $variant->comparable_size !== null && abs($variant->comparable_size - 1.0) < 0.01;
+
+        if ($isOneGramPack) {
+            return (float) ceil($raw);
+        }
+
+        return (float) (ceil($raw / self::WHOLESALE_PRICE_STEP) * self::WHOLESALE_PRICE_STEP);
     }
 
     /**

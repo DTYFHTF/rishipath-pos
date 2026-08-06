@@ -144,17 +144,26 @@ class PosWholesaleBillingTest extends TestCase
 
     // ── Wholesale pricing ─────────────────────────────────────────────────
 
-    public function test_wholesale_price_is_cost_plus_thirteen_percent_rounded_up(): void
+    public function test_wholesale_price_is_cost_plus_thirteen_percent_rounded_up_to_the_nearest_five(): void
     {
         $variant = $this->product->variants->firstWhere('pack_size', 100.0);
 
-        // 100 * 1.13 = 113
-        $this->assertSame(113.0, PricingService::getWholesalePrice($variant));
+        // 100 * 1.13 = 113 -> next Rs5
+        $this->assertSame(115.0, PricingService::getWholesalePrice($variant));
 
-        // 450 * 1.13 = 508.5 -> 509
-        $this->assertSame(509.0, PricingService::getWholesalePrice(
+        // 450 * 1.13 = 508.5 -> 510
+        $this->assertSame(510.0, PricingService::getWholesalePrice(
             $this->product->variants->firstWhere('pack_size', 500.0)
         ));
+    }
+
+    public function test_a_one_gram_pack_keeps_whole_rupee_wholesale_rounding(): void
+    {
+        $product = $this->makeProduct('Saffron', ['1' => [270.0, 375.0]]);
+        $variant = $product->variants->first();
+
+        // 270 * 1.13 = 305.1 -> 306 (not stepped to a multiple of 5).
+        $this->assertSame(306.0, PricingService::getWholesalePrice($variant));
     }
 
     public function test_wholesale_price_is_null_without_a_cost_so_we_never_sell_at_zero(): void
@@ -184,7 +193,7 @@ class PosWholesaleBillingTest extends TestCase
 
         $component->call('toggleWholesale');
         $cart = collect($component->get('sessions'))->first()['cart'];
-        $this->assertSame([113.0, 509.0], array_map(fn ($i) => (float) $i['price'], $cart), 'dealer rates applied');
+        $this->assertSame([115.0, 510.0], array_map(fn ($i) => (float) $i['price'], $cart), 'dealer rates applied');
 
         // …and back again.
         $component->call('toggleWholesale');
@@ -201,7 +210,7 @@ class PosWholesaleBillingTest extends TestCase
             ->call('addToCart', $variant->id);
 
         $cart = collect($component->get('sessions'))->first()['cart'];
-        $this->assertSame(113.0, (float) $cart[0]['price']);
+        $this->assertSame(115.0, (float) $cart[0]['price']);
     }
 
     public function test_a_role_without_the_permission_cannot_switch_to_wholesale(): void
@@ -246,7 +255,7 @@ class PosWholesaleBillingTest extends TestCase
 
         $session = collect($component->get('sessions'))->first();
         $this->assertTrue($session['is_wholesale']);
-        $this->assertSame(113.0, (float) $session['cart'][0]['price']);
+        $this->assertSame(115.0, (float) $session['cart'][0]['price']);
 
         // Switching to a walk-in returns to retail rates.
         $component->call('selectCustomer', null);
@@ -269,7 +278,7 @@ class PosWholesaleBillingTest extends TestCase
         $sale = Sale::latest('id')->first();
 
         $this->assertSame('wholesale', $sale->order_channel);
-        $this->assertSame(4 * 509.0, (float) $sale->subtotal, 'billed at dealer rates, not MRP');
+        $this->assertSame(4 * 510.0, (float) $sale->subtotal, 'billed at dealer rates, not MRP');
 
         // Cost basis drives agent commission: 4 × 450.
         $this->assertSame(1800.0, (float) $sale->wholesale_base_amount);
@@ -391,7 +400,7 @@ class PosWholesaleBillingTest extends TestCase
             ->call('selectProduct', $this->product->id)
             ->instance()->selectedProduct;
 
-        $this->assertSame([113.0, 509.0, 995.0], array_map(fn ($v) => (float) $v['price'], $picked['variants']));
+        $this->assertSame([115.0, 510.0, 995.0], array_map(fn ($v) => (float) $v['price'], $picked['variants']));
         // The struck-through retail price stays available for comparison.
         $this->assertSame([250.0, 900.0, 1700.0], array_map(fn ($v) => (float) $v['retail_price'], $picked['variants']));
     }
