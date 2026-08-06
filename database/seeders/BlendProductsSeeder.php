@@ -8,6 +8,7 @@ use App\Models\Organization;
 use App\Models\Product;
 use App\Models\ProductComposition;
 use App\Models\ProductVariant;
+use App\Services\PackPricing;
 use Illuminate\Database\Seeder;
 
 /**
@@ -19,9 +20,13 @@ use Illuminate\Database\Seeder;
  * Also creates Black Cumin (Syah Jeera) — a Garam Masala component that was
  * missing from the catalog (rate list row 30: कालो जिरा / स्याँ, CP 600/kg).
  *
- * Pricing: Garam Masala is priced to hit a flat रू2000/kg retail target; the
- * margin that implies is reused for Rishipeya so both blends get the same
- * percentage discount rather than the same रू/kg number.
+ * Pricing: each blend has its own flat रू/kg target (Garam Masala रू2000,
+ * Rishipeya रू3000 — a deliberately premium position, not derived from Garam
+ * Masala's margin). Every pack size is then priced from that one kilo figure
+ * via PackPricing::packPrice(), the same formula every other product in the
+ * catalog uses — so a 20 g pack of either blend carries the same modest
+ * packet fee as a 20 g pack of anything else, not a bespoke calculation that
+ * could quietly drift out of step with the rest of the catalogue.
  *
  * Idempotent: products/variants use firstOrCreate (never overwrite manual
  * edits); pack-variant pricing uses updateOrCreate keyed by SKU so price
@@ -38,46 +43,98 @@ class BlendProductsSeeder extends Seeder
      */
     private const PROCESSING_PER_KG = 150.0;
 
-    /**
-     * Garam Masala's flat target retail price per kg. The margin this implies
-     * (computed at runtime from its own loaded cost) is reused as-is for
-     * Rishipeya, so both blends get the same percentage discount rather than
-     * being forced to the same रू/kg number — Rishipeya's higher material
-     * cost still lands it at a higher, but similarly-reduced, price.
-     */
+    /** Garam Masala's flat target retail price per kg. */
     private const GARAM_MASALA_TARGET_PER_KG = 2000.0;
+
+    /**
+     * Rishipeya's flat target retail price per kg — a premium position on its
+     * own merits (signature blend, nothing to price-compare against), not a
+     * markup reused from Garam Masala.
+     */
+    private const RISHIPEYA_TARGET_PER_KG = 3000.0;
 
     /** Pack sizes (grams) seeded for each house blend. */
     private const PACK_SIZES = [20, 50, 100, 250, 500, 1000];
-
-    /** Margin fraction derived from Garam Masala's target; reused for Rishipeya. */
-    private float $margin;
 
     public function run(): void
     {
         $this->orgId = Organization::where('slug', 'rishipath')->firstOrFail()->id;
 
-        $blackCumin = $this->seedBlackCumin();
+        // Every component a recipe names must exist as a priced product before the
+        // blends are costed - attachComposition() only warns when one is missing
+        // and then treats it as free, silently under-pricing the blend.
+        $blackCumin = $this->seedComponentProduct(
+            name: 'Black Cumin (Syah Jeera)',
+            sku: 'SP-SYJ',
+            costPerKg: 600,
+            mrp: 750,
+            nepali: 'कालो जिरा / स्याँ',
+            hindi: 'Kala Jeera',
+            description: 'Nigella sativa — kalo jira / syah jeera. Used in Garam Masala and tempering.',
+            ingredientCode: 'SP-KALOJIRA',
+        );
+
+        $this->seedComponentProduct(
+            name: 'Bay Leaf (Tej Patta)',
+            sku: 'SP-TEJ',
+            costPerKg: 300,
+            mrp: 375,
+            nepali: 'तेजपात',
+            hindi: 'तेज पत्ता',
+            description: 'Dried bay leaf (tejpat). Aromatic and slightly sweet; used whole in Garam Masala, Rishipeya, pulao and slow-cooked gravies.',
+            ingredientCode: 'SP-BAYLEAF',
+        );
+
+        $this->seedComponentProduct(
+            name: 'Licorice Root (Jethimadhu)',
+            sku: 'SP-JTM',
+            costPerKg: 1100,
+            mrp: 1375,
+            nepali: 'जेठीमधु',
+            hindi: 'मुलेठी',
+            description: 'Dried licorice root (jethimadhu / mulethi). Naturally sweet and soothing; the finishing note in Rishipeya.',
+            ingredientCode: 'SP-LICORICE',
+        );
+
         $this->seedGaramMasala($blackCumin);
         $this->seedRishipeya();
     }
 
     // ────────────────────────────────────────────────────────────────────
-    private function seedBlackCumin(): Product
-    {
+    /**
+     * Create (or re-activate) a blend component that the May 2026 rate list does
+     * not carry as a line of its own.
+     *
+     * Each gets a single 1 kg pack. MRP is the rate list's own floor markup of
+     * 1.25x cost - the median and minimum ratio across all 77 of its priced
+     * products - so these sit consistently alongside the rest of the catalogue.
+     *
+     * firstOrCreate throughout: a later manual price correction in the admin
+     * panel must survive the next deploy rather than being reset here.
+     */
+    private function seedComponentProduct(
+        string $name,
+        string $sku,
+        float $costPerKg,
+        float $mrp,
+        ?string $nepali,
+        ?string $hindi,
+        string $description,
+        ?string $ingredientCode = null,
+    ): Product {
         $category = Category::firstOrCreate(
             ['organization_id' => $this->orgId, 'name' => 'Spices'],
             ['active' => true, 'slug' => 'spices']
         );
 
         $product = Product::firstOrCreate(
-            ['organization_id' => $this->orgId, 'name' => 'Black Cumin (Syah Jeera)'],
+            ['organization_id' => $this->orgId, 'name' => $name],
             [
                 'category_id' => $category->id,
-                'sku' => 'SP-SYJ',
-                'name_nepali' => 'कालो जिरा / स्याँ',
-                'name_hindi' => 'Kala Jeera',
-                'description' => 'Nigella sativa — kalo jira / syah jeera. Used in Garam Masala and tempering.',
+                'sku' => $sku,
+                'name_nepali' => $nepali,
+                'name_hindi' => $hindi,
+                'description' => $description,
                 'product_type' => 'others',
                 'unit_type' => 'weight',
                 'has_variants' => true,
@@ -86,34 +143,35 @@ class BlendProductsSeeder extends Seeder
         );
 
         // ProductCatalogSeeder deactivates products outside its own rate list
-        // on every deploy — this product is intentionally additional, so
-        // re-activate it (this seeder runs after it in DatabaseSeeder).
+        // on every deploy — these are intentionally additional, so re-activate
+        // them (this seeder runs after it in DatabaseSeeder).
         if (! $product->active) {
             $product->update(['active' => true]);
         }
 
-        // Rate list row 30: CP 600/kg, MRP 750, wholesale 680
         ProductVariant::firstOrCreate(
-            ['sku' => 'SP-SYJ-1KG'],
+            ['sku' => $sku.'-1KG'],
             [
                 'product_id' => $product->id,
                 'pack_size' => 1.000,
                 'unit' => 'KG',
-                'cost_price' => 600,
-                'mrp_india' => 750,
-                'base_price' => 750,
-                'selling_price_nepal' => 750,
+                'cost_price' => $costPerKg,
+                'mrp_india' => $mrp,
+                'base_price' => $mrp,
+                'selling_price_nepal' => $mrp,
                 'active' => true,
             ]
         );
 
-        // Link the KB entry so the calculator can price this ingredient
-        Ingredient::where('organization_id', $this->orgId)
-            ->where('code', 'SP-KALOJIRA')
-            ->whereNull('product_id')
-            ->update(['product_id' => $product->id]);
+        // Link the KB entry so the price calculator can cost this ingredient
+        if ($ingredientCode) {
+            Ingredient::where('organization_id', $this->orgId)
+                ->where('code', $ingredientCode)
+                ->whereNull('product_id')
+                ->update(['product_id' => $product->id]);
+        }
 
-        $this->command->info("✅ Black Cumin (Syah Jeera) ready (product_id={$product->id})");
+        $this->command->info("✅ {$name} ready (product_id={$product->id}, CP रू{$costPerKg}/kg)");
 
         return $product;
     }
@@ -164,19 +222,12 @@ class BlendProductsSeeder extends Seeder
         ];
 
         $materialPerKg = $this->attachComposition($product, $recipe);
-
-        // Solve for the margin that lands the 1kg pack at the flat target -
-        // this margin (not the target रू/kg) is what Rishipeya reuses.
-        $loadedPerKg = $materialPerKg + self::PROCESSING_PER_KG;
-        $this->margin = 1 - ($loadedPerKg / self::GARAM_MASALA_TARGET_PER_KG);
-
-        $created = $this->priceVariants($product, 'SP-GRM', $materialPerKg);
+        $created = $this->priceToTarget($product, 'SP-GRM', $materialPerKg, self::GARAM_MASALA_TARGET_PER_KG);
 
         $this->command->info(sprintf(
-            '✅ Garam Masala priced (material ≈ रू %.0f/kg + रू %.0f processing, %.1f%% margin → रू %.0f/kg, %d variant(s) upserted)',
+            '✅ Garam Masala priced (material ≈ रू %.0f/kg + रू %.0f processing → रू %.0f/kg, %d variant(s) upserted)',
             $materialPerKg,
             self::PROCESSING_PER_KG,
-            $this->margin * 100,
             self::GARAM_MASALA_TARGET_PER_KG,
             $created
         ));
@@ -223,55 +274,83 @@ class BlendProductsSeeder extends Seeder
         ];
 
         $materialPerKg = $this->attachComposition($product, $recipe);
-        // Reuses the margin fraction Garam Masala's target implied - same
-        // percentage discount, but Rishipeya's own (higher) cost still yields
-        // a higher रू/kg than Garam Masala's.
-        $created = $this->priceVariants($product, 'HT-RSP', $materialPerKg);
+        $created = $this->priceToTarget($product, 'HT-RSP', $materialPerKg, self::RISHIPEYA_TARGET_PER_KG);
 
         $this->command->info(sprintf(
-            '✅ Rishipeya priced (product_id=%d, material ≈ रू %.0f/kg + रू %.0f processing, %.1f%% margin, %d variant(s) upserted)',
+            '✅ Rishipeya priced (product_id=%d, material ≈ रू %.0f/kg + रू %.0f processing → रू %.0f/kg, %d variant(s) upserted)',
             $product->id,
             $materialPerKg,
             self::PROCESSING_PER_KG,
-            $this->margin * 100,
+            self::RISHIPEYA_TARGET_PER_KG,
             $created
         ));
     }
 
     // ────────────────────────────────────────────────────────────────────
     /**
-     * Upsert the pack variants for a house blend, priced from the loaded cost
-     * (raw material + fixed processing) at a flat target margin. A flat margin
-     * across pack sizes means a 20 g pack carries the same profit rate as a
-     * 50 g pack — no small-pack surcharge. Prices round up to रू 5.
+     * Upsert the pack variants for a house blend, priced to land its 1 kg pack
+     * on a flat रू/kg target, with every smaller pack derived from that same
+     * kilo figure via PackPricing::packPrice() — the one formula the whole
+     * catalogue uses, so a blend's small packs get the same modest packet fee
+     * as everything else instead of a bespoke calculation of their own.
      *
-     * Uses updateOrCreate keyed by SKU so it overrides any flat rate-list price
-     * ProductCatalogSeeder may have set for the same blend earlier in the run.
+     * The markup needed to hit the target is solved from the *unrounded*
+     * loaded cost and stored on the product as retail_markup (rounded to 2dp,
+     * PackPricing's own precision) so PriceReview and the POS wholesale toggle
+     * read the same figure between reseeds. The 1 kg price itself is computed
+     * from the unrounded markup so it lands exactly on target rather than
+     * drifting by a rounding step.
      */
-    private function priceVariants(Product $product, string $skuPrefix, float $materialPerKg): int
+    private function priceToTarget(Product $product, string $skuPrefix, float $materialPerKg, float $targetPerKg): int
     {
-        $loadedPerKg = $materialPerKg + self::PROCESSING_PER_KG;
-        $count = 0;
+        // Rounded once, up front, to 2dp — the same precision the cost_price
+        // column stores. previewProduct() re-derives cost per kg later by
+        // reading that column back, so solving the markup against anything
+        // more precise than what will actually be stored re-introduces the
+        // exact float-rounding sensitivity this design is meant to avoid: a
+        // markup solved against an unrounded cost, then applied to the
+        // rounded one, can land a hair above a multiple of 5 and get pushed
+        // a whole Rs5 higher by the final round-up.
+        $loadedPerKg = round($materialPerKg + self::PROCESSING_PER_KG, 2);
+        $exactMarkup = $targetPerKg / $loadedPerKg;
+
+        $product->retail_markup = round($exactMarkup, 2);
+        $product->save();
+
+        // PASS 1 — structure and cost.
+        $skus = [];
 
         foreach (self::PACK_SIZES as $grams) {
             $isKg = $grams === 1000;
-            $cost = round($loadedPerKg * $grams / 1000, 2);
-            $sell = (float) (ceil(($cost / (1 - $this->margin)) / 5) * 5);
+            $sku = $skuPrefix.'-'.($isKg ? '1KG' : $grams.'GMS');
+            $skus[] = $sku;
 
-            ProductVariant::updateOrCreate(
-                ['sku' => $skuPrefix.'-'.($isKg ? '1KG' : $grams.'GMS')],
-                [
-                    'product_id' => $product->id,
-                    'pack_size' => $isKg ? 1.000 : (float) $grams,
-                    'unit' => $isKg ? 'KG' : 'GMS',
-                    'cost_price' => $cost,
-                    'mrp_india' => $sell,
-                    'base_price' => $sell,
-                    'selling_price_nepal' => $sell,
-                    'active' => true,
-                ]
-            );
+            $variant = ProductVariant::firstOrNew(['sku' => $sku]);
+            $variant->product_id = $product->id;
+            $variant->pack_size = $isKg ? 1.000 : (float) $grams;
+            $variant->unit = $isKg ? 'KG' : 'GMS';
+            $variant->cost_price = round($loadedPerKg * $grams / 1000, 2);
+            $variant->active = true;
+            $variant->save();
+        }
 
+        // PASS 2 — derive every price via PackPricing::previewProduct(), using
+        // the unrounded markup so the 1kg pack lands exactly on target rather
+        // than drifting by a rounding step. Going through previewProduct()
+        // rather than calling packPrice() directly also means a manually
+        // locked price is left alone, matching every other seeder.
+        $count = 0;
+
+        foreach (PackPricing::previewProduct($product->fresh('variants'), $exactMarkup, allowRises: true) as $entry) {
+            if ($entry['derived'] === null || ! in_array($entry['variant']->sku, $skus, true)) {
+                continue;
+            }
+
+            $variant = $entry['variant'];
+            $variant->mrp_india = $entry['derived'];
+            $variant->base_price = $entry['derived'];
+            $variant->selling_price_nepal = $entry['derived'];
+            $variant->save();
             $count++;
         }
 

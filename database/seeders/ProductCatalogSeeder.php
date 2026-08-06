@@ -8,9 +8,8 @@
  * - Preserves image_url on existing matched products
  * - Deactivates all products NOT in the CSV
  *
- * Prices verified against "Combined Rate List.csv".
- * packs key = grams (1000 = 1 kg); value = MRP for that pack.
- * Wholesale shown live = ceil(cost_price × 1.13).
+ * packs key = grams (1000 = 1 kg); the value is READ but no longer used as the
+ * price — see the note above the pricing loop in seedProduct() for why.
  */
 
 namespace Database\Seeders;
@@ -18,13 +17,45 @@ namespace Database\Seeders;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Services\PackPricing;
 use Illuminate\Database\Seeder;
 
 class ProductCatalogSeeder extends Seeder
 {
     private const ORG_ID = 1;
 
+    /**
+     * Per-category baselines for the descriptive fields, overridable per product
+     * via the 'shelf' / 'tax' keys in getProductData().
+     *
+     * shelf = shelf_life_months for an unopened pack kept dry and sealed. Whole
+     * spices and salt keep far longer than ground powders (which lose volatile
+     * oils) and than nuts/dry fruits (whose oils go rancid).
+     *
+     * tax = the tax_category enum (essential|standard|luxury). NOTE: nothing in
+     * the app computes tax from this today - it is a classification shown in the
+     * product form only - so these are commercial groupings, not a VAT ruling.
+     * Have an accountant confirm before wiring it to any tax calculation.
+     */
+    private const CATEGORY_DEFAULTS = [
+        'Spices' => ['shelf' => 24, 'tax' => 'standard'],
+        'Spice Powders' => ['shelf' => 12, 'tax' => 'standard'],
+        // 'Premium Spices' is a merchandising group, not a price tier - it holds
+        // everyday cloves and cinnamon alongside saffron. Only the genuinely
+        // high-value items carry a 'luxury' override in getProductDetails().
+        'Premium Spices' => ['shelf' => 24, 'tax' => 'standard'],
+        'Peppers & Chillis' => ['shelf' => 24, 'tax' => 'standard'],
+        'Seeds & Grains' => ['shelf' => 18, 'tax' => 'essential'],
+        'Dry Fruits & Nuts' => ['shelf' => 12, 'tax' => 'standard'],
+        'Seeds & Superfoods' => ['shelf' => 12, 'tax' => 'standard'],
+        'Sweeteners & Snacks' => ['shelf' => 12, 'tax' => 'essential'],
+        'Salt' => ['shelf' => 36, 'tax' => 'essential'],
+    ];
+
     private array $catIds = [];
+
+    /** Descriptive detail keyed by product name; built once in run(). */
+    private array $productDetails = [];
 
     // -------------------------------------------------------------------------
     public function run(): void
@@ -32,6 +63,7 @@ class ProductCatalogSeeder extends Seeder
         $this->command->info('=== ProductCatalogSeeder — May 2026 Rate List ===');
 
         $this->seedCategories();
+        $this->productDetails = $this->getProductDetails();
 
         Product::where('organization_id', self::ORG_ID)->update(['active' => false]);
         $this->command->info('All products deactivated — re-activating CSV products…');
@@ -85,16 +117,42 @@ class ProductCatalogSeeder extends Seeder
             $product->sku = $this->generateProductSku($d['name']);
         }
 
+        // Merge in the descriptive detail. Union (+=) rather than array_merge so a
+        // price row always wins on any key it defines itself.
+        $d += $this->productDetails[$d['name']] ?? [];
+
+        $defaults = self::CATEGORY_DEFAULTS[$d['category']] ?? ['shelf' => 24, 'tax' => 'standard'];
+
         $product->name = $d['name'];
         $product->category_id = $catId;
         $product->name_nepali = $d['nepali'] ?? null;
         $product->name_romanized = $d['romanized'] ?? null;
+        $product->name_hindi = $d['hindi'] ?? null;
+        // product_type is deliberately left as 'others'. Its vocabulary is the
+        // Ayurvedic dosage-form list in ProductResource (choorna/tailam/ghritam/…),
+        // which has no term for a whole spice or nut - and Product::updating()
+        // regenerates the SKU whenever product_type changes, via a generator with
+        // no uniqueness check against the UNIQUE products.sku column. For this
+        // catalog that regeneration collides on 5 SKUs across 11 products, so
+        // changing it here would abort the seed run mid-deploy.
         $product->product_type = 'others';
         $product->unit_type = 'weight';
         $product->has_variants = true;
         $product->requires_batch = false;
         $product->requires_expiry = false;
-        $product->tax_category = 'standard';
+        $product->tax_category = $d['tax'] ?? $defaults['tax'];
+        $product->shelf_life_months = $d['shelf'] ?? $defaults['shelf'];
+
+        // Prose fields are seeded but never clobbered: staff edit these in the
+        // admin panel, and this seeder re-runs on every deploy. Structured fields
+        // above are reference data, so those do get refreshed each run.
+        if (blank($product->description) && ! empty($d['desc'])) {
+            $product->description = $d['desc'];
+        }
+        if (blank($product->usage_instructions) && ! empty($d['usage'])) {
+            $product->usage_instructions = $d['usage'];
+        }
+
         $product->active = true;
         $product->save();
 
@@ -105,14 +163,25 @@ class ProductCatalogSeeder extends Seeder
         $costOverrides = $d['cost_overrides'] ?? [];
         $keepSkus = [];
 
-        foreach ($d['packs'] as $grams => $mrp) {
+        // PASS 1 — structure and cost only. The $d['packs'] array's values
+        // used to be read as the MRP directly: a table of ~80 products × 6
+        // hand-entered numbers that could not agree with each other by
+        // construction, which is why a 20g pack could carry a 150% markup
+        // while its own 1kg pack carried 25%. Only the array's KEYS (which
+        // pack sizes this product comes in) are used below; the price comes
+        // from pass 2.
+        foreach ($d['packs'] as $grams => $ignoredLegacyMrp) {
             if ($grams === 1000) {
                 $packSize = 1.000;
                 $unit = 'KG';
                 $cost = (float) $cpPerKg;
                 $sfx = '1KG';
             } elseif ($grams === 1) {
-                // Special: Saffron 1 g packet
+                // Special: a 1 g packet (Saffron) where cp is the cost of that
+                // one packet, not a real per-kilogram rate. No special-casing
+                // is needed for its PRICE below — costPerKg() infers a
+                // per-kilogram rate proportionally from this single pack, the
+                // same way it would from any other, and prices it correctly.
                 $packSize = 1.000;
                 $unit = 'GMS';
                 $cost = (float) $cpPerKg;
@@ -131,24 +200,43 @@ class ProductCatalogSeeder extends Seeder
             $sku = 'SHD-'.$product->id.'-'.$sfx;
             $keepSkus[] = $sku;
 
-            ProductVariant::updateOrCreate(
-                ['sku' => $sku],
-                [
-                    'product_id' => $product->id,
-                    'pack_size' => $packSize,
-                    'unit' => $unit,
-                    'cost_price' => $cost,
-                    'mrp_india' => $mrp,
-                    'base_price' => $mrp,
-                    // Must be set explicitly: the live org is Nepal, so POS and the
-                    // price list read selling_price_nepal. The model's fillSuggestedPrices
-                    // hook only fills it when null, so on a reseed a variant that already
-                    // had a (now stale) Nepal price would keep it while mrp/base updated —
-                    // leaving the customer-facing price wrong. Keep all three in sync.
-                    'selling_price_nepal' => $mrp,
-                    'active' => true,
-                ]
-            );
+            $variant = ProductVariant::firstOrNew(['sku' => $sku]);
+            $variant->product_id = $product->id;
+            $variant->pack_size = $packSize;
+            $variant->unit = $unit;
+            $variant->cost_price = $cost;
+            $variant->active = true;
+            $variant->save();
+        }
+
+        // PASS 2 — derive every price from the cost pass 1 just wrote, through
+        // the one formula the whole catalogue shares. Going through
+        // PackPricing::previewProduct() here (rather than calling
+        // packPrice()/kilogramPrice() directly) matters: it is also the only
+        // place that knows to leave a manually locked price alone, and to
+        // never raise a pack that already sells at or below Rs20 — the
+        // protection built for exactly the customers who buy the smallest
+        // packets. Calling the lower-level functions directly, as an earlier
+        // version of this seeder did, bypassed both and would have pushed a
+        // Rs5 packet of gud to Rs10 on every single deploy.
+        $markup = PackPricing::markupFor($product);
+
+        foreach (PackPricing::previewProduct($product->fresh('variants'), $markup, allowRises: true) as $entry) {
+            if ($entry['derived'] === null || ! in_array($entry['variant']->sku, $keepSkus, true)) {
+                continue;
+            }
+
+            $variant = $entry['variant'];
+            $variant->mrp_india = $entry['derived'];
+            $variant->base_price = $entry['derived'];
+            // Must be set explicitly: the live org is Nepal, so POS and the
+            // price list read selling_price_nepal. The model's
+            // fillSuggestedPrices hook only fills it when null, so on a
+            // reseed a variant that already had a (now stale) Nepal price
+            // would keep it while mrp/base updated — leaving the
+            // customer-facing price wrong. Keep all three in sync.
+            $variant->selling_price_nepal = $entry['derived'];
+            $variant->save();
         }
 
         // Deactivate (don't hard-delete) variants no longer in this product's
@@ -161,8 +249,9 @@ class ProductCatalogSeeder extends Seeder
             ->update(['active' => false]);
 
         $flag = $isNew ? '[NEW]' : '[UPD]';
-        $mrp1 = $d['packs'][1000] ?? $d['packs'][array_key_first($d['packs'])];
-        $this->command->line("  {$flag} {$d['name']}  CP={$cpPerKg}  MRP(1kg/top)={$mrp1}  ".count($d['packs']).' variants');
+        $mrp1 = $product->variants()->where('unit', 'KG')->value('selling_price_nepal')
+            ?? $product->variants()->where('sku', $keepSkus[0] ?? null)->value('selling_price_nepal');
+        $this->command->line("  {$flag} {$d['name']}  CP={$cpPerKg}  MRP(1kg)={$mrp1}  ".count($d['packs']).' variants');
     }
 
     // -------------------------------------------------------------------------
@@ -467,5 +556,211 @@ class ProductCatalogSeeder extends Seeder
                 'packs' => [1000 => 100, 500 => 55, 200 => 25, 100 => 15, 50 => 10, 20 => 5]],
 
         ]; // end return
+    }
+
+    // =========================================================================
+    // DESCRIPTIVE DETAIL  (keyed by product name)
+    //
+    // Deliberately kept separate from getProductData() so the rate-list rows
+    // above stay a clean, auditable price table. Keys here are merged in by
+    // seedProduct() and never overwrite a price row's own keys.
+    //
+    //   hindi  → name_hindi          desc  → description (seeded once, then
+    //   usage  → usage_instructions          left alone for staff to edit)
+    //   tax    → tax_category override       shelf → shelf_life_months override
+    //
+    // 'usage' is only filled where there is real preparation guidance worth
+    // printing; a generic "use as required" line on every product would just be
+    // noise on the label and in the catalogue.
+    // =========================================================================
+    private function getProductDetails(): array
+    {
+        return [
+            // ---- Spices ----------------------------------------------------
+            'Cumin Seeds' => ['hindi' => 'जीरा',
+                'desc' => 'Whole cumin seed with a warm, earthy aroma. Tempered at the start of dal, sabzi and rice dishes.',
+                'usage' => 'Splutter in hot oil or ghee before adding other ingredients; dry-roast and grind for jeera powder.'],
+            'Coriander Seeds Large' => ['hindi' => 'धनिया',
+                'desc' => 'Large-grade coriander seed, mild and citrusy. Ground fresh for curry masala or used whole for pickling.'],
+            'Coriander Seeds Small' => ['hindi' => 'धनिया',
+                'desc' => 'Smaller, denser coriander seed — the everyday grinding grade for household masala.'],
+            'Star Anise' => ['hindi' => 'चक्र फूल',
+                'desc' => 'Eight-pointed star pod with a sweet liquorice note. A backbone of garam masala and slow-cooked meat dishes.'],
+            'Asafoetida' => ['hindi' => 'हींग',
+                'desc' => 'Pungent dried resin used by the pinch. Mellows into a savoury onion-garlic depth once it hits hot fat.',
+                'usage' => 'Add a pinch to hot oil for a second before the other spices. Keep tightly sealed — the aroma migrates.'],
+            'Dried Fenugreek Leaves' => ['hindi' => 'कसूरी मेथी',
+                'desc' => 'Sun-dried fenugreek leaf (kasuri methi), slightly bitter and buttery.',
+                'usage' => 'Crush between the palms and stir in during the last minute of cooking.'],
+            'Dry Ginger' => ['hindi' => 'सोंठ',
+                'desc' => 'Whole dried ginger rhizome — sharper and more astringent than fresh ginger.'],
+            'Whole Turmeric Pieces' => ['hindi' => 'साबुत हल्दी',
+                'desc' => 'Unground dried turmeric fingers. Ground as needed for maximum colour and aroma, or used whole in pickles.'],
+
+            // ---- Spice Powders ---------------------------------------------
+            'Coriander Powder' => ['hindi' => 'धनिया पाउडर',
+                'desc' => 'Freshly ground coriander seed — the bulk base of most Nepali and North Indian curry masalas.'],
+            'Cinnamon Powder' => ['hindi' => 'दालचीनी पाउडर',
+                'desc' => 'Finely ground cinnamon bark for baking, masala chiya and sweet spice mixes.'],
+            'Turmeric Powder' => ['hindi' => 'हल्दी',
+                'desc' => 'Ground turmeric root giving everyday cooking its yellow colour and warm, bitter base note.'],
+            'Dry Ginger Powder' => ['hindi' => 'सोंठ पाउडर',
+                'desc' => 'Ground sonth — warming and pungent. Used in masala chiya, sweets and winter preparations.'],
+            'Red Chilli Powder' => ['hindi' => 'लाल मिर्च पाउडर',
+                'desc' => 'Ground dried red chilli for heat and colour.',
+                'usage' => 'Potency varies between batches — season gradually and taste as you go.'],
+
+            // ---- Premium Spices --------------------------------------------
+            'Nutmeg' => ['hindi' => 'जायफल',
+                'desc' => 'Whole nutmeg kernel, grated sparingly into sweets, garam masala and milk preparations.'],
+            'Cloves' => ['hindi' => 'लौंग',
+                'desc' => 'Whole dried flower buds, intensely aromatic. Used in garam masala, pulao and chiya.'],
+            'Green Cardamom Medium' => ['hindi' => 'छोटी इलायची', 'tax' => 'luxury',
+                'desc' => 'Medium-grade green cardamom pods — the everyday grade for chiya, kheer and masala.'],
+            'Green Cardamom Large' => ['hindi' => 'छोटी इलायची', 'tax' => 'luxury',
+                'desc' => 'Large, plump green cardamom pods with a fuller aroma, for fine cooking and gifting.'],
+            'Black Cardamom' => ['hindi' => 'बड़ी इलायची', 'tax' => 'luxury',
+                'desc' => 'Smoke-dried large cardamom. Deeply resinous; used whole in rice, dal and meat dishes.'],
+            'Cinnamon Roll' => ['hindi' => 'दालचीनी',
+                'desc' => 'Tightly rolled cinnamon quills — thicker cassia-type bark suited to long simmering.'],
+            'Cinnamon Stick' => ['hindi' => 'दालचीनी',
+                'desc' => 'Loose cinnamon bark pieces, snapped into pulao, chiya and slow-cooked gravies.'],
+            'Mace' => ['hindi' => 'जावित्री', 'tax' => 'luxury',
+                'desc' => 'The lacy red aril around the nutmeg seed — more delicate than nutmeg itself, and a garam masala essential.'],
+            'Long Pepper' => ['hindi' => 'पिप्पली',
+                'desc' => 'Slender catkin-shaped pepper, hotter and sweeter than black pepper. A long-standing Ayurvedic staple.'],
+            'Saffron' => ['hindi' => 'केसर', 'tax' => 'luxury',
+                'desc' => 'Hand-picked saffron threads. A few strands colour and perfume an entire dish.',
+                'usage' => 'Steep in a spoon of warm milk or water for 10 minutes, then add the liquid and threads together.'],
+
+            // ---- Peppers & Chillis -----------------------------------------
+            'Black Pepper' => ['hindi' => 'काली मिर्च',
+                'desc' => 'Whole black peppercorns — the "king of spices". Cracked fresh for the sharpest bite.'],
+            'White Pepper' => ['hindi' => 'सफेद मिर्च',
+                'desc' => 'Peppercorns with the outer skin removed: cleaner heat without dark specks, for pale sauces and soups.'],
+            'Sichuan Pepper' => ['hindi' => 'तिमूर',
+                'desc' => 'Nepali timur — citrusy and numbing rather than simply hot. Essential to chutney and momo achar.'],
+            'Red Chilli' => ['hindi' => 'सूखी लाल मिर्च',
+                'desc' => 'Whole dried red chillies for tempering, pickling and grinding into fresh powder.'],
+
+            // ---- Seeds & Grains --------------------------------------------
+            'Fenugreek Seeds' => ['hindi' => 'मेथी दाना',
+                'desc' => 'Hard amber seeds, bitter until tempered. A few in hot oil open most Nepali vegetable dishes.',
+                'usage' => 'Fry only until they darken a shade — burnt fenugreek turns harshly bitter.'],
+            'Fennel Seeds Sweet' => ['hindi' => 'मीठी सौंफ',
+                'desc' => 'Sweet, plump fennel — the after-meal mouth-freshener grade.'],
+            'Fennel Seeds Normal' => ['hindi' => 'सौंफ',
+                'desc' => 'Standard cooking fennel with a clean anise aroma, for masalas and pickles.'],
+            'Fennel Seeds Normal Local' => ['hindi' => 'सौंफ',
+                'desc' => 'Locally sourced fennel — smaller seed and sharper aroma, everyday cooking grade.'],
+            'Ajwain Premium' => ['hindi' => 'अजवायन',
+                'desc' => 'Selected carom seed, thymol-rich and sharply pungent. Used in breads, fried snacks and lentils.'],
+            'Ajwain Normal' => ['hindi' => 'अजवायन',
+                'desc' => 'Everyday carom seed for paratha, namkeen and digestive preparations.'],
+            'Black Mustard Seeds' => ['hindi' => 'काली सरसों',
+                'desc' => 'Small black mustard for tempering — pops and turns nutty in hot oil.'],
+            'Mustard Seeds' => ['hindi' => 'सरसों',
+                'desc' => 'Standard mustard seed for tadka, pickling and grinding into paste.'],
+            'Yellow Mustard' => ['hindi' => 'पीली सरसों',
+                'desc' => 'Larger yellow mustard, milder than the black variety. Used in pickling and mustard paste.'],
+            'Brown Sesame Seeds' => ['hindi' => 'भूरा तिल',
+                'desc' => 'Unhulled brown sesame with the seed coat intact — nuttier, and richer in minerals than hulled seed.'],
+            'Black Sesame Seeds' => ['hindi' => 'काला तिल',
+                'desc' => 'Black sesame, prized in Nepali kitchens for til ko achar and winter sweets.'],
+            'Black Mix Sesame Seeds' => ['hindi' => 'मिश्रित तिल',
+                'desc' => 'A blend of black and light sesame seed for chutneys and laddu.'],
+            'White Sesame Seeds' => ['hindi' => 'सफेद तिल',
+                'desc' => 'Hulled white sesame — toasted for garnish, ground for til ko achar and sweets.'],
+            'Kalonji / Nigella Sativa' => ['hindi' => 'कलौंजी',
+                'desc' => 'Angular black nigella seed with an oregano-like bite. Used on breads and in pickle masala.'],
+            'Garden Cress Seeds' => ['hindi' => 'हलीम',
+                'desc' => 'Chansur seed, traditionally cooked with ghee and jaggery into a postnatal strengthening laddu.'],
+            'Ban Silam Seeds' => ['hindi' => 'बन सिलाम',
+                'desc' => 'Wild Himalayan perilla seed, toasted and ground into a distinctive Nepali chutney.'],
+
+            // ---- Dry Fruits & Nuts -----------------------------------------
+            'Walnut Premium' => ['hindi' => 'अखरोट',
+                'desc' => 'Large in-shell walnuts, selected for size and kernel fill.'],
+            'Walnut Standard' => ['hindi' => 'अखरोट',
+                'desc' => 'Everyday in-shell walnuts for daily use and festive gifting.'],
+            'Walnut Kernels' => ['hindi' => 'अखरोट दाना',
+                'desc' => 'Shelled walnut halves and pieces, ready to use in baking and sweets.'],
+            'Cashew Premium' => ['hindi' => 'काजू',
+                'desc' => 'Whole unbroken cashew kernels — pale, evenly sized and suited to gifting.'],
+            'Cashew Standard' => ['hindi' => 'काजू',
+                'desc' => 'Cashew kernels with some breakage: the same nut at a keener price for gravies and cooking.'],
+            'Pistachio' => ['hindi' => 'पिस्ता',
+                'desc' => 'Roasted and salted pistachios in shell.'],
+            'Anjeer Premium / Figs' => ['hindi' => 'अंजीर',
+                'desc' => 'Large soft dried figs, selected grade.'],
+            'Anjeer Standard / Figs' => ['hindi' => 'अंजीर',
+                'desc' => 'Everyday dried figs for soaking, sweets and daily snacking.'],
+            'Almond' => ['hindi' => 'बादाम',
+                'desc' => 'Whole raw almonds, for eating soaked or using whole in sweets and masalas.',
+                'usage' => 'Soak overnight and slip off the skins for the softest texture and easiest digestion.'],
+            'Kishmish / Raisins' => ['hindi' => 'किशमिश',
+                'desc' => 'Seedless dried grapes, soft and sweet. Used in pulao, kheer and festive sweets.'],
+            'Dates / Khajur' => ['hindi' => 'खजूर',
+                'desc' => 'Soft dried dates for daily eating and religious offerings.'],
+            'Premium Dates Pkt' => ['hindi' => 'खजूर',
+                'desc' => 'Selected large dates in a sealed retail pack — a ready gift and festival item.'],
+            'Coconut' => ['hindi' => 'नारियल',
+                'desc' => 'Dried coconut (copra) for grating into chutneys and sweets, and for puja use.'],
+            'Makhana Madhur' => ['hindi' => 'मखाना',
+                'desc' => 'Popped fox-nut, Madhur grade — light and crisp.',
+                'usage' => 'Roast in a little ghee until it crackles, then salt. Also simmered into kheer.'],
+            'Makhana Kanaiya' => ['hindi' => 'मखाना',
+                'desc' => 'Kanaiya-grade popped fox-nut — smaller puffs, everyday value grade.'],
+            'Makhana Balgopal' => ['hindi' => 'मखाना',
+                'desc' => 'Balgopal-grade fox-nut: the largest, whitest puffs, for fasting food and premium snacking.'],
+            'Areca Nut' => ['hindi' => 'सुपारी',
+                'desc' => 'Dried areca nut pieces for paan and traditional use.'],
+            'Pooja Supari' => ['hindi' => 'पूजा सुपारी',
+                'desc' => 'Whole betel nut reserved for ritual and puja offerings.'],
+
+            // ---- Seeds & Superfoods ----------------------------------------
+            'Pumpkin Seeds' => ['hindi' => 'कद्दू के बीज',
+                'desc' => 'Hulled green pumpkin seed, rich in zinc and magnesium. Eaten roasted or stirred through granola.'],
+            'Watermelon Seeds' => ['hindi' => 'मगज',
+                'desc' => 'Hulled watermelon kernel (magaz), ground into thickening pastes for rich gravies and sweets.'],
+            'Cucumber Seeds' => ['hindi' => 'खीरे के बीज',
+                'desc' => 'Hulled cucumber kernels — cooling and mild, used in thandai and sweet pastes.'],
+            'Sunflower Seeds' => ['hindi' => 'सूरजमुखी के बीज',
+                'desc' => 'Hulled sunflower kernels for daily snacking, salads and baking.'],
+            'Hemp Seeds' => ['hindi' => 'भांग के बीज',
+                'desc' => 'Toasted Himalayan hemp seed, ground into the classic Nepali bhang ko achar.'],
+            'Chiya Seeds' => ['hindi' => 'चिया बीज',
+                'desc' => 'Chia seed — swells to a gel in water. Used in drinks, puddings and as a plant omega-3 source.',
+                'usage' => 'Stir a spoonful into water or juice and leave 10 minutes before drinking.'],
+            'Sabudana Large' => ['hindi' => 'साबूदाना',
+                'desc' => 'Large tapioca pearls for khichdi, kheer and fasting dishes.'],
+            'Sabudana Small' => ['hindi' => 'साबूदाना',
+                'desc' => 'Small tapioca pearls — quicker to soak, ideal for kheer and vada.'],
+
+            // ---- Sweeteners & Snacks ---------------------------------------
+            'Dhikka Mishri' => ['hindi' => 'ढेला मिश्री',
+                'desc' => 'Large crystallised rock-sugar lumps. Slow-dissolving; offered as prasad and taken with fennel after meals.'],
+            'Cutting Mishri' => ['hindi' => 'कटिंग मिश्री',
+                'desc' => 'Cut rock-sugar crystals, evenly sized for mouth-freshener mixes and daily use.'],
+            'Gond' => ['hindi' => 'गोंद',
+                'desc' => 'Edible acacia gum crystals.',
+                'usage' => 'Fry in ghee over low heat until the crystals puff and turn pale, then bind into winter laddu.'],
+            'Gud Bites' => ['hindi' => 'गुड़ की डली',
+                'desc' => 'Bite-sized jaggery pieces, portioned for after-meal use and easy retail.'],
+            'Gud Normal' => ['hindi' => 'गुड़',
+                'desc' => 'Everyday cane jaggery block — an unrefined, mineral-rich sweetener for tea, sweets and daily cooking.'],
+            'Gulmeli Gud' => ['hindi' => 'गुड़',
+                'desc' => 'Gulmeli-style jaggery: softer and darker, with a deeper molasses note.'],
+            'Chana Fry' => ['hindi' => 'भुना चना',
+                'desc' => 'Roasted split chickpeas — crisp, salted and protein-rich. An everyday snack.'],
+            'Lapsi Powder' => ['hindi' => 'लप्सी पाउडर',
+                'desc' => 'Ground Nepali hog plum. Sharply sour; used in chutneys, candies and as a souring agent.'],
+
+            // ---- Salt ------------------------------------------------------
+            'Balk Salt' => ['hindi' => 'काला नमक',
+                'desc' => 'Black salt (bit nun) — sulphurous and tangy. Essential to chaat, jeera water and fruit salads.'],
+            'White Salt' => ['hindi' => 'सफेद नमक',
+                'desc' => 'Refined everyday table and cooking salt.'],
+        ];
     }
 }
