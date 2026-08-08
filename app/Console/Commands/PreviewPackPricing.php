@@ -36,8 +36,6 @@ class PreviewPackPricing extends Command
         $allowRises = (bool) $this->option('allow-rises');
 
         foreach ($products as $product) {
-            $markup = PackPricing::markupFor($product);
-
             if (PackPricing::costPerKg($product) === null) {
                 if ($product->variants->isNotEmpty()) {
                     $noReference[] = $product->name;
@@ -45,6 +43,10 @@ class PreviewPackPricing extends Command
 
                 continue;
             }
+
+            // The product's own markup (null for most) — passing the headline
+            // rate instead would apply it flat and lose the small-pack tier.
+            $markup = PackPricing::explicitMarkupFor($product);
 
             foreach (PackPricing::previewProduct($product, $markup, $allowRises) as $entry) {
                 if ($entry['derived'] === null) {

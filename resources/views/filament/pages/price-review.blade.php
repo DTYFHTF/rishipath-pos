@@ -83,7 +83,13 @@
                         <div class="font-semibold text-gray-900 dark:text-gray-100">{{ $product->name }}</div>
                         <div class="text-xs text-gray-500 dark:text-gray-400">
                             cost ₹{{ number_format($group['cost_per_kg']) }}/kg
-                            · markup {{ number_format(($group['markup'] - 1) * 100) }}%
+                            @if($group['markup'] !== null)
+                                · markup {{ number_format(($group['markup'] - 1) * 100) }}% (fixed)
+                            @else
+                                · markup {{ number_format((\App\Services\PackPricing::RETAIL_MARKUP_BULK - 1) * 100) }}% from
+                                {{ number_format(\App\Services\PackPricing::BULK_THRESHOLD_GRAMS / 1000, 1) }}kg,
+                                {{ number_format((\App\Services\PackPricing::RETAIL_MARKUP_SMALL - 1) * 100) }}% below
+                            @endif
                             · {{ count($group['rows']) }} {{ Str::plural('pack', count($group['rows'])) }} to review
                         </div>
                     </div>

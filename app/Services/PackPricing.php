@@ -6,15 +6,16 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 
 /**
- * Derives every pack price from the product's 1 kg price.
+ * Derives every pack price from the product's cost per kilo.
  *
  * The rule, in the words a shopkeeper can repeat:
  *
- *   Take the share of the kilo price, add Rs5 for the packet — or the value of
- *   the goods if that is less than Rs5 — then round up to the next Rs5.
+ *   Take the pack's share of the cost, add 25% on half-kilo-and-up or 30%
+ *   below that, add Rs5 for the packet — or the value of the goods if that is
+ *   less than Rs5 — then round up to the next Rs5.
  *
- * So for a Rs400/kg item: 500 g = 200 + 5 = Rs205, 100 g = 40 + 5 = Rs45,
- * 20 g = 8 + 5 = Rs15 (rounded up from 13).
+ * So for a Rs320/kg item: 1 kg = 320 x 1.25 = Rs400, 500 g = 200 + 5 = Rs205,
+ * 100 g = 41.60 + 5 = Rs50, 20 g = 8.32 + 5 = Rs15.
  *
  * Why it replaced the old scheme: prices used to come from stepped markup
  * tiers applied to cost (65% under 50 g, 25% at 1 kg, …). Because the steps
@@ -31,13 +32,30 @@ use App\Models\ProductVariant;
 class PackPricing
 {
     /**
-     * Retail markup over cost, applied once at the 1 kg reference pack.
+     * Retail markup for packs of half a kilo and up.
      *
-     * Every other pack inherits it, so this single number sets the margin on
-     * the whole catalogue. Blends carry their own higher markup for the
-     * processing work — see BLEND_MARKUP.
+     * Bulk buyers are the most price-sensitive and the most likely to compare
+     * against a wholesaler, so the larger packs carry the leaner margin.
      */
-    public const RETAIL_MARKUP = 1.30;
+    public const RETAIL_MARKUP_BULK = 1.25;
+
+    /**
+     * Retail markup for packs under half a kilo.
+     *
+     * The extra five points covers the handling a small packet needs that a
+     * kilo bag does not; the flat PACKING_FEE covers the packet itself.
+     */
+    public const RETAIL_MARKUP_SMALL = 1.30;
+
+    /** Packs at or above this size use the leaner bulk markup. */
+    public const BULK_THRESHOLD_GRAMS = 500.0;
+
+    /**
+     * Headline markup, used where a single number has to stand for the
+     * product (the kilo rate). Pricing itself always goes through
+     * markupForPack() so the tier is applied per pack.
+     */
+    public const RETAIL_MARKUP = self::RETAIL_MARKUP_BULK;
 
     /** Blended products cover the processing labour on top of ingredients. */
     public const BLEND_MARKUP = 1.43;
@@ -62,7 +80,13 @@ class PackPricing
     public const REFERENCE_GRAMS = 1000.0;
 
     /**
-     * Shelf price for a pack, given the product's 1 kg price.
+     * Shelf price for a pack, given an already-marked-up kilo price.
+     *
+     * Applies NO size tier — it cannot, because by this point the markup is
+     * already baked into $kilogramPrice and is no longer visible. Correct only
+     * where the markup really is flat across pack sizes: a blend or premium
+     * line priced to a deliberate Rs/kg target. For an ordinary product use
+     * packPriceFromCost(), which knows the tier.
      *
      * @param  float  $kilogramPrice  MRP of the 1 kg pack
      * @param  float  $packGrams  size of the pack being priced
@@ -84,16 +108,70 @@ class PackPricing
     }
 
     /**
-     * The markup a product is priced at.
+     * A product's own markup, or null when it sits on the standard tiers.
      *
-     * Read from the product itself so a rename cannot silently change a price;
-     * products with nothing set sit on the standard retail markup.
+     * Read from the product itself so a rename cannot silently change a price.
+     * Null is meaningful: it is what tells the pricing functions to apply the
+     * size tiers rather than one flat number.
      */
-    public static function markupFor(Product $product): float
+    public static function explicitMarkupFor(Product $product): ?float
     {
         $markup = $product->retail_markup !== null ? (float) $product->retail_markup : 0.0;
 
-        return $markup > 0 ? $markup : self::RETAIL_MARKUP;
+        return $markup > 0 ? $markup : null;
+    }
+
+    /**
+     * Headline markup for a product — the rate its kilo pack is priced at.
+     *
+     * For display only. Pricing goes through markupForPack(), which applies
+     * the size tier; using this to price would flatten the tier away.
+     */
+    public static function markupFor(Product $product): float
+    {
+        return self::explicitMarkupFor($product) ?? self::RETAIL_MARKUP_BULK;
+    }
+
+    /**
+     * The markup a given pack size is priced at.
+     *
+     * An explicit per-product markup wins for every pack: it exists to hit a
+     * deliberate Rs/kg target (a blend, a premium line), and applying a size
+     * tier on top would push the product past the number it was set to.
+     */
+    public static function markupForPack(float $packGrams, ?float $explicitMarkup = null): float
+    {
+        if ($explicitMarkup !== null && $explicitMarkup > 0) {
+            return $explicitMarkup;
+        }
+
+        return $packGrams >= self::BULK_THRESHOLD_GRAMS
+            ? self::RETAIL_MARKUP_BULK
+            : self::RETAIL_MARKUP_SMALL;
+    }
+
+    /**
+     * Shelf price for a pack, from the product's cost per kilo.
+     *
+     * This is the real entry point now that markup depends on pack size — a
+     * 100 g pack is no longer a plain fraction of the kilo price, because the
+     * two sit on different tiers.
+     */
+    public static function packPriceFromCost(float $costPerKg, float $packGrams, ?float $explicitMarkup = null): ?float
+    {
+        if ($costPerKg <= 0 || $packGrams <= 0) {
+            return null;
+        }
+
+        $markup = self::markupForPack($packGrams, $explicitMarkup);
+        $goods = $costPerKg * ($packGrams / self::REFERENCE_GRAMS) * $markup;
+
+        // The 1 kg pack is the reference and carries no packet charge.
+        $fee = $packGrams < self::REFERENCE_GRAMS
+            ? min(self::PACKING_FEE, $goods)
+            : 0.0;
+
+        return self::roundToStep($goods + $fee);
     }
 
     /**
@@ -102,13 +180,9 @@ class PackPricing
      * This is the anchor: change the markup here and the whole catalogue moves
      * together, instead of 483 hand-entered prices drifting apart.
      */
-    public static function kilogramPrice(float $costPerKg, float $markup = self::RETAIL_MARKUP): ?float
+    public static function kilogramPrice(float $costPerKg, ?float $markup = null): ?float
     {
-        if ($costPerKg <= 0) {
-            return null;
-        }
-
-        return self::roundToStep($costPerKg * $markup);
+        return self::packPriceFromCost($costPerKg, self::REFERENCE_GRAMS, $markup);
     }
 
     /**
@@ -141,65 +215,31 @@ class PackPricing
     }
 
     /**
-     * The 1 kg variant a product's prices derive from.
-     */
-    public static function referenceVariant(Product $product): ?ProductVariant
-    {
-        return $product->variants
-            ->first(fn (ProductVariant $v) => $v->comparable_size !== null
-                && abs($v->comparable_size - self::REFERENCE_GRAMS) < 0.01);
-    }
-
-    /**
-     * Price a single variant from its product's 1 kg pack.
-     *
-     * Returns null when the product has no 1 kg pack to anchor to, or when the
-     * variant is measured in units we cannot convert (pcs, packets).
-     */
-    public static function priceFor(ProductVariant $variant, ?Product $product = null): ?float
-    {
-        $product = $product ?? $variant->product;
-
-        if (! $product) {
-            return null;
-        }
-
-        $reference = self::referenceVariant($product);
-
-        if (! $reference || $variant->comparable_size === null) {
-            return null;
-        }
-
-        $kilogramPrice = (float) ($reference->selling_price_nepal ?? $reference->base_price ?? 0);
-
-        return self::packPrice($kilogramPrice, $variant->comparable_size);
-    }
-
-    /**
      * Derived prices for a whole product, keyed by variant id.
      *
-     * The 1 kg anchor is recomputed from cost x markup, then every pack is
-     * derived from it. Variants with manual_price_locked keep their current
-     * price — an override is a deliberate decision and must survive a
-     * recalculation.
+     * Each pack is priced from the product's cost per kilo at its own size
+     * tier. Variants with manual_price_locked keep their current price — an
+     * override is a deliberate decision and must survive a recalculation.
      *
+     * @param  ?float  $markup  an explicit markup to apply flat across every
+     *                          pack; null reads the product's own, and falls
+     *                          back to the size tiers when it has none
      * @param  bool  $allowRises  when false, a derived price above today's is
      *                            discarded in favour of the cheaper current price
      * @return array<int, array{variant: ProductVariant, current: float, derived: ?float, locked: bool, capped: bool}>
      */
     public static function previewProduct(Product $product, ?float $markup = null, bool $allowRises = false): array
     {
-        $markup = $markup ?? self::markupFor($product);
+        $explicitMarkup = $markup ?? self::explicitMarkupFor($product);
         $costPerKg = self::costPerKg($product);
-        $kilogramPrice = $costPerKg !== null ? self::kilogramPrice($costPerKg, $markup) : null;
 
         $out = [];
 
         foreach ($product->variants as $variant) {
             $current = (float) ($variant->selling_price_nepal ?? $variant->base_price ?? 0);
 
-            $derived = ($kilogramPrice !== null && $variant->comparable_size !== null)
-                ? self::packPrice($kilogramPrice, $variant->comparable_size)
+            $derived = ($costPerKg !== null && $variant->comparable_size !== null)
+                ? self::packPriceFromCost($costPerKg, $variant->comparable_size, $explicitMarkup)
                 : null;
 
             $capped = false;

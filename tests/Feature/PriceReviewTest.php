@@ -89,12 +89,16 @@ class PriceReviewTest extends TestCase
         return $product->fresh('variants');
     }
 
-    /** A product priced exactly on the formula: cost 400/kg -> 520/kg, 100g -> 57 -> 60. */
+    /**
+     * A product priced exactly on the formula, so nothing should be flagged:
+     * cost 400/kg. 1kg on the bulk tier = 400 x 1.25 = Rs500. 100g on the
+     * small tier = 40 x 1.30 = 52, + Rs5 packet = 57, rounded up to Rs60.
+     */
     private function alignedProduct(): Product
     {
         return $this->product('Aligned Spice', [
             '100' => [40, 60],
-            '1000' => [400, 520],
+            '1000' => [400, 500],
         ]);
     }
 

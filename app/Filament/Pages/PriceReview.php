@@ -98,8 +98,11 @@ class PriceReview extends Page
                 continue;
             }
 
-            $markup = PackPricing::markupFor($product);
-            $preview = PackPricing::previewProduct($product, $markup, allowRises: true);
+            // Pass the product's own markup (null for most), not the headline
+            // rate — a concrete number here would be applied flat and flatten
+            // away the small-pack tier.
+            $explicitMarkup = PackPricing::explicitMarkupFor($product);
+            $preview = PackPricing::previewProduct($product, $explicitMarkup, allowRises: true);
 
             $rows = [];
 
@@ -130,7 +133,10 @@ class PriceReview extends Page
                 $groups[] = [
                     'product' => $product,
                     'cost_per_kg' => $costPerKg,
-                    'markup' => $markup,
+                    // A product on the standard tiers has two markups, not
+                    // one, so a single figure would be wrong for half its
+                    // packs. Null here tells the view to say so.
+                    'markup' => $explicitMarkup,
                     'rows' => $rows,
                 ];
             }

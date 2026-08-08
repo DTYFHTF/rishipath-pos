@@ -56,17 +56,49 @@ class SeederPricingTest extends TestCase
         $this->seedCatalog();
 
         $product = Product::with('variants')->where('name', 'Almond')->firstOrFail();
-        $kiloVariant = $product->variants->first(fn ($v) => strtoupper($v->unit) === 'KG');
-        $kiloPrice = (float) $kiloVariant->selling_price_nepal;
+        $costPerKg = PackPricing::costPerKg($product);
 
         foreach ($product->variants as $variant) {
-            $expected = PackPricing::packPrice($kiloPrice, (float) $variant->comparable_size);
+            // Derived from cost at each pack's own tier — not from the kilo
+            // price, which sits on the bulk tier and would under-price
+            // everything below 500g.
+            $expected = PackPricing::packPriceFromCost(
+                $costPerKg,
+                (float) $variant->comparable_size,
+                PackPricing::explicitMarkupFor($product)
+            );
+
             $this->assertSame(
                 $expected,
                 (float) $variant->selling_price_nepal,
                 "{$variant->pack_label} does not match the shared formula"
             );
         }
+    }
+
+    public function test_the_catalog_seeds_small_packs_on_the_higher_tier(): void
+    {
+        $this->seedCatalog();
+
+        $product = Product::with('variants')->where('name', 'Almond')->firstOrFail();
+        $costPerKg = PackPricing::costPerKg($product);
+
+        $markupOf = function (string $unit, float $packSize) use ($product, $costPerKg) {
+            $v = $product->variants->first(
+                fn ($x) => strtoupper($x->unit) === $unit && (float) $x->pack_size === $packSize
+            );
+            $grams = (float) $v->comparable_size;
+
+            // Back out the markup by removing the packet fee the formula added.
+            $goods = $costPerKg * ($grams / 1000);
+
+            return ((float) $v->selling_price_nepal) / $goods;
+        };
+
+        // The kilo sits on 1.25; a 100g pack lands above it once the tier and
+        // the Rs5 packet are both in.
+        $this->assertEqualsWithDelta(1.25, $markupOf('KG', 1.0), 0.02);
+        $this->assertGreaterThan(1.30, $markupOf('GMS', 100.0));
     }
 
     public function test_reseeding_does_not_raise_a_staple_already_at_or_below_rs20(): void

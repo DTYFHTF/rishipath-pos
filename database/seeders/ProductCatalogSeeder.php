@@ -219,7 +219,11 @@ class ProductCatalogSeeder extends Seeder
         // packets. Calling the lower-level functions directly, as an earlier
         // version of this seeder did, bypassed both and would have pushed a
         // Rs5 packet of gud to Rs10 on every single deploy.
-        $markup = PackPricing::markupFor($product);
+        //
+        // The product's own markup is passed (null for almost everything here),
+        // NOT the headline rate: a concrete number is applied flat to every
+        // pack, which would flatten away the 25%/30% size tier.
+        $markup = PackPricing::explicitMarkupFor($product);
 
         foreach (PackPricing::previewProduct($product->fresh('variants'), $markup, allowRises: true) as $entry) {
             if ($entry['derived'] === null || ! in_array($entry['variant']->sku, $keepSkus, true)) {
