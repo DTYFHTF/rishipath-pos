@@ -4,7 +4,9 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\ProductResource\Pages;
 use App\Models\Product;
+use App\Services\CostRepricer;
 use App\Services\OrganizationContext;
+use App\Services\PackPricing;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
@@ -299,6 +301,7 @@ class ProductResource extends Resource
                     ->modalWidth('7xl')
                     ->modalContent(fn ($record) => view('filament.pages.product-detail-modal', ['product' => $record]))
                     ->slideOver(),
+                self::setCostAction(),
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
             ])
@@ -352,6 +355,72 @@ class ProductResource extends Resource
                 ]),
             ])
             ->persistFiltersInSession();
+    }
+
+    /**
+     * Set one cost per kilo and reprice every pack from it.
+     *
+     * The rate a spice is bought at is a single number the buyer already knows
+     * ("coriander came in at Rs180 this week"), but it used to have to be
+     * entered pack by pack and then turned into six selling prices by hand.
+     * This takes the one number and does the rest, showing exactly what will
+     * change before anything is written.
+     */
+    protected static function setCostAction(): Tables\Actions\Action
+    {
+        return Tables\Actions\Action::make('setCost')
+            ->label('Set Cost')
+            ->icon('heroicon-o-banknotes')
+            ->color('warning')
+            ->visible(fn () => auth()->user()?->hasPermission('edit_product_variants') ?? false)
+            ->modalHeading(fn (Product $record) => 'Set cost — '.$record->name)
+            ->modalSubmitActionLabel('Apply to all packs')
+            ->modalWidth('2xl')
+            ->fillForm(fn (Product $record) => [
+                'cost_per_kg' => PackPricing::costPerKg($record->loadMissing('variants')),
+            ])
+            ->form([
+                Forms\Components\TextInput::make('cost_per_kg')
+                    ->label('Cost per kg (₹)')
+                    ->helperText('What you pay for a kilo. Every pack price is worked out from this.')
+                    ->numeric()
+                    ->required()
+                    ->minValue(0.01)
+                    ->prefix('₹')
+                    ->live(onBlur: true),
+
+                Forms\Components\Placeholder::make('preview')
+                    ->label('What this changes')
+                    ->content(function (Forms\Get $get, Product $record) {
+                        $cost = (float) $get('cost_per_kg');
+
+                        if ($cost <= 0) {
+                            return 'Enter a cost per kilo to see the new pack prices.';
+                        }
+
+                        return view('filament.tables.actions.set-cost-preview', [
+                            'rows' => CostRepricer::preview($record->loadMissing('variants'), $cost),
+                        ]);
+                    }),
+            ])
+            ->action(function (Product $record, array $data) {
+                $result = CostRepricer::apply(
+                    $record->loadMissing('variants'),
+                    (float) $data['cost_per_kg'],
+                );
+
+                Notification::make()
+                    ->success()
+                    ->title($record->name.' repriced')
+                    ->body(sprintf(
+                        '%d pack %s updated, %d %s repriced.',
+                        $result['costs'],
+                        str('cost')->plural($result['costs']),
+                        $result['prices'],
+                        str('price')->plural($result['prices']),
+                    ))
+                    ->send();
+            });
     }
 
     public static function getRelations(): array

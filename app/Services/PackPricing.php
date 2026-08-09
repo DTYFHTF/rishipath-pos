@@ -234,12 +234,19 @@ class PackPricing
      *                          back to the size tiers when it has none
      * @param  bool  $allowRises  when false, a derived price above today's is
      *                            discarded in favour of the cheaper current price
+     * @param  ?float  $costPerKgOverride  price against a hypothetical cost
+     *                                     instead of the one on record — what
+     *                                     the admin cost editor previews with
      * @return array<int, array{variant: ProductVariant, current: float, derived: ?float, locked: bool, capped: bool}>
      */
-    public static function previewProduct(Product $product, ?float $markup = null, bool $allowRises = false): array
-    {
+    public static function previewProduct(
+        Product $product,
+        ?float $markup = null,
+        bool $allowRises = false,
+        ?float $costPerKgOverride = null,
+    ): array {
         $explicitMarkup = $markup ?? self::explicitMarkupFor($product);
-        $costPerKg = self::costPerKg($product);
+        $costPerKg = $costPerKgOverride ?? self::costPerKg($product);
 
         $out = [];
 
@@ -255,7 +262,13 @@ class PackPricing
             // disagree the odd ones out would otherwise be priced at a loss —
             // Bay Leaf's kilo says Rs300/kg while its 25g pack says
             // Rs1,200/kg, and the 25g was selling at Rs15 against a Rs30 cost.
-            $ownCost = (float) $variant->cost_price;
+            // Under an override the stored per-pack cost is the OLD cost and
+            // must not floor anything: the whole point of the override is to
+            // replace it. Use the pack's share of the new rate instead.
+            $ownCost = $costPerKgOverride !== null && $variant->comparable_size > 0
+                ? $costPerKgOverride * ($variant->comparable_size / self::REFERENCE_GRAMS)
+                : (float) $variant->cost_price;
+
             $ownFloor = ($ownCost > 0 && $variant->comparable_size > 0)
                 ? self::packPriceFromCost(
                     $ownCost / ($variant->comparable_size / self::REFERENCE_GRAMS),
