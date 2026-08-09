@@ -186,16 +186,24 @@ class PackPricing
     }
 
     /**
-     * Cost per kilo for a product, taken from any pack that can be converted.
+     * Cost per kilo for a product, taken from its largest sellable pack.
      *
-     * Cost is already stored per pack and is consistent per gram across a
-     * product's variants, so any convertible pack gives the same answer; the
-     * largest is used because it carries the least rounding error.
+     * Only ACTIVE variants count. A discontinued pack can carry a long-stale
+     * cost, and because the largest pack wins, one deactivated 1 kg entry was
+     * enough to drive the whole product's pricing: Premium Dates Pkt priced
+     * off an inactive 1 kg at Rs160/kg while its only live pack cost
+     * Rs360/kg, and sold at Rs105 against a Rs180 cost.
+     *
+     * The largest pack is preferred because it carries the least rounding
+     * error, but see previewProduct(): each pack is additionally floored at
+     * its own cost, so a product whose packs disagree cannot be sold at a loss.
      */
     public static function costPerKg(Product $product): ?float
     {
         $variant = $product->variants
-            ->filter(fn (ProductVariant $v) => $v->comparable_size > 0 && (float) $v->cost_price > 0)
+            ->filter(fn (ProductVariant $v) => $v->active
+                && $v->comparable_size > 0
+                && (float) $v->cost_price > 0)
             ->sortByDesc(fn (ProductVariant $v) => $v->comparable_size)
             ->first();
 
@@ -242,11 +250,31 @@ class PackPricing
                 ? self::packPriceFromCost($costPerKg, $variant->comparable_size, $explicitMarkup)
                 : null;
 
+            // What this pack's OWN recorded cost implies. The product-level
+            // rate comes from a single pack, so on a product whose packs
+            // disagree the odd ones out would otherwise be priced at a loss —
+            // Bay Leaf's kilo says Rs300/kg while its 25g pack says
+            // Rs1,200/kg, and the 25g was selling at Rs15 against a Rs30 cost.
+            $ownCost = (float) $variant->cost_price;
+            $ownFloor = ($ownCost > 0 && $variant->comparable_size > 0)
+                ? self::packPriceFromCost(
+                    $ownCost / ($variant->comparable_size / self::REFERENCE_GRAMS),
+                    $variant->comparable_size,
+                    $explicitMarkup,
+                )
+                : null;
+
+            if ($derived !== null && $ownFloor !== null && $ownFloor > $derived) {
+                $derived = $ownFloor;
+            }
+
             $capped = false;
 
             $wouldRise = $derived !== null && $current > 0 && $derived > $current;
 
             if ($variant->manual_price_locked) {
+                // An explicit human decision outranks everything, including
+                // the cost floor — whoever set it owns the consequence.
                 $derived = $current;
             } elseif ($wouldRise && ! $allowRises) {
                 $derived = $current;
@@ -255,6 +283,17 @@ class PackPricing
                 // Cheap staples are held even when rises are allowed.
                 $derived = $current;
                 $capped = true;
+            }
+
+            // Holding a price must never mean holding it BELOW COST. The
+            // staple rule exists to stop a Rs5 packet of gud (costing Rs2)
+            // being rounded up to Rs10 — that pack is still profitable, so it
+            // stays held. It is not licence to keep selling at a loss: Bay
+            // Leaf 25g sits under the Rs20 staple threshold at Rs15 against a
+            // Rs30 cost, and that one has to move.
+            if ($capped && $ownCost > 0 && $derived < $ownCost && $ownFloor !== null) {
+                $derived = $ownFloor;
+                $capped = false;
             }
 
             $out[$variant->id] = [

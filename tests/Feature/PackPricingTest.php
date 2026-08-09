@@ -232,6 +232,74 @@ class PackPricingTest extends TestCase
         $this->assertTrue($mid($held)['capped']);
     }
 
+    public function test_cost_per_kilo_ignores_deactivated_variants(): void
+    {
+        // Premium Dates Pkt: five discontinued packs carrying a stale
+        // Rs160/kg, and one live 500g pack at Rs360/kg. Because the largest
+        // pack wins, the dead 1kg entry drove the whole product and it sold
+        // at Rs105 against a Rs180 cost.
+        $p = $this->product('Premium Dates Pkt', [
+            '500' => [180, 235],
+            '1000' => [160, 400],
+        ]);
+
+        $p->variants->firstWhere('pack_size', 1000.0)->update(['active' => false]);
+
+        $this->assertSame(360.0, PackPricing::costPerKg($p->fresh('variants')));
+    }
+
+    public function test_a_deactivated_variant_cannot_drag_a_live_pack_below_cost(): void
+    {
+        $p = $this->product('Premium Dates Pkt', [
+            '500' => [180, 235],
+            '1000' => [160, 400],
+        ]);
+        $p->variants->firstWhere('pack_size', 1000.0)->update(['active' => false]);
+
+        $preview = PackPricing::previewProduct($p->fresh('variants'), allowRises: true);
+        $live = collect($preview)->first(fn ($e) => (int) $e['variant']->comparable_size === 500);
+
+        $this->assertGreaterThan(180.0, $live['derived'], 'the live pack must not price below its own cost');
+    }
+
+    public function test_a_pack_is_never_priced_below_its_own_cost_when_packs_disagree(): void
+    {
+        // Bay Leaf: the kilo says Rs300/kg, the small packs say ~Rs1,100/kg.
+        // Priced off the kilo alone, the 25g pack sold at Rs15 against Rs30.
+        $p = $this->product('Bay Leaf', [
+            '25' => [30, 15],
+            '100' => [110, 45],
+            '1000' => [300, 390],
+        ]);
+
+        foreach (PackPricing::previewProduct($p, allowRises: true) as $entry) {
+            $cost = (float) $entry['variant']->cost_price;
+
+            $this->assertGreaterThan(
+                $cost,
+                $entry['derived'],
+                "{$entry['variant']->pack_label} is priced at or below its own cost"
+            );
+        }
+    }
+
+    public function test_the_own_cost_floor_does_not_disturb_a_consistent_product(): void
+    {
+        // Every pack agrees on Rs320/kg, so the floor never binds and prices
+        // come out exactly as the shared formula says.
+        $p = $this->product('Coriander Powder', [
+            '100' => [32, 50],
+            '1000' => [320, 400],
+        ]);
+
+        $preview = PackPricing::previewProduct($p, allowRises: true);
+
+        foreach ($preview as $entry) {
+            $expected = PackPricing::packPriceFromCost(320.0, (float) $entry['variant']->comparable_size);
+            $this->assertSame($expected, $entry['derived']);
+        }
+    }
+
     public function test_a_product_with_no_cost_price_yields_no_derived_price(): void
     {
         $p = $this->product('Mystery Spice', ['100' => [0, 50], '1000' => [0, 400]]);
