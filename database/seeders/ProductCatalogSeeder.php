@@ -72,9 +72,44 @@ class ProductCatalogSeeder extends Seeder
             $this->seedProduct($data);
         }
 
+        $orphaned = $this->deactivateVariantsOfInactiveProducts();
+
         $active = Product::where('organization_id', self::ORG_ID)->where('active', true)->count();
         $this->command->info('');
+
+        if ($orphaned > 0) {
+            $this->command->warn("Deactivated {$orphaned} variant(s) belonging to inactive products.");
+        }
+
         $this->command->info("=== Done! Active products: {$active} ===");
+    }
+
+    /**
+     * Deactivate any variant whose product is itself inactive.
+     *
+     * seedProduct() only sweeps variants under the product id it just matched
+     * by name. Where the catalogue holds two rows for the same product — 52 of
+     * them did, e.g. Asafoetida as both id 357 and 433 — the twin's id is never
+     * visited, so its variants stayed active with no price and showed up in POS
+     * search as blank-price duplicates. Reseeding could not clear them, which
+     * is why 253 survived four consecutive reseeds unchanged.
+     *
+     * Sweeping by product state rather than by id makes this self-healing: a
+     * variant of a product nobody sells is never sellable itself.
+     */
+    private function deactivateVariantsOfInactiveProducts(): int
+    {
+        $inactiveProductIds = Product::where('organization_id', self::ORG_ID)
+            ->where('active', false)
+            ->pluck('id');
+
+        if ($inactiveProductIds->isEmpty()) {
+            return 0;
+        }
+
+        return ProductVariant::whereIn('product_id', $inactiveProductIds)
+            ->where('active', true)
+            ->update(['active' => false]);
     }
 
     // -------------------------------------------------------------------------

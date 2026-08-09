@@ -147,6 +147,54 @@ class SeederPricingTest extends TestCase
         $this->assertTrue($variant->fresh()->active);
     }
 
+    public function test_reseeding_deactivates_variants_of_a_duplicate_product_row(): void
+    {
+        $this->seedCatalog();
+
+        // Reproduce the production state: a second row for the same product,
+        // left behind when the product was recreated, whose variants stayed
+        // active with no price and surfaced in POS search as blank duplicates.
+        $twin = Product::create([
+            'organization_id' => 1,
+            'category_id' => Product::first()->category_id,
+            'sku' => 'SHD-DUPLICATE',
+            'name' => 'Almond',
+            'product_type' => 'others',
+            'unit_type' => 'weight',
+            'active' => true,
+        ]);
+
+        $orphan = ProductVariant::create([
+            'product_id' => $twin->id,
+            'sku' => 'SHD-'.$twin->id.'-100G',
+            'pack_size' => 100,
+            'unit' => 'GMS',
+            'cost_price' => 160,
+            'selling_price_nepal' => null,
+            'active' => true,
+        ]);
+
+        $this->seedCatalog();
+
+        $this->assertFalse((bool) $twin->fresh()->active, 'the duplicate product is deactivated by name matching');
+        $this->assertFalse(
+            (bool) $orphan->fresh()->active,
+            'its variants must be deactivated too, or they linger unpriced in POS search'
+        );
+    }
+
+    public function test_the_sweep_leaves_variants_of_live_products_alone(): void
+    {
+        $this->seedCatalog();
+
+        $liveCount = ProductVariant::where('active', true)->count();
+
+        $this->seedCatalog();
+
+        $this->assertSame($liveCount, ProductVariant::where('active', true)->count(),
+            'a reseed must not deactivate anything that is genuinely on sale');
+    }
+
     public function test_the_full_seed_chain_including_blends_runs_without_error(): void
     {
         $this->seedCatalog();
