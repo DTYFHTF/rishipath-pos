@@ -18,6 +18,26 @@ class PricingService
     /** Wholesale prices round up to the nearest multiple of this — cash-friendly. */
     public const WHOLESALE_PRICE_STEP = 5.0;
 
+    /**
+     * Below this price, wholesale rounds to the nearest Rs1 instead of Rs5.
+     *
+     * On a small pack the Rs5 step is a large share of the price and was
+     * swallowing the dealer discount whole: Coriander 20g came to Rs10.23
+     * wholesale against Rs13.32 retail — a real margin gap — yet both rounded
+     * to Rs15, so the dealer paid exactly the shelf price. Finer rounding down
+     * here keeps the discount visible; larger packs stay on the Rs5 step where
+     * it costs nothing.
+     */
+    public const WHOLESALE_FINE_ROUNDING_BELOW = 50.0;
+
+    /**
+     * Flat packet charge on every dealer pack below 1 kg.
+     *
+     * The retail counterpart is Rs5 (PackPricing::PACKING_FEE); dealers pay
+     * less because they take the packing in volume.
+     */
+    public const WHOLESALE_PACKING_FEE = 3.0;
+
     public static function suggestVariantPrices(?float $costPrice, ?float $packSize, ?string $unit): array
     {
         if ($costPrice === null || $packSize === null || blank($unit)) {
@@ -251,12 +271,22 @@ class PricingService
     }
 
     /**
-     * Dealer price for a variant — cost plus the standard wholesale margin,
-     * rounded up to the nearest Rs5 so dealer bills settle in round cash
-     * amounts. The 1 g pack (Saffron — the only one in the catalogue) is
-     * priced in the hundreds for a few strands; stepping that to the nearest
-     * Rs5 loses the precision that pack is sold on, so it keeps whole-rupee
-     * rounding instead.
+     * Dealer price for a variant — cost plus the wholesale margin, plus a flat
+     * Rs3 packet charge, rounded up to the nearest Rs5 so dealer bills settle
+     * in round cash amounts.
+     *
+     * The packet charge mirrors the Rs5 one on retail (PackPricing) and exists
+     * for the same reason: it is what makes a small pack cost more per gram
+     * than a kilo bag, and it is capped at the value of the goods so a Rs2
+     * packet of gud cannot be rounded into costing more than it is worth.
+     * Dealers pay Rs3 rather than Rs5 — they buy the packing in volume.
+     *
+     * Two packs are treated differently:
+     *  - the 1 kg pack is the reference and carries no packet charge, matching
+     *    retail;
+     *  - the 1 g pack (Saffron, the only one) is priced in the hundreds for a
+     *    few strands, so it keeps whole-rupee rounding and no packet charge —
+     *    an Rs5 step would lose the precision that pack is sold on.
      *
      * Returns null when the variant has no cost price: guessing a wholesale
      * rate from an unknown cost would silently sell below cost.
@@ -269,14 +299,22 @@ class PricingService
             return null;
         }
 
+        $grams = $variant->comparable_size;
         $raw = $cost * self::WHOLESALE_MARKUP;
-        $isOneGramPack = $variant->comparable_size !== null && abs($variant->comparable_size - 1.0) < 0.01;
 
-        if ($isOneGramPack) {
+        if ($grams !== null && abs($grams - 1.0) < 0.01) {
             return (float) ceil($raw);
         }
 
-        return (float) (ceil($raw / self::WHOLESALE_PRICE_STEP) * self::WHOLESALE_PRICE_STEP);
+        $isBelowKilo = $grams === null || $grams < PackPricing::REFERENCE_GRAMS;
+        $fee = $isBelowKilo ? min(self::WHOLESALE_PACKING_FEE, $raw) : 0.0;
+        $total = $raw + $fee;
+
+        if ($total < self::WHOLESALE_FINE_ROUNDING_BELOW) {
+            return (float) ceil($total);
+        }
+
+        return (float) (ceil($total / self::WHOLESALE_PRICE_STEP) * self::WHOLESALE_PRICE_STEP);
     }
 
     /**
