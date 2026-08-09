@@ -2,10 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Models\Category;
 use App\Models\Organization;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Services\PackPricing;
+use App\Services\PricingService;
 use Database\Seeders\BlendProductsSeeder;
 use Database\Seeders\MultaniMittiSeeder;
 use Database\Seeders\ProductCatalogSeeder;
@@ -228,6 +230,40 @@ class SeederPricingTest extends TestCase
         $this->assertSame(3000.0, (float) $kg->selling_price_nepal);
     }
 
+    public function test_garam_masala_wholesale_follows_its_own_flat_per_kg_rate(): void
+    {
+        $this->seedCatalog();
+        $this->seed(BlendProductsSeeder::class);
+
+        $variants = ProductVariant::whereHas('product', fn ($q) => $q->where('name', 'Garam Masala'))->get();
+
+        // Hand-verified ladder at Rs1650/kg (see PricingService::wholesalePriceFromPerKg).
+        $expected = ['20' => 36.0, '50' => 90.0, '100' => 170.0, '250' => 420.0, '500' => 830.0, '1000' => 1650.0];
+
+        foreach ($variants as $variant) {
+            $grams = (int) $variant->comparable_size;
+            $this->assertSame($expected[(string) $grams], PricingService::getWholesalePrice($variant),
+                "{$variant->pack_label} wholesale does not match the Rs1650/kg ladder");
+        }
+    }
+
+    public function test_rishipeya_wholesale_follows_its_own_flat_per_kg_rate(): void
+    {
+        $this->seedCatalog();
+        $this->seed(BlendProductsSeeder::class);
+
+        $variants = ProductVariant::whereHas('product', fn ($q) => $q->where('name', 'Rishipeya'))->get();
+
+        // Hand-verified ladder at Rs2250/kg.
+        $expected = ['20' => 48.0, '50' => 120.0, '100' => 230.0, '250' => 570.0, '500' => 1130.0, '1000' => 2250.0];
+
+        foreach ($variants as $variant) {
+            $grams = (int) $variant->comparable_size;
+            $this->assertSame($expected[(string) $grams], PricingService::getWholesalePrice($variant),
+                "{$variant->pack_label} wholesale does not match the Rs2250/kg ladder");
+        }
+    }
+
     public function test_rishipeya_and_garam_masala_no_longer_share_a_derived_margin(): void
     {
         // The old design solved Garam Masala's margin and reused the same
@@ -260,23 +296,83 @@ class SeederPricingTest extends TestCase
         $this->assertSame(999.0, (float) $variant->fresh()->selling_price_nepal);
     }
 
-    public function test_multani_mitti_lands_on_its_target_and_survives_reseed(): void
+    public function test_multani_mitti_has_its_flat_locked_retail_and_wholesale_price(): void
     {
         $this->seedCatalog();
         $this->seed(MultaniMittiSeeder::class);
 
         $variant = ProductVariant::where('sku', 'PC-MM-200GMS')->firstOrFail();
-        $expected = PackPricing::packPrice(
-            PackPricing::kilogramPrice(250.0, (float) $variant->product->retail_markup),
-            200.0
-        );
 
-        $this->assertSame($expected, (float) $variant->selling_price_nepal);
+        $this->assertSame(150.0, (float) $variant->selling_price_nepal);
+        $this->assertSame(110.0, PricingService::getWholesalePrice($variant));
+        $this->assertTrue((bool) $variant->manual_price_locked);
+    }
 
-        // And a reseed must not move it further.
-        $priceAfterFirstSeed = $variant->selling_price_nepal;
+    public function test_multani_mitti_survives_reseed_and_a_manual_price_change(): void
+    {
+        $this->seedCatalog();
         $this->seed(MultaniMittiSeeder::class);
-        $this->assertSame((float) $priceAfterFirstSeed, (float) $variant->fresh()->selling_price_nepal);
+
+        $this->seed(MultaniMittiSeeder::class);
+        $variant = ProductVariant::where('sku', 'PC-MM-200GMS')->firstOrFail();
+        $this->assertSame(150.0, (float) $variant->selling_price_nepal, 'a reseed must not move the flat price');
+
+        // A later admin edit — locked price protects it, but the seeder must
+        // not blindly overwrite wholesale_price on every run either.
+        $variant->update(['selling_price_nepal' => 175.0, 'wholesale_price' => 130.0]);
+        $this->seed(MultaniMittiSeeder::class);
+
+        $fresh = $variant->fresh();
+        $this->assertSame(175.0, (float) $fresh->selling_price_nepal);
+        $this->assertSame(130.0, (float) $fresh->wholesale_price);
+    }
+
+    public function test_an_old_unlocked_row_from_before_the_flat_price_migrates_on_the_next_reseed(): void
+    {
+        // Reproduces the real production/local state this seeder shipped
+        // against: Multani Mitti previously priced itself from a 3000/kg
+        // target via the standard formula, landing at Rs605/200g, unlocked.
+        // Gating the new flat price on "row doesn't exist yet" would leave
+        // that stale, unlocked Rs605 in place forever, since the row already
+        // existed before this code ran. Gating on the lock instead means an
+        // old unlocked row still gets migrated to the new number once.
+        $this->seedCatalog();
+
+        $category = Category::firstOrCreate(
+            ['organization_id' => 1, 'name' => 'Personal Care'],
+            ['active' => true]
+        );
+        $stale = Product::create([
+            'organization_id' => 1,
+            'category_id' => $category->id,
+            'sku' => 'PC-MM',
+            'name' => 'Multani Mitti',
+            'product_type' => 'others',
+            'unit_type' => 'weight',
+            'retail_markup' => 12.0,
+            'active' => true,
+        ]);
+        ProductVariant::create([
+            'product_id' => $stale->id,
+            'sku' => 'PC-MM-200GMS',
+            'pack_size' => 200,
+            'unit' => 'GMS',
+            'cost_price' => 50,
+            'selling_price_nepal' => 605,
+            'base_price' => 605,
+            'mrp_india' => 605,
+            'manual_price_locked' => false,
+            'wholesale_price' => null,
+            'active' => true,
+        ]);
+
+        $this->seed(MultaniMittiSeeder::class);
+
+        $variant = ProductVariant::where('sku', 'PC-MM-200GMS')->firstOrFail();
+        $this->assertSame(150.0, (float) $variant->selling_price_nepal,
+            'the old formula-derived price must migrate to the new flat one');
+        $this->assertSame(110.0, (float) $variant->wholesale_price);
+        $this->assertTrue((bool) $variant->manual_price_locked);
     }
 
     public function test_a_products_own_markup_survives_being_reseeded_by_product_catalog_seeder(): void

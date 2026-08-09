@@ -78,9 +78,12 @@ class MoringaPowderSeeder extends Seeder
         $variant->cost_price = $costPrice;
         $variant->active = true;
 
-        // Both prices are deliberate overrides — set only once, so a manual
-        // adjustment made later in the admin panel survives a reseed.
-        if (! $variant->exists) {
+        // Both prices are deliberate overrides. Gate on the lock rather than
+        // on whether the row is new — see MultaniMittiSeeder for why that
+        // distinction matters — so a manual adjustment made later in the
+        // admin panel survives a reseed, but an old unlocked row still gets
+        // migrated to these numbers once.
+        if (! $variant->manual_price_locked) {
             $variant->manual_price_locked = true;
             $variant->selling_price_nepal = self::RETAIL_PRICE;
             $variant->base_price = self::RETAIL_PRICE;

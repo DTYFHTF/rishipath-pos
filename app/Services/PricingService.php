@@ -329,6 +329,39 @@ class PricingService
     }
 
     /**
+     * A pack's wholesale price, given a flat per-kilo dealer rate.
+     *
+     * The wholesale counterpart to PackPricing::packPrice(): that function
+     * turns an already-marked-up retail kilo price into a pack price for a
+     * blend priced to a flat target (Rishipeya, Garam Masala) rather than
+     * the usual cost tiers; this does the same thing for those products'
+     * wholesale ladder, which is likewise a flat per-kg rate the business
+     * sets directly (e.g. Rishipeya wholesale Rs2250/kg) rather than the
+     * standard 13%-over-cost formula. Same packet fee and rounding as
+     * getWholesalePrice() so a dealer bill still settles in round cash.
+     *
+     * Returns the per-pack numbers a seeder then writes into wholesale_price
+     * on each variant — those are still an explicit override once stored,
+     * this just computes what to store instead of hand-picking each number.
+     */
+    public static function wholesalePriceFromPerKg(float $perKg, float $packGrams): float
+    {
+        if ($perKg <= 0 || $packGrams <= 0) {
+            return 0.0;
+        }
+
+        $goods = $perKg * ($packGrams / PackPricing::REFERENCE_GRAMS);
+        $fee = $packGrams < PackPricing::REFERENCE_GRAMS
+            ? min(self::WHOLESALE_PACKING_FEE, $goods)
+            : 0.0;
+        $total = $goods + $fee;
+
+        return $total < self::WHOLESALE_FINE_ROUNDING_BELOW
+            ? (float) ceil($total)
+            : (float) (ceil($total / self::WHOLESALE_PRICE_STEP) * self::WHOLESALE_PRICE_STEP);
+    }
+
+    /**
      * A dealer must never pay the shelf price or more.
      *
      * Retail and wholesale are computed by different rules, so on the very

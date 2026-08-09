@@ -4,14 +4,16 @@
  * MultaniMittiSeeder — adds Multani Mitti (Fuller's earth) under a new
  * "Personal Care" category, since it doesn't fit the spice/dry-fruit lines.
  *
- * Single enhanced-packaging SKU: 200g pack, CP रू250/kg. Priced from a flat
- * रू/kg target via PackPricing, the same formula the whole catalogue uses —
- * see TARGET_PER_KG below for the number and why.
+ * Single enhanced-packaging SKU: 200g pack, CP रू250/kg. Retail and wholesale
+ * are both flat, deliberately-set numbers rather than derived from a per-kg
+ * target — the original 3000/kg target (a 12x markup, by far the highest in
+ * the catalogue) was walked back; see RETAIL_PRICE/WHOLESALE_PRICE below for
+ * the current numbers.
  *
  * Uses firstOrCreate for the product → safe to re-run without duplicating it.
- * Variant pricing uses updateOrCreate keyed by SKU so a price change here
- * always takes effect on reseed, and respects manual_price_locked so a
- * deliberate override made in Price Review survives reseeding too.
+ * The variant is locked (manual_price_locked) so these are the numbers
+ * actually charged rather than something a size-tier formula would derive —
+ * there's only one pack, so the formula's per-pack tiering adds nothing here.
  */
 
 namespace Database\Seeders;
@@ -20,7 +22,6 @@ use App\Models\Category;
 use App\Models\Organization;
 use App\Models\Product;
 use App\Models\ProductVariant;
-use App\Services\PackPricing;
 use Illuminate\Database\Seeder;
 
 class MultaniMittiSeeder extends Seeder
@@ -29,13 +30,9 @@ class MultaniMittiSeeder extends Seeder
 
     private const PACK_GRAMS = 200;
 
-    /**
-     * Flat target retail price per kg — pending confirmation, see the
-     * conversation this landed in. At Rs250/kg cost this is a 12x (1100%)
-     * markup, the highest in the catalogue by a wide margin; update this one
-     * constant once the number is confirmed.
-     */
-    private const TARGET_PER_KG = 3000.0;
+    private const RETAIL_PRICE = 150.0;
+
+    private const WHOLESALE_PRICE = 110.0;
 
     public function run(): void
     {
@@ -69,40 +66,42 @@ class MultaniMittiSeeder extends Seeder
             $product->update(['active' => true]);
         }
 
-        $markup = self::TARGET_PER_KG / self::COST_PER_KG;
-        $product->retail_markup = round($markup, 2);
+        // Informational only (the price itself is locked, not derived from
+        // this) — the implied per-kg rate at today's numbers, so Price
+        // Review's headline figure isn't left showing the old 12x target.
+        $product->retail_markup = round((self::RETAIL_PRICE / (self::PACK_GRAMS / 1000)) / self::COST_PER_KG, 2);
         $product->save();
 
-        // PASS 1 — structure and cost.
         $variant = ProductVariant::firstOrNew(['sku' => 'PC-MM-200GMS']);
         $variant->product_id = $product->id;
         $variant->pack_size = (float) self::PACK_GRAMS;
         $variant->unit = 'GMS';
         $variant->cost_price = round(self::COST_PER_KG * self::PACK_GRAMS / 1000, 2);
         $variant->active = true;
-        $variant->save();
 
-        // PASS 2 — derive the price via PackPricing::previewProduct(), the
-        // same call every other seeder makes, so a manual lock or (if this
-        // product ever earns other, cheaper pack sizes) the staple-protection
-        // floor are respected here too rather than reimplemented by hand.
-        $preview = PackPricing::previewProduct($product->fresh('variants'), $markup, allowRises: true);
-        $entry = $preview[$variant->id] ?? null;
-
-        if ($entry && $entry['derived'] !== null) {
-            $variant->mrp_india = $entry['derived'];
-            $variant->base_price = $entry['derived'];
-            $variant->selling_price_nepal = $entry['derived'];
-            $variant->save();
+        // Gate on the lock, not on whether the row is new: this product
+        // existed before with different (formula-derived, unlocked) numbers,
+        // and gating on "new row" alone would leave that old price in place
+        // forever instead of migrating it once to the new flat price. Once
+        // set, manual_price_locked protects it from every later reseed,
+        // including this seeder's own, the same way a price set by hand in
+        // Price Review would be.
+        if (! $variant->manual_price_locked) {
+            $variant->manual_price_locked = true;
+            $variant->selling_price_nepal = self::RETAIL_PRICE;
+            $variant->base_price = self::RETAIL_PRICE;
+            $variant->mrp_india = self::RETAIL_PRICE;
+            $variant->wholesale_price = self::WHOLESALE_PRICE;
         }
 
+        $variant->save();
+
         $this->command->info(sprintf(
-            '✅ Multani Mitti ready (product_id=%d, CP रू%.0f/kg → रू%.2f/200g cost, sells रू%.0f, target रू%.0f/kg)',
+            '✅ Multani Mitti ready (product_id=%d, 200g: cost रू%.2f, retail रू%.0f, wholesale रू%.0f)',
             $product->id,
-            self::COST_PER_KG,
             $variant->cost_price,
             $variant->fresh()->selling_price_nepal,
-            self::TARGET_PER_KG
+            $variant->fresh()->wholesale_price,
         ));
     }
 }

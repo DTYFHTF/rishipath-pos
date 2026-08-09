@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\ProductComposition;
 use App\Models\ProductVariant;
 use App\Services\PackPricing;
+use App\Services\PricingService;
 use Illuminate\Database\Seeder;
 
 /**
@@ -52,6 +53,16 @@ class BlendProductsSeeder extends Seeder
      * markup reused from Garam Masala.
      */
     private const RISHIPEYA_TARGET_PER_KG = 3000.0;
+
+    /**
+     * Dealer rate per kg for each blend — a flat business decision, same as
+     * the retail target, not the standard 13%-over-cost formula (which would
+     * anchor to material cost rather than the deliberately premium retail
+     * position these two are priced at).
+     */
+    private const GARAM_MASALA_WHOLESALE_PER_KG = 1650.0;
+
+    private const RISHIPEYA_WHOLESALE_PER_KG = 2250.0;
 
     /** Pack sizes (grams) seeded for each house blend. */
     private const PACK_SIZES = [20, 50, 100, 250, 500, 1000];
@@ -222,13 +233,20 @@ class BlendProductsSeeder extends Seeder
         ];
 
         $materialPerKg = $this->attachComposition($product, $recipe);
-        $created = $this->priceToTarget($product, 'SP-GRM', $materialPerKg, self::GARAM_MASALA_TARGET_PER_KG);
+        $created = $this->priceToTarget(
+            $product,
+            'SP-GRM',
+            $materialPerKg,
+            self::GARAM_MASALA_TARGET_PER_KG,
+            self::GARAM_MASALA_WHOLESALE_PER_KG,
+        );
 
         $this->command->info(sprintf(
-            '✅ Garam Masala priced (material ≈ रू %.0f/kg + रू %.0f processing → रू %.0f/kg, %d variant(s) upserted)',
+            '✅ Garam Masala priced (material ≈ रू %.0f/kg + रू %.0f processing → रू %.0f/kg retail, रू %.0f/kg wholesale, %d variant(s) upserted)',
             $materialPerKg,
             self::PROCESSING_PER_KG,
             self::GARAM_MASALA_TARGET_PER_KG,
+            self::GARAM_MASALA_WHOLESALE_PER_KG,
             $created
         ));
     }
@@ -274,14 +292,21 @@ class BlendProductsSeeder extends Seeder
         ];
 
         $materialPerKg = $this->attachComposition($product, $recipe);
-        $created = $this->priceToTarget($product, 'HT-RSP', $materialPerKg, self::RISHIPEYA_TARGET_PER_KG);
+        $created = $this->priceToTarget(
+            $product,
+            'HT-RSP',
+            $materialPerKg,
+            self::RISHIPEYA_TARGET_PER_KG,
+            self::RISHIPEYA_WHOLESALE_PER_KG,
+        );
 
         $this->command->info(sprintf(
-            '✅ Rishipeya priced (product_id=%d, material ≈ रू %.0f/kg + रू %.0f processing → रू %.0f/kg, %d variant(s) upserted)',
+            '✅ Rishipeya priced (product_id=%d, material ≈ रू %.0f/kg + रू %.0f processing → रू %.0f/kg retail, रू %.0f/kg wholesale, %d variant(s) upserted)',
             $product->id,
             $materialPerKg,
             self::PROCESSING_PER_KG,
             self::RISHIPEYA_TARGET_PER_KG,
+            self::RISHIPEYA_WHOLESALE_PER_KG,
             $created
         ));
     }
@@ -301,8 +326,13 @@ class BlendProductsSeeder extends Seeder
      * from the unrounded markup so it lands exactly on target rather than
      * drifting by a rounding step.
      */
-    private function priceToTarget(Product $product, string $skuPrefix, float $materialPerKg, float $targetPerKg): int
-    {
+    private function priceToTarget(
+        Product $product,
+        string $skuPrefix,
+        float $materialPerKg,
+        float $targetPerKg,
+        ?float $wholesalePerKg = null,
+    ): int {
         // Rounded once, up front, to 2dp — the same precision the cost_price
         // column stores. previewProduct() re-derives cost per kg later by
         // reading that column back, so solving the markup against anything
@@ -350,6 +380,14 @@ class BlendProductsSeeder extends Seeder
             $variant->mrp_india = $entry['derived'];
             $variant->base_price = $entry['derived'];
             $variant->selling_price_nepal = $entry['derived'];
+
+            if ($wholesalePerKg !== null && $variant->comparable_size > 0) {
+                $variant->wholesale_price = PricingService::wholesalePriceFromPerKg(
+                    $wholesalePerKg,
+                    (float) $variant->comparable_size,
+                );
+            }
+
             $variant->save();
             $count++;
         }

@@ -62,4 +62,36 @@ class WholesaleOverrideTest extends TestCase
 
         $this->assertGreaterThan(0.0, PricingService::getWholesalePrice($variant));
     }
+
+    /**
+     * wholesalePriceFromPerKg() is what a seeder calls to turn a flat
+     * per-kg dealer rate (Rishipeya Rs2250/kg, Garam Masala Rs1650/kg) into
+     * the number it then writes into wholesale_price on each pack — the
+     * wholesale counterpart to PackPricing::packPrice().
+     */
+    public function test_the_1kg_pack_gets_the_rate_exactly_with_no_fee(): void
+    {
+        $this->assertSame(2250.0, PricingService::wholesalePriceFromPerKg(2250.0, 1000.0));
+    }
+
+    public function test_a_below_kilo_pack_carries_the_packet_fee(): void
+    {
+        // 500g of Rs2250/kg = Rs1125 goods + Rs3 fee = Rs1128, rounded up to
+        // the next Rs5.
+        $this->assertSame(1130.0, PricingService::wholesalePriceFromPerKg(2250.0, 500.0));
+    }
+
+    public function test_a_small_pack_uses_fine_rounding_below_rs50(): void
+    {
+        // 20g of Rs1650/kg = Rs33 goods + Rs3 fee = Rs36, under the Rs50
+        // fine-rounding threshold so it rounds to the nearest rupee, not 5.
+        $this->assertSame(36.0, PricingService::wholesalePriceFromPerKg(1650.0, 20.0));
+    }
+
+    public function test_zero_or_negative_inputs_return_zero_rather_than_a_bogus_price(): void
+    {
+        $this->assertSame(0.0, PricingService::wholesalePriceFromPerKg(0.0, 500.0));
+        $this->assertSame(0.0, PricingService::wholesalePriceFromPerKg(2250.0, 0.0));
+        $this->assertSame(0.0, PricingService::wholesalePriceFromPerKg(-100.0, 500.0));
+    }
 }
