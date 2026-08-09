@@ -4,15 +4,12 @@
     <meta charset="utf-8">
     <title>Price List PDF</title>
     <style>
-        @font-face {
-            font-family: 'NotoSansDevanagariLocal';
-            font-style: normal;
-            font-weight: 400;
-            src: url('{{ resource_path('fonts/NotoSansDevanagari-Regular.ttf') }}') format('truetype');
-        }
-
+        {{-- DejaVu Sans only: names are shown romanized (Latin script), not
+             native Devanagari — dompdf has no complex-script text shaper, so
+             Devanagari conjuncts/matras render as tofu boxes regardless of
+             which font is embedded. See the $nepaliName comment below. --}}
         body {
-            font-family: 'NotoSansDevanagariLocal', DejaVu Sans, serif;
+            font-family: DejaVu Sans, sans-serif;
             font-size: 10px;
             color: #1f2937;
             line-height: 1.35;
@@ -93,7 +90,14 @@
                         $imageUrl = $first['image_url'] ?? null;
                         $imageSlug = $first['image_slug'] ?? null;
                         $productName = $first['product_name_english'] ?? $first['product_name'] ?? 'Unknown';
-                        $nepaliName = $first['product_name_nepali'] ?? null;
+                        // Romanized, not native Devanagari: dompdf has no
+                        // complex-script text shaper, so Devanagari conjuncts
+                        // and matras render as tofu boxes regardless of which
+                        // font is embedded. The Latin transliteration is
+                        // still readable to a Nepali speaker and renders
+                        // correctly. ~92% of active products have one; the
+                        // rest just show the English name alone.
+                        $nepaliName = $first['product_name_romanized'] ?? null;
 
                         $localCandidates = [];
                         if (is_string($imageUrl) && $imageUrl !== '' && ! preg_match('/^https?:\/\//i', $imageUrl)) {
@@ -114,8 +118,19 @@
                             }
                         }
 
-                        $resolvedImage = $resolvedLocalImage;
+                        // Source photos run up to 2048x2048px for the web page's
+                        // 64px thumbnail; a PDF embeds a file's actual pixel data
+                        // regardless of its CSS box, so reusing them here is what
+                        // made this PDF 200MB. Resolve to a small cached copy
+                        // instead — see PdfThumbnailService.
+                        $resolvedImage = $resolvedLocalImage
+                            ? \App\Services\PdfThumbnailService::resolve($resolvedLocalImage)
+                            : null;
+
                         if (! $resolvedImage && is_string($imageUrl) && preg_match('/^https?:\/\//i', $imageUrl)) {
+                            // Remote URL, not a local file to thumbnail — used
+                            // as-is; none of the current catalogue's photos are
+                            // remote, so this path isn't expected to run.
                             $resolvedImage = $imageUrl;
                         }
                     @endphp

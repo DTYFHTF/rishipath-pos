@@ -1,5 +1,7 @@
 <x-filament-panels::page>
 
+    @php $placeholderImage = \App\Filament\Pages\PriceListPage::PLACEHOLDER_IMAGE; @endphp
+
     {{-- Header stats & action bar --}}
     <div class="flex flex-wrap items-center gap-4 mb-6">
 
@@ -81,13 +83,15 @@
                 </button>
 
                 <button
-                    wire:click="downloadExcel"
-                    style="display:inline-flex;align-items:center;gap:8px;padding:8px 16px;font-size:0.875rem;font-weight:700;color:#ffffff !important;background:#0f766e !important;border:2px solid #115e59 !important;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.28);cursor:pointer;"
-                    onmouseover="this.style.background='#115e59'" onmouseout="this.style.background='#0f766e'"
+                    wire:click="downloadCompactPdf"
+                    title="One row per product, per-kg price only, no photos — for printing and the shop counter"
+                    style="display:inline-flex;align-items:center;gap:8px;padding:8px 16px;font-size:0.875rem;font-weight:700;color:#ffffff !important;background:#4338ca !important;border:2px solid #3730a3 !important;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.28);cursor:pointer;"
+                    onmouseover="this.style.background='#3730a3'" onmouseout="this.style.background='#4338ca'"
                 >
-                    <x-heroicon-o-arrow-down-tray class="w-4 h-4"/>
-                    Download Excel
+                    <x-heroicon-o-printer class="w-4 h-4"/>
+                    Shop Sheet (Compact)
                 </button>
+
             @endif
         </div>
     </div>
@@ -157,9 +161,6 @@
             <span id="voice-status-text">Listening…</span>
         </div>
 
-        {{-- Result count --}}
-        <div id="voice-result-count" style="display:none;margin-top:8px;font-size:0.85rem;color:#6366f1;font-weight:600;"></div>
-
         {{-- Keyboard dictation tip (always visible, helpful for Nepal) --}}
         <p style="margin-top:8px;font-size:0.78rem;color:#6b7280;">
             💡 <strong>On mobile?</strong> Tap the text box, then use the <strong>🎤 mic button on your keyboard</strong> — it works in any language even without internet.
@@ -176,21 +177,53 @@
 
     @if(!empty($priceList))
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
-            <div class="rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 dark:border-orange-900 dark:bg-orange-900/20">
+            <button type="button" id="filter-stat-changed" onclick="togglePriceListFilter('changed')"
+                class="text-left rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 dark:border-orange-900 dark:bg-orange-900/20 hover:ring-2 hover:ring-orange-300 transition cursor-pointer">
                 <p class="text-xs text-orange-700 dark:text-orange-300 uppercase tracking-wide">Changed Prices</p>
                 <p class="text-2xl font-semibold text-orange-800 dark:text-orange-200">{{ $this->getChangedPriceCount() }}</p>
-                <p class="text-xs text-orange-700/80 dark:text-orange-300/80">Highlighted in orange</p>
-            </div>
-            <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 dark:border-red-900 dark:bg-red-900/20">
+                <p class="text-xs text-orange-700/80 dark:text-orange-300/80">Highlighted in orange &middot; click to filter</p>
+            </button>
+            <button type="button" id="filter-stat-missing" onclick="togglePriceListFilter('missing')"
+                class="text-left rounded-lg border border-red-200 bg-red-50 px-4 py-3 dark:border-red-900 dark:bg-red-900/20 hover:ring-2 hover:ring-red-300 transition cursor-pointer">
                 <p class="text-xs text-red-700 dark:text-red-300 uppercase tracking-wide">Missing 500g/1kg</p>
                 <p class="text-2xl font-semibold text-red-800 dark:text-red-200">{{ $this->getMandatoryPackIssueCount() }}</p>
-                <p class="text-xs text-red-700/80 dark:text-red-300/80">Weight products with missing compulsory packs</p>
-            </div>
+                <p class="text-xs text-red-700/80 dark:text-red-300/80">Weight products with missing compulsory packs &middot; click to filter</p>
+            </button>
             <div class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-900 dark:bg-blue-900/20">
                 <p class="text-xs text-blue-700 dark:text-blue-300 uppercase tracking-wide">Photo Coverage</p>
                 <p class="text-2xl font-semibold text-blue-800 dark:text-blue-200">{{ $this->getProductsWithImageCount() }}/{{ $this->getUniqueProductCount() }}</p>
                 <p class="text-xs text-blue-700/80 dark:text-blue-300/80">{{ $this->getImageCoveragePercent() }}% products have photos</p>
             </div>
+        </div>
+
+        {{-- Filter bar --}}
+        <div class="flex flex-wrap items-center gap-3 mb-5 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
+            <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Filter</span>
+
+            <select id="filter-category" onchange="applyPriceListFilters()"
+                class="text-sm rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 focus:ring-primary-500 focus:border-primary-500">
+                <option value="">All Categories</option>
+                @foreach($priceList as $group)
+                    <option value="{{ strtolower($group['category']) }}">{{ $group['category'] }}</option>
+                @endforeach
+            </select>
+
+            <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300">
+                <input type="checkbox" id="filter-changed" onchange="applyPriceListFilters()" class="rounded border-gray-300">
+                <span>Changed prices only</span>
+            </label>
+
+            <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300">
+                <input type="checkbox" id="filter-missing" onchange="applyPriceListFilters()" class="rounded border-gray-300">
+                <span>Missing packs only</span>
+            </label>
+
+            <button type="button" onclick="clearPriceListFilters()"
+                class="ml-auto text-xs text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 underline">
+                Clear filters
+            </button>
+
+            <span id="filter-result-count" class="text-xs text-gray-500 dark:text-gray-400 w-full"></span>
         </div>
     @endif
 
@@ -216,12 +249,30 @@
                                 $productIndex++;
                                 $anyChanged = $variants->contains(fn($v) => !empty($v['price_changed']));
                                 $missingPacks = $variants->first()['missing_mandatory_packs'] ?? [];
-                                $imageSlug = $variants->first()['image_slug'] ?? '';
-                                $imageUrl = $variants->first()['image_url'] ?? null;
-                                $imageSrc = $imageUrl ?: ($imageSlug ? '/images/products/' . $imageSlug . '.jpg' : null);
+                                // image_src is resolved against the filesystem in generate(); null
+                                // means the product genuinely has no photo yet, so it falls back to
+                                // the neutral studio backdrop rather than collapsing the header.
+                                $imageSrc = $variants->first()['image_src'] ?? null;
+                                $hasPhoto = (bool) $imageSrc;
+                                $imageSrc = $imageSrc ?: $placeholderImage;
                                 $sortedVariants = $variants->sortBy(fn($v) => $v['pack_size_grams'] ?? PHP_INT_MAX)->values();
                                 $ruleSource = $sortedVariants->first(fn($v) => !empty($v['one_gram_mrp']));
                                 $oneGramMrp = $ruleSource['one_gram_mrp'] ?? null;
+
+                                // "From NPR X - Y" span across every pack of this product. Only the
+                                // price columns actually visible count, so the low end never quotes a
+                                // wholesale rate on a retail-only print. The low end is rounded UP to
+                                // the nearest 10 so the advertised entry price is never cheaper than
+                                // what we really charge; the high end stays exact.
+                                $rangeCandidates = [];
+                                foreach ($sortedVariants as $rv) {
+                                    $rangeCandidates[] = (float) ($rv['mrp'] ?? 0);
+                                    if ($this->showWholesale) { $rangeCandidates[] = (float) ($rv['wholesale'] ?? 0); }
+                                    if ($this->showCost)      { $rangeCandidates[] = (float) ($rv['cost_price'] ?? 0); }
+                                }
+                                $rangeCandidates = array_filter($rangeCandidates, fn($n) => $n > 0);
+                                $rangeLow  = $rangeCandidates ? (int) (ceil(min($rangeCandidates) / 10) * 10) : null;
+                                $rangeHigh = $rangeCandidates ? (int) round(max($rangeCandidates)) : null;
                                 // Build search index from all name fields available
                                 $searchIndex = strtolower(
                                     $productName . ' ' .
@@ -235,15 +286,20 @@
                             {{-- Product card --}}
                             <div class="product-card bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden"
                                  data-search="{{ $searchIndex }}"
-                                 data-product-name="{{ strtolower($productName) }}">
+                                 data-product-name="{{ strtolower($productName) }}"
+                                 data-changed="{{ $anyChanged ? '1' : '0' }}"
+                                 data-missing="{{ !empty($missingPacks) ? '1' : '0' }}">
 
                                 {{-- Product header --}}
                                 <div class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600">
-                                    @if($imageSrc)
+                                    <div class="relative flex-shrink-0">
                                         <img src="{{ $imageSrc }}" alt="{{ $productName }}"
-                                            class="w-16 h-16 rounded-lg object-cover flex-shrink-0 border border-gray-200 dark:border-gray-600"
-                                            onerror="this.style.display='none'">
-                                    @endif
+                                            class="w-16 h-16 rounded-lg object-cover border border-gray-200 dark:border-gray-600 {{ $hasPhoto ? '' : 'opacity-60' }}"
+                                            onerror="this.onerror=null;this.src='{{ $placeholderImage }}';this.classList.add('opacity-60');">
+                                        @if(!$hasPhoto)
+                                            <span class="absolute inset-x-0 bottom-0 rounded-b-lg bg-gray-900/60 py-0.5 text-center text-[9px] font-medium leading-tight text-white print:hidden">No photo</span>
+                                        @endif
+                                    </div>
                                     <div class="flex-1 min-w-0">
                                         <div class="flex items-start gap-2 flex-wrap mb-1">
                                             <span class="text-xs text-gray-400 dark:text-gray-500 font-medium">{{ $productIndex }}.</span>
@@ -260,9 +316,20 @@
                                                 <span class="inline-flex items-center rounded-full px-1.5 py-0.5 text-xs font-semibold {{ $weightItem['pack_color_class'] ?? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200' }}">{{ $weightItem['pack_size'] ?? '' }}</span>
                                             @endforeach
                                         </div>
-                                        @if($oneGramMrp)
-                                            <span class="text-xs text-blue-700 dark:text-blue-300 font-medium">1g = NPR {{ number_format($oneGramMrp, 0) }}</span>
-                                        @endif
+                                        <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                            @if($rangeLow)
+                                                <span class="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-600/20 dark:bg-emerald-900/30 dark:text-emerald-200 dark:ring-emerald-400/20">
+                                                    @if($rangeHigh > $rangeLow)
+                                                        From NPR {{ number_format($rangeLow) }} &ndash; {{ number_format($rangeHigh) }}
+                                                    @else
+                                                        NPR {{ number_format($rangeHigh) }}
+                                                    @endif
+                                                </span>
+                                            @endif
+                                            @if($oneGramMrp)
+                                                <span class="text-xs text-blue-700 dark:text-blue-300 font-medium">1g = NPR {{ number_format($oneGramMrp, 0) }}</span>
+                                            @endif
+                                        </div>
                                     </div>
                                 </div>
 
@@ -326,57 +393,6 @@
 <script>
     // ─── Print handler ────────────────────────────────────────────────────────
     document.addEventListener('livewire:initialized', () => {
-        Livewire.on('print-price-list', () => {
-            let printStyle = document.getElementById('price-list-print-style');
-            if (!printStyle) {
-                printStyle = document.createElement('style');
-                printStyle.id = 'price-list-print-style';
-                printStyle.media = 'print';
-                document.head.appendChild(printStyle);
-            }
-            printStyle.textContent = `
-                @page { size: A4 landscape; margin: 10mm; }
-                .fi-sidebar, .fi-topbar, .fi-topbar-item,
-                nav, header, aside, footer,
-                [data-sidebar], button,
-                .fi-page-header, .fi-breadcrumbs,
-                #voice-search-bar,
-                .grid.grid-cols-1.md\\:grid-cols-3 { display: none !important; }
-
-                body, html {
-                    padding: 0 !important;
-                    margin: 0 !important;
-                    background: #fff !important;
-                }
-
-                #price-list-print-root {
-                    display: block !important;
-                }
-
-                .product-grid {
-                    display: grid !important;
-                    grid-template-columns: 1fr 1fr !important;
-                    gap: 0.75rem !important;
-                }
-
-                .product-card {
-                    break-inside: avoid !important;
-                    page-break-inside: avoid !important;
-                    -webkit-column-break-inside: avoid !important;
-                }
-
-                .category-header {
-                    break-after: avoid !important;
-                    page-break-after: avoid !important;
-                }
-
-                * {
-                    -webkit-print-color-adjust: exact;
-                    print-color-adjust: exact;
-                }
-            `;
-            window.print();
-        });
     });
 
     // ─── Voice Search ─────────────────────────────────────────────────────────
@@ -404,20 +420,64 @@
         if (recognition) recognition.lang = lang;
     }
 
-    function priceListSearch(query) {
-        const q = query.trim().toLowerCase();
-        const clearBtn = document.getElementById('voice-clear-btn');
-        const resultCount = document.getElementById('voice-result-count');
+    // ─── Filters (search + category + changed + missing) ─────────────────────
+    // A single combined pass so the filters compose with AND logic instead of
+    // fighting over card.style.display — search alone used to own that
+    // property outright, which would have made adding a second filter a bug
+    // magnet (whichever ran last would silently undo the other).
+    let priceListSearchQuery = '';
 
-        if (clearBtn) clearBtn.style.display = q ? 'block' : 'none';
+    function priceListSearch(query) {
+        priceListSearchQuery = query.trim().toLowerCase();
+        const clearBtn = document.getElementById('voice-clear-btn');
+        if (clearBtn) clearBtn.style.display = priceListSearchQuery ? 'block' : 'none';
+        applyPriceListFilters();
+    }
+
+    function togglePriceListFilter(name) {
+        const checkbox = document.getElementById('filter-' + name);
+        if (checkbox) checkbox.checked = !checkbox.checked;
+        applyPriceListFilters();
+    }
+
+    function clearPriceListFilters() {
+        document.getElementById('price-search-input').value = '';
+        priceListSearchQuery = '';
+        document.getElementById('filter-category').value = '';
+        document.getElementById('filter-changed').checked = false;
+        document.getElementById('filter-missing').checked = false;
+        applyPriceListFilters();
+    }
+
+    function applyPriceListFilters() {
+        const q = priceListSearchQuery;
+        const category = (document.getElementById('filter-category')?.value || '').toLowerCase();
+        const changedOnly = document.getElementById('filter-changed')?.checked || false;
+        const missingOnly = document.getElementById('filter-missing')?.checked || false;
+        const anyFilterActive = !!q || !!category || changedOnly || missingOnly;
+
+        // Reflect active state on the two clickable stat cards so it's
+        // obvious a click actually did something.
+        document.getElementById('filter-stat-changed')?.classList.toggle('ring-2', changedOnly);
+        document.getElementById('filter-stat-changed')?.classList.toggle('ring-orange-400', changedOnly);
+        document.getElementById('filter-stat-missing')?.classList.toggle('ring-2', missingOnly);
+        document.getElementById('filter-stat-missing')?.classList.toggle('ring-red-400', missingOnly);
 
         const cards = document.querySelectorAll('.product-card');
         let matched = 0;
 
         cards.forEach(card => {
             const searchData = card.getAttribute('data-search') || '';
-            const visible = !q || searchData.includes(q);
+            const cardCategory = card.closest('[data-category-section]')?.getAttribute('data-category-section') || '';
+
+            const visible =
+                (!q || searchData.includes(q)) &&
+                (!category || cardCategory === category) &&
+                (!changedOnly || card.getAttribute('data-changed') === '1') &&
+                (!missingOnly || card.getAttribute('data-missing') === '1');
+
             card.style.display = visible ? '' : 'none';
+            card.style.boxShadow = (q && visible) ? '0 0 0 3px #6366f1' : '';
             if (visible) matched++;
         });
 
@@ -425,31 +485,22 @@
         document.querySelectorAll('[data-category-section]').forEach(section => {
             const hasVisible = Array.from(section.querySelectorAll('.product-card'))
                 .some(c => c.style.display !== 'none');
-            section.style.display = (q && !hasVisible) ? 'none' : '';
+            section.style.display = (anyFilterActive && !hasVisible) ? 'none' : '';
         });
 
-        // Result count
-        if (resultCount) {
-            if (q) {
-                resultCount.style.display = 'block';
-                resultCount.textContent = matched === 0
-                    ? '❌ No products found for "' + query.trim() + '"'
-                    : '✅ ' + matched + ' product' + (matched === 1 ? '' : 's') + ' found';
-            } else {
-                resultCount.style.display = 'none';
-            }
+        const resultEl = document.getElementById('filter-result-count');
+        if (resultEl) {
+            resultEl.textContent = anyFilterActive
+                ? (matched === 0 ? '❌ No products match these filters' : `✅ ${matched} product${matched === 1 ? '' : 's'} shown`)
+                : '';
         }
 
-        // Auto-scroll to first match
+        // Auto-scroll to first match on a text search only — a filter
+        // toggle shouldn't yank the page around under the user's cursor.
         if (q && matched > 0) {
             const first = document.querySelector('.product-card[style=""], .product-card:not([style*="none"])');
             if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-
-        // Highlight matched cards
-        cards.forEach(card => {
-            card.style.boxShadow = (q && card.style.display !== 'none') ? '0 0 0 3px #6366f1' : '';
-        });
     }
 
     function toggleVoiceSearch() {

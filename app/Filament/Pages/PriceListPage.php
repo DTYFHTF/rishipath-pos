@@ -2,14 +2,13 @@
 
 namespace App\Filament\Pages;
 
-use App\Exports\PriceListExport;
 use App\Models\Category;
 use App\Services\OrganizationContext;
+use App\Services\PricingService;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Maatwebsite\Excel\Facades\Excel;
 
 class PriceListPage extends Page
 {
@@ -37,12 +36,18 @@ class PriceListPage extends Page
 
     public bool $showWholesale = true;
 
+    // Neutral studio backdrop shown for products that have no photo yet. Kept as a
+    // UI fallback rather than being written into products.image_url so that dropping
+    // a real photo into images/productv2 is all it takes - no data cleanup after.
+    public const PLACEHOLDER_IMAGE = '/images/product-placeholder.webp';
+
     // Cache file lives in storage/app/price-lists/latest.json
     private const CACHE_FILE = 'price-lists/latest.json';
 
     // Increment this whenever the item schema gains new required keys.
     // Any cached file without a matching version is discarded automatically.
-    private const CACHE_VERSION = 8;
+    // 9: added the resolved 'image_src' key.
+    private const CACHE_VERSION = 9;
 
     // Re-generate only after this many hours (unless forced)
     private const CACHE_TTL_HOURS = 24;
@@ -172,11 +177,16 @@ class PriceListPage extends Page
                     }
                 }
 
+                $imageSlug = Str::slug($product->name);
+                $imageSrc = $this->resolveImageSrc($product->image_url, $imageSlug);
+
                 foreach ($displayVariants as $variant) {
                     $mrpRaw = (float) ($variant->mrp_india ?? $variant->base_price ?? 0);
                     $mrp = $this->roundUpToNearestFive($mrpRaw);
                     $cost = (float) ($variant->cost_price ?? 0);
-                    $wholesale = $this->roundUpToInteger($cost * 1.13);
+                    // Shared with the POS wholesale toggle so a dealer bill always
+                    // matches the rate printed on this sheet.
+                    $wholesale = PricingService::getWholesalePrice($variant) ?? 0.0;
                     $packGrams = $this->toGrams((float) $variant->pack_size, (string) $variant->unit);
                     $packCode = $this->packCode($packGrams);
 
@@ -195,9 +205,12 @@ class PriceListPage extends Page
                         'product_name_nepali' => $product->name_nepali,
                         'product_name_romanized' => $product->name_romanized,
                         'product_name_hindi' => $product->name_hindi,
-                        'image_slug' => Str::slug($product->name),
+                        'image_slug' => $imageSlug,
                         'image_url' => $product->image_url,
-                        'pack_size' => $this->formatPackSize((float) $variant->pack_size, (string) $variant->unit),
+                        // Null when the product genuinely has no photo on disk yet -
+                        // the view swaps in the placeholder and flags it.
+                        'image_src' => $imageSrc,
+                        'pack_size' => $variant->pack_label,
                         'pack_size_grams' => $packGrams,
                         'pack_code' => $packCode,
                         'pack_color_class' => $this->packColorClass($packCode),
@@ -236,7 +249,19 @@ class PriceListPage extends Page
             ->send();
     }
 
-    public function downloadExcel(): \Symfony\Component\HttpFoundation\BinaryFileResponse|\Illuminate\Http\Response|null
+    /**
+     * Rendered server-side via dompdf instead of the browser's print-to-PDF.
+     *
+     * window.print() rasterizes every page as a bitmap at print resolution
+     * and re-embeds each product photo at its full source size regardless of
+     * how small it's displayed on screen — a 28-page catalogue with ~90
+     * product photos came out around 200MB. dompdf lays out real text and
+     * embeds each image's actual (already-compressed webp) bytes once, which
+     * is the same difference a browser gets from "print" vs "print to PDF
+     * via a proper PDF library" — no manual re-compression step needed
+     * afterward.
+     */
+    public function downloadPdf(): \Symfony\Component\HttpFoundation\Response
     {
         if (empty($this->priceList)) {
             Notification::make()
@@ -244,42 +269,37 @@ class PriceListPage extends Page
                 ->warning()
                 ->send();
 
-            return null;
+            return response()->noContent();
         }
 
-        $rows = [];
-        $sn = 1;
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('exports.price-list-pdf', [
+            'priceList' => $this->priceList,
+            'generatedAt' => $this->generatedAt ?? now()->toDateTimeString(),
+            'uniqueProductCount' => $this->getUniqueProductCount(),
+            'variantCount' => $this->getTotalProducts(),
+            'changedCount' => $this->getChangedPriceCount(),
+        ])
+            ->setPaper('a4')
+            ->setOption('isHtml5ParserEnabled', true)
+            ->setOption('isRemoteEnabled', true);
 
-        foreach ($this->priceList as $group) {
-            foreach ($group['items'] as $item) {
-                $row = [
-                    $sn++,
-                    $group['category'],
-                    $item['product_name'],
-                    $item['pack_size'],
-                ];
-                if ($this->showCost) {
-                    $row[] = $item['cost_price'] ?? 0;
-                }
-                if ($this->showWholesale) {
-                    $row[] = $item['wholesale'];
-                }
-                $row[] = $item['mrp'];
-                $rows[] = $row;
-            }
-        }
+        $filename = 'price-list-'.date('Y-m-d').'.pdf';
 
-        $filename = 'price-list-'.date('Y-m-d').'.xlsx';
-
-        return Excel::download(new PriceListExport(
-            $rows,
-            $this->generatedAt ?? now()->toDateTimeString(),
-            $this->showCost,
-            $this->showWholesale
-        ), $filename);
+        return response()->streamDownload(
+            fn () => print ($pdf->output()),
+            $filename
+        );
     }
 
-    public function downloadPdf(): void
+    /**
+     * A print-and-hand-to-the-counter sheet: one row per product at its
+     * per-kilo reference price, no photos, big type. The full PDF above is
+     * the online-viewing-equivalent full catalogue (every pack size, every
+     * photo); this is the physical, compact alternative for the shop floor —
+     * something a non-technical reader can scan without hunting through 28
+     * pages for one number.
+     */
+    public function downloadCompactPdf(): \Symfony\Component\HttpFoundation\Response
     {
         if (empty($this->priceList)) {
             Notification::make()
@@ -287,11 +307,22 @@ class PriceListPage extends Page
                 ->warning()
                 ->send();
 
-            return;
+            return response()->noContent();
         }
 
-        // DRY: print the same rendered page content instead of maintaining a separate PDF template.
-        $this->dispatch('print-price-list');
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('exports.price-list-compact-pdf', [
+            'priceList' => $this->priceList,
+            'generatedAt' => $this->generatedAt ?? now()->toDateTimeString(),
+        ])
+            ->setPaper('a4')
+            ->setOption('isHtml5ParserEnabled', true);
+
+        $filename = 'shop-price-sheet-'.date('Y-m-d').'.pdf';
+
+        return response()->streamDownload(
+            fn () => print ($pdf->output()),
+            $filename
+        );
     }
 
     public function getGeneratedAtForHumans(): string
@@ -356,6 +387,30 @@ class PriceListPage extends Page
             ->count();
     }
 
+    /**
+     * Usable image path for a product, or null when it has no photo yet.
+     *
+     * Prefers products.image_url (maintained by ProductImageSeeder), then falls
+     * back to the pre-webp images/products/ drop. That folder uses mixed
+     * extensions - Rishipeya.jpeg, ajwain-carom-seeds.webp - so probing each one
+     * finds files a bare '.jpg' guess would miss. Resolved here, at generate
+     * time, so rendering never has to hit the filesystem.
+     */
+    private function resolveImageSrc(?string $imageUrl, string $slug): ?string
+    {
+        if (filled($imageUrl)) {
+            return $imageUrl;
+        }
+
+        foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
+            if (is_file(public_path("images/products/{$slug}.{$ext}"))) {
+                return "/images/products/{$slug}.{$ext}";
+            }
+        }
+
+        return null;
+    }
+
     private function buildPreviousRowIndex(array $priceList): array
     {
         $index = [];
@@ -403,23 +458,6 @@ class PriceListPage extends Page
         }
 
         return (float) ceil($value);
-    }
-
-    private function formatPackSize(float $size, string $unit): string
-    {
-        $normalizedUnit = strtoupper(trim($unit));
-
-        $displaySize = floor($size) == $size
-            ? (string) (int) $size
-            : number_format($size, 3, '.', '');
-
-        $displayUnit = match ($normalizedUnit) {
-            'GMS', 'GM', 'GRAM', 'GRAMS' => 'G',
-            'KGS', 'KILOGRAM', 'KILOGRAMS' => 'KG',
-            default => $normalizedUnit,
-        };
-
-        return $displaySize.' '.$displayUnit;
     }
 
     private function variantSizeKey($variant): string
