@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use App\Services\InventoryService;
-use App\Services\PricingService;
+use App\Services\PackPricing;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -252,24 +252,19 @@ class Purchase extends Model
                     $item->quantity_received += $qtyToReceive;
                     $item->save();
 
-                    // Update variant cost price and selling prices from received supplier invoice
+                    // Update variant cost price from the received supplier
+                    // invoice, then reprice the WHOLE product from its stored
+                    // costs — not just this one pack — so a delivery can never
+                    // leave two packs of the same product disagreeing about
+                    // what it costs. See PackPricing::reprice().
                     $variant = ProductVariant::find($item->product_variant_id);
                     if ($variant && $item->unit_cost > 0) {
                         $variant->cost_price = $item->unit_cost;
-
-                        if (! $variant->manual_price_locked) {
-                            $suggested = PricingService::suggestVariantPrices(
-                                (float) $item->unit_cost,
-                                (float) $variant->pack_size,
-                                (string) $variant->unit,
-                            );
-
-                            $variant->base_price = $suggested['base_price'];
-                            $variant->mrp_india = $suggested['mrp_india'];
-                            $variant->selling_price_nepal = $suggested['selling_price_nepal'];
-                        }
-
                         $variant->save();
+
+                        if ($variant->product) {
+                            PackPricing::reprice($variant->product);
+                        }
                     }
 
                     // Create inventory movement audit trail

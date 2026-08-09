@@ -290,9 +290,20 @@ class PricingService
      *
      * Returns null when the variant has no cost price: guessing a wholesale
      * rate from an unknown cost would silently sell below cost.
+     *
+     * A variant carrying wholesale_price skips all of this: that field is a
+     * human decision (the moringa 100g pack sells for less discount off
+     * retail than the 13% formula would give, because the retail price
+     * itself is already a premium set for other reasons), and it is used
+     * exactly as entered — no shelf-price ceiling, no cost floor. Whoever
+     * set it owns the consequence, same as manual_price_locked on retail.
      */
     public static function getWholesalePrice(ProductVariant $variant): ?float
     {
+        if ($variant->wholesale_price !== null && (float) $variant->wholesale_price > 0) {
+            return (float) $variant->wholesale_price;
+        }
+
         $cost = (float) ($variant->cost_price ?? 0);
 
         if ($cost <= 0) {

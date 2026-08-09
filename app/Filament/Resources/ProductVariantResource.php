@@ -112,6 +112,12 @@ class ProductVariantResource extends Resource
                             ->helperText('When enabled, cost-price changes will not auto-suggest or overwrite prices for this variant.')
                             ->default(false)
                             ->inline(false),
+                        Forms\Components\TextInput::make('wholesale_price')
+                            ->label('Wholesale Price Override')
+                            ->numeric()
+                            ->prefix('₹')
+                            ->helperText('Leave blank to use the standard 13% wholesale formula from cost. Set a value to fix the dealer price directly — it is used exactly as entered, bypassing the formula.')
+                            ->minValue(0),
                     ])
                     ->columns(2),
 

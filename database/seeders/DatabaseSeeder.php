@@ -32,6 +32,7 @@ class DatabaseSeeder extends Seeder
             IngredientKnowledgeBaseSeeder::class,
             BlendProductsSeeder::class,
             MultaniMittiSeeder::class,
+            MoringaPowderSeeder::class,
             // Runs last: sets up the live Shuddhidham accounts (Super Admin +
             // sales agents) and deactivates any other users so the panel ships
             // with exactly the intended logins.

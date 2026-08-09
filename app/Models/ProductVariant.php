@@ -22,6 +22,7 @@ class ProductVariant extends Model
         'selling_price_nepal',
         'manual_price_locked',
         'cost_price',
+        'wholesale_price',
         'barcode',
         'hsn_code',
         'weight',
@@ -38,6 +39,7 @@ class ProductVariant extends Model
         'selling_price_nepal' => 'decimal:2',
         'manual_price_locked' => 'boolean',
         'cost_price' => 'decimal:2',
+        'wholesale_price' => 'decimal:2',
         'weight' => 'decimal:3',
         'active' => 'boolean',
     ];

@@ -320,4 +320,48 @@ class PackPricing
 
         return $out;
     }
+
+    /**
+     * Re-derive and write every pack's price from the product's OWN stored
+     * costs — the same call Price Review and the Set Cost preview use, just
+     * writing instead of displaying.
+     *
+     * This is what a purchase receipt calls after updating a variant's cost:
+     * previously that path priced the one received pack from its own cost via
+     * a flat markup-percent table (PricingService::suggestVariantPrices),
+     * bypassing the tiers, the packet fee, the staple hold and every other
+     * pack of the same product — which is exactly the kind of per-pack drift
+     * the whole cost-anchored model exists to prevent. Routing it through
+     * here means a purchase, Price Review, and Set Cost can never disagree
+     * about what a given cost implies.
+     *
+     * @return int number of variants whose price changed
+     */
+    public static function reprice(Product $product, bool $allowRises = true): int
+    {
+        $markup = self::explicitMarkupFor($product);
+        $preview = self::previewProduct($product->fresh('variants'), $markup, $allowRises);
+
+        $changed = 0;
+
+        foreach ($preview as $entry) {
+            if ($entry['locked'] || $entry['derived'] === null) {
+                continue;
+            }
+
+            if (abs($entry['derived'] - $entry['current']) < 0.005) {
+                continue;
+            }
+
+            $entry['variant']->forceFill([
+                'selling_price_nepal' => $entry['derived'],
+                'base_price' => $entry['derived'],
+                'mrp_india' => $entry['derived'],
+            ])->saveQuietly();
+
+            $changed++;
+        }
+
+        return $changed;
+    }
 }
