@@ -176,11 +176,38 @@ class PosWholesaleBillingTest extends TestCase
 
     public function test_the_wholesale_packet_charge_never_exceeds_the_value_of_the_goods(): void
     {
-        // A Rs2 packet of gud: 2 * 1.13 = 2.26 of goods. A flat Rs3 charge
-        // would more than double it, so the charge is capped at the goods.
-        $gud = $this->makeProduct('Gud Normal', ['20' => [2.0, 5.0]]);
+        // A Rs2 packet: 2 * 1.13 = 2.26 of goods. A flat Rs3 charge would more
+        // than double it, so the charge is capped at the goods -> 4.52 -> Rs5.
+        // Shelf price is well clear here, so the undercut guard stays out of it.
+        $p = $this->makeProduct('Cheap Filler', ['20' => [2.0, 15.0]]);
 
-        $this->assertSame(5.0, PricingService::getWholesalePrice($gud->variants->first()));
+        $this->assertSame(5.0, PricingService::getWholesalePrice($p->variants->first()));
+    }
+
+    public function test_a_dealer_is_undercut_when_wholesale_would_meet_the_shelf_price(): void
+    {
+        // Gud Normal 20g really does retail at Rs5 (held there to protect a
+        // staple) and computes to Rs5 wholesale, leaving the dealer no reason
+        // to buy wholesale at all.
+        $gud = $this->makeProduct('Gud Normal', ['20' => [2.0, 5.0]]);
+        $variant = $gud->variants->first();
+
+        $wholesale = PricingService::getWholesalePrice($variant);
+
+        $this->assertSame(4.0, $wholesale);
+        $this->assertLessThan(5.0, $wholesale);
+        $this->assertGreaterThan(2.0, $wholesale, 'still above cost');
+    }
+
+    public function test_the_undercut_never_pushes_a_dealer_price_below_cost(): void
+    {
+        // Retail Rs5 on a Rs4.50 cost: undercutting to Rs4 would sell at a
+        // loss, so the computed price stands and Price Review flags it instead.
+        $p = $this->makeProduct('Barely Profitable', ['20' => [4.50, 5.0]]);
+
+        $wholesale = PricingService::getWholesalePrice($p->variants->first());
+
+        $this->assertGreaterThan(4.50, $wholesale, 'never below cost, even to preserve a discount');
     }
 
     public function test_dealers_pay_a_smaller_packet_charge_than_retail(): void

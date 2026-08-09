@@ -310,11 +310,37 @@ class PricingService
         $fee = $isBelowKilo ? min(self::WHOLESALE_PACKING_FEE, $raw) : 0.0;
         $total = $raw + $fee;
 
-        if ($total < self::WHOLESALE_FINE_ROUNDING_BELOW) {
-            return (float) ceil($total);
+        $price = $total < self::WHOLESALE_FINE_ROUNDING_BELOW
+            ? (float) ceil($total)
+            : (float) (ceil($total / self::WHOLESALE_PRICE_STEP) * self::WHOLESALE_PRICE_STEP);
+
+        return self::keepBelowShelfPrice($price, $variant, $cost);
+    }
+
+    /**
+     * A dealer must never pay the shelf price or more.
+     *
+     * Retail and wholesale are computed by different rules, so on the very
+     * cheapest packs they can converge: Gud Normal 20g retails at Rs5 (held
+     * there to protect a staple) and computed out at Rs5 wholesale too, so the
+     * dealer got nothing for buying wholesale. Where that happens the dealer
+     * price is pulled a rupee under the shelf — but never below cost, since
+     * selling at a loss is the worse failure of the two.
+     */
+    private static function keepBelowShelfPrice(float $price, ProductVariant $variant, float $cost): float
+    {
+        $retail = (float) ($variant->selling_price_nepal ?? $variant->base_price ?? 0);
+
+        if ($retail <= 0 || $price < $retail) {
+            return $price;
         }
 
-        return (float) (ceil($total / self::WHOLESALE_PRICE_STEP) * self::WHOLESALE_PRICE_STEP);
+        $undercut = $retail - 1.0;
+
+        // If undercutting would dip to or below cost there is no room to give
+        // a discount; leave the computed price and let Price Review surface
+        // the product as mispriced rather than quietly selling at a loss.
+        return $undercut > $cost ? $undercut : $price;
     }
 
     /**
