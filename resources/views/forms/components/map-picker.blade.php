@@ -251,35 +251,60 @@
                     },
 
                     loadGoogleMapsAPI() {
-                        if (typeof google !== 'undefined' && google.maps) {
-                            return Promise.resolve();
+                        window.__mapPickerLoader = window.__mapPickerLoader || this.bootGoogleMaps();
+
+                        return window.__mapPickerLoader;
+                    },
+
+                    bootGoogleMaps() {
+                        if (typeof google !== 'undefined' && google.maps?.importLibrary) {
+                            return this.importLibraries();
                         }
 
-                        if (window.__mapPickerLoader) {
-                            return window.__mapPickerLoader;
-                        }
-
-                        window.__mapPickerLoader = new Promise((resolve, reject) => {
+                        return new Promise((resolve, reject) => {
                             if (!this.apiKey) {
                                 reject(new Error('Missing Google Maps API key'));
                                 return;
                             }
 
+                            // Resolve on Google's own `callback`, not the script's
+                            // load event. Under `loading=async` the script fires
+                            // onload while it is still a bootstrap stub, so the
+                            // map was built a tick too early and died on
+                            // "google.maps.Map is not a constructor" — losing the
+                            // pin on every shop the field team added.
+                            window.__mapPickerReady = () => resolve();
+
                             const script = document.createElement('script');
                             script.src = 'https://maps.googleapis.com/maps/api/js'
                                 + '?key=' + encodeURIComponent(this.apiKey)
-                                + '&libraries=places&loading=async&v=weekly';
+                                + '&libraries=places&loading=async&v=weekly'
+                                + '&callback=__mapPickerReady';
                             script.async = true;
-                            script.onload = () => {
-                                typeof google !== 'undefined' && google.maps
-                                    ? resolve()
-                                    : reject(new Error('Google Maps API failed to load'));
-                            };
                             script.onerror = () => reject(new Error('Google Maps script blocked or unreachable'));
                             document.head.appendChild(script);
-                        });
+                        }).then(() => this.importLibraries());
+                    },
 
-                        return window.__mapPickerLoader;
+                    /**
+                     * `loading=async` resolves to a bootstrap stub: `google.maps`
+                     * exists the moment the script loads, but the constructors do
+                     * not until each library is imported. Loading the map straight
+                     * off `onload` therefore died on "google.maps.Map is not a
+                     * constructor", and every pin was silently lost. Awaiting the
+                     * imports here is what makes the map deterministic — they also
+                     * populate the classic `google.maps.*` namespace used below.
+                     */
+                    importLibraries() {
+                        return Promise.all([
+                            google.maps.importLibrary('maps'),
+                            google.maps.importLibrary('marker'),
+                            google.maps.importLibrary('geocoding'),
+                            // Places only powers search and the landmark lookup —
+                            // the map and the pin must still work on a key that
+                            // has not enabled it.
+                            google.maps.importLibrary('places').catch(() => null),
+                        ]);
                     },
 
                     addMarker(location) {
