@@ -183,9 +183,13 @@ class RolePermissionSeeder extends Seeder
             'view_customer_ledger',
             'record_customer_payments',
 
-            // Field sales — retail visits, bulk order leads, customer feedback
+            // Field sales — retail visits, bulk order leads, customer feedback.
+            // Editing is needed as much as creating: agents are the only people
+            // standing in the shop, so they are the only ones who can drop an
+            // accurate pin on the 359 stores that still have no coordinates.
             'view_retail_stores',
             'create_retail_stores',
+            'edit_retail_stores',
             'view_bulk_order_inquiries',
             'create_bulk_order_inquiries',
             'view_feedbacks',
