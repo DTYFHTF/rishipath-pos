@@ -332,22 +332,47 @@ class RetailStoreResource extends Resource
                             Forms\Components\Textarea::make('notes')
                                 ->rows(2),
                         ])
-                        ->action(function (RetailStore $record, array $data) {
+                        // Second submit button: log the visit, then land in POS
+                        // with this shop already selected — the agent is standing
+                        // in the shop and the order follows the visit.
+                        ->extraModalFooterActions(fn (Tables\Actions\Action $action): array => [
+                            $action->makeModalSubmitAction('recordVisitAndSell', arguments: ['takeOrder' => true])
+                                ->label('Save & Take Order')
+                                ->icon('heroicon-o-shopping-cart')
+                                ->color('primary'),
+                        ])
+                        ->action(function (RetailStore $record, array $data, array $arguments): void {
+                            $takeOrder = (bool) ($arguments['takeOrder'] ?? false);
+
                             $record->visits()->create(array_merge($data, [
                                 'organization_id' => $record->organization_id,
                                 'visited_by' => auth()->id(),
                                 'visit_date' => now()->toDateString(),
                                 'visit_time' => now()->format('H:i:s'),
+                                'order_placed' => $takeOrder ? true : ($data['order_placed'] ?? false),
                             ]));
 
                             $record->markVisited();
 
-                            \Filament\Notifications\Notification::make()
+                            if ($takeOrder) {
+                                static::sendToPos($record);
+
+                                return;
+                            }
+
+                            Notification::make()
                                 ->success()
                                 ->title('Visit Recorded')
                                 ->body("Visit to {$record->store_name} recorded successfully.")
                                 ->send();
                         }),
+
+                    // Take Order — straight to POS, no visit log
+                    Tables\Actions\Action::make('takeOrder')
+                        ->label('Take Order')
+                        ->icon('heroicon-o-shopping-cart')
+                        ->color('primary')
+                        ->action(fn (RetailStore $record) => static::sendToPos($record)),
 
                     // Mark Visited
                     Tables\Actions\Action::make('markVisited')
@@ -386,7 +411,18 @@ class RetailStoreResource extends Resource
                         ->modalHeading(fn (RetailStore $record) => $record->linkedCustomer ? "Re-sync Customer for {$record->store_name}" : "Create Customer for {$record->store_name}")
                         ->modalDescription('Creates or updates a linked Customer account so this store can be selected in POS, Sales, and Ledger.')
                         ->action(function (RetailStore $record) {
-                            $customer = $record->syncLinkedCustomer();
+                            try {
+                                $customer = $record->syncLinkedCustomer();
+                            } catch (\Throwable $e) {
+                                Notification::make()
+                                    ->danger()
+                                    ->title('Customer Sync Failed')
+                                    ->body($e->getMessage())
+                                    ->persistent()
+                                    ->send();
+
+                                return;
+                            }
 
                             Notification::make()
                                 ->success()
@@ -404,6 +440,24 @@ class RetailStoreResource extends Resource
                 ]),
             ])
             ->defaultSort('created_at', 'desc');
+    }
+
+    /**
+     * Open POS with this shop already selected as the customer.
+     *
+     * POS picks the customer up from `new_customer_id` on mount (the same
+     * handoff the "create customer from POS" flow uses), so the store only
+     * needs a linked Customer to exist first.
+     */
+    protected static function sendToPos(RetailStore $record): void
+    {
+        $customer = $record->syncLinkedCustomer();
+
+        session()->put('new_customer_id', $customer->id);
+
+        // Inside a Livewire request `redirect()` resolves to Livewire's own
+        // redirector, which registers the redirect itself — nothing to return.
+        redirect()->route('filament.admin.pages.enhanced-p-o-s');
     }
 
     public static function getRelations(): array
