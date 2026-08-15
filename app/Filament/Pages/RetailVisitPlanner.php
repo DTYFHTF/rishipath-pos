@@ -57,7 +57,7 @@ class RetailVisitPlanner extends Page
     public string $mode = 'urgency';
 
     /** Number of stores to include in today's plan */
-    public int $storesPerDay = 8;
+    public int $storesPerDay = 15;
 
     /** Visit interval in days — stores not visited within this period are overdue */
     public int $visitIntervalDays = 30;

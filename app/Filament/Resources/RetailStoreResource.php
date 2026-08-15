@@ -325,12 +325,53 @@ class RetailStoreResource extends Resource
                             Forms\Components\Grid::make(4)->schema([
                                 Forms\Components\Toggle::make('stock_available')->label('Stock ✓'),
                                 Forms\Components\Toggle::make('good_display')->label('Display ✓'),
-                                Forms\Components\Toggle::make('order_placed')->label('Order ✓'),
+                                Forms\Components\Toggle::make('order_placed')->label('Order ✓')->live(),
                                 Forms\Components\Toggle::make('payment_collected')->label('Payment ✓'),
                             ]),
 
+                            Forms\Components\TextInput::make('order_value')
+                                ->label('Order value')
+                                ->numeric()
+                                ->minValue(0)
+                                ->prefix('रू')
+                                ->visible(fn (Forms\Get $get): bool => (bool) $get('order_placed'))
+                                ->helperText('Roughly what the shop ordered, for the visit history.'),
+
+                            Forms\Components\DatePicker::make('next_visit_date')
+                                ->label('Come back on')
+                                ->native(false)
+                                ->minDate(now()->startOfDay())
+                                ->helperText('Drives the follow-up score in the Visit Planner.'),
+
                             Forms\Components\Textarea::make('notes')
                                 ->rows(2),
+
+                            // Kept collapsed so the common case stays a few taps
+                            // for an agent standing in the shop.
+                            Forms\Components\Section::make('More detail')
+                                ->collapsed()
+                                ->schema([
+                                    Forms\Components\Textarea::make('issues_found')
+                                        ->label('Issues found')
+                                        ->rows(2),
+
+                                    Forms\Components\Textarea::make('action_items')
+                                        ->label('Action items')
+                                        ->rows(2),
+
+                                    Forms\Components\Textarea::make('competitor_notes')
+                                        ->label('Competitor notes')
+                                        ->rows(2)
+                                        ->helperText('Which rival brands are on the shelf, and at what price.'),
+
+                                    Forms\Components\FileUpload::make('photos')
+                                        ->label('Photos')
+                                        ->multiple()
+                                        ->image()
+                                        ->maxFiles(5)
+                                        ->directory('retail-visits')
+                                        ->imagePreviewHeight('120'),
+                                ]),
                         ])
                         // Second submit button: log the visit, then land in POS
                         // with this shop already selected — the agent is standing

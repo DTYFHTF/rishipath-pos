@@ -171,6 +171,36 @@ class RetailStoreCustomerSyncTest extends TestCase
         );
     }
 
+    public function test_record_visit_captures_the_follow_up_and_field_detail(): void
+    {
+        $store = $this->store('Ilam Store', '9863838503');
+
+        Livewire::actingAs($this->user)
+            ->test(ListRetailStores::class)
+            ->callTableAction('recordVisit', $store, [
+                'visit_purpose' => 'sales',
+                'visit_outcome' => 'successful',
+                'order_placed' => true,
+                'order_value' => 4500,
+                'next_visit_date' => now()->addDays(21)->toDateString(),
+                'issues_found' => 'Shelf dusty, stock at back',
+                'action_items' => 'Bring a new display rack',
+                'competitor_notes' => 'Rival masala at Rs 180/kg',
+            ])
+            ->assertHasNoTableActionErrors();
+
+        $visit = $store->visits()->first();
+
+        $this->assertSame('4500.00', $visit->order_value);
+        $this->assertSame(
+            now()->addDays(21)->toDateString(),
+            $visit->next_visit_date->toDateString(),
+        );
+        $this->assertSame('Shelf dusty, stock at back', $visit->issues_found);
+        $this->assertSame('Bring a new display rack', $visit->action_items);
+        $this->assertSame('Rival masala at Rs 180/kg', $visit->competitor_notes);
+    }
+
     public function test_the_take_order_action_jumps_straight_to_pos(): void
     {
         $store = $this->store('Manjushree Masala', '9851361340, 9803973867');
