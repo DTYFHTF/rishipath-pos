@@ -61,6 +61,24 @@
 
                 <div class="h-6 w-px bg-gray-200 dark:bg-gray-700"></div>
 
+                {{-- Who to plan for. Prospects are included by default: they are
+                     shops we are still converting, and every new store starts
+                     life as one. --}}
+                <div class="inline-flex rounded-lg border border-gray-300 p-0.5 dark:border-gray-600">
+                    @foreach(['all' => 'All shops', 'customers' => 'Customers', 'prospects' => 'Prospects'] as $value => $label)
+                        <button
+                            type="button"
+                            wire:click="setStatusScope('{{ $value }}')"
+                            class="rounded-md px-3 py-1 text-sm font-medium transition
+                                {{ $this->statusScope === $value
+                                    ? 'bg-primary-600 text-white shadow-sm'
+                                    : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800' }}"
+                        >{{ $label }}</button>
+                    @endforeach
+                </div>
+
+                <div class="h-6 w-px bg-gray-200 dark:bg-gray-700"></div>
+
                 @if($this->mode === 'urgency')
                     <label class="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
                         Stops
@@ -118,7 +136,7 @@
 
             {{-- Compact counters --}}
             <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-gray-100 pt-2 text-xs text-gray-500 dark:border-gray-800 dark:text-gray-400">
-                <span><strong class="text-gray-900 dark:text-gray-100">{{ $coverage['total'] }}</strong> active stores</span>
+                <span><strong class="text-gray-900 dark:text-gray-100">{{ $coverage['total'] }}</strong> {{ ['all' => 'shops to visit', 'customers' => 'customers', 'prospects' => 'prospects'][$this->statusScope] }}</span>
                 <span><strong class="text-success-600">{{ $coverage['mapped'] }}</strong> mapped</span>
                 <span><strong class="text-danger-600">{{ $recommended->filter(fn($s) => $s['_days_since'] > $this->visitIntervalDays)->count() }}</strong> overdue</span>
                 <span><strong class="text-primary-600">{{ count($selected) }}</strong> in today's plan</span>

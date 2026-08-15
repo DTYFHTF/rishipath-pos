@@ -333,4 +333,31 @@ class VisitPlannerTest extends TestCase
         $this->assertSame(2, $coverage['unmapped']);
         $this->assertSame(1, $coverage['linked_unmapped']);
     }
+
+    /**
+     * Every new store defaults to 'prospect', so planning only 'active' shops
+     * once left the planner offering 2 of 478 stores.
+     */
+    public function test_prospects_are_planned_by_default_and_can_be_filtered(): void
+    {
+        $customer = $this->store('Paying Shop', 'Thamel', 27.7150, 85.3120);
+        $prospect = $this->store('New Lead', 'Thamel', 27.7155, 85.3125);
+        $prospect->update(['status' => 'prospect']);
+        $dormant = $this->store('Closed Down', 'Thamel', 27.7160, 85.3130);
+        $dormant->update(['status' => 'inactive']);
+
+        $page = Livewire::test(RetailVisitPlanner::class);
+
+        $names = fn () => $page->instance()->storesQuery()->pluck('store_name')->all();
+
+        // Default scope: everything except inactive.
+        $this->assertEqualsCanonicalizing(['Paying Shop', 'New Lead'], $names());
+        $this->assertNotContains('Closed Down', $names());
+
+        $page->call('setStatusScope', 'customers');
+        $this->assertSame(['Paying Shop'], $names());
+
+        $page->call('setStatusScope', 'prospects');
+        $this->assertSame(['New Lead'], $names());
+    }
 }

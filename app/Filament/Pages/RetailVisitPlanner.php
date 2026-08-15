@@ -56,6 +56,9 @@ class RetailVisitPlanner extends Page
     /** 'urgency' ranks by score; 'area' groups by geographic cluster. */
     public string $mode = 'urgency';
 
+    /** Which shops to plan for: 'all' (bar inactive), 'customers', 'prospects'. */
+    public string $statusScope = 'all';
+
     /** Number of stores to include in today's plan */
     public int $storesPerDay = 15;
 
@@ -105,7 +108,13 @@ class RetailVisitPlanner extends Page
 
         return RetailStore::with(['latestVisit'])
             ->where('organization_id', $orgId)
-            ->where('status', 'active')
+            // Prospects are the whole point of a field round — they are shops
+            // we are trying to convert, and 'prospect' is the status every new
+            // store gets by default. Planning only 'active' left the planner
+            // showing 2 of 478 stores. Only 'inactive' means "do not visit".
+            ->when($this->statusScope === 'customers', fn ($q) => $q->where('status', 'active'))
+            ->when($this->statusScope === 'prospects', fn ($q) => $q->where('status', 'prospect'))
+            ->when($this->statusScope === 'all', fn ($q) => $q->where('status', '!=', 'inactive'))
             ->get();
     }
 
@@ -171,6 +180,15 @@ class RetailVisitPlanner extends Page
     public function updatedVisitIntervalDays(): void
     {
         $this->forgetRanking();
+    }
+
+    public function setStatusScope(string $scope): void
+    {
+        $this->statusScope = in_array($scope, ['all', 'customers', 'prospects'], true) ? $scope : 'all';
+        $this->activeCluster = null;
+        $this->forgetRanking();
+        $this->resetRoute();
+        $this->autoSelect();
     }
 
     // ── Area clustering ───────────────────────────────────────────────────
