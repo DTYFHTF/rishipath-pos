@@ -346,6 +346,21 @@ class RetailStoreResource extends Resource
                             Forms\Components\Textarea::make('notes')
                                 ->rows(2),
 
+                            // Deliberately NOT inside the collapsed section
+                            // below: FilePond measures itself on render, and
+                            // inside a collapsed parent it initialises at zero
+                            // height with no reachable input — the field looks
+                            // present but cannot be tapped.
+                            Forms\Components\FileUpload::make('photos')
+                                ->label('Photos')
+                                ->multiple()
+                                ->image()
+                                ->maxFiles(3)
+                                ->maxSize(8192)
+                                ->directory('retail-visits')
+                                ->imagePreviewHeight('120')
+                                ->helperText('Up to 3 shop photos, 8 MB each.'),
+
                             // Kept collapsed so the common case stays a few taps
                             // for an agent standing in the shop.
                             Forms\Components\Section::make('More detail')
@@ -363,14 +378,6 @@ class RetailStoreResource extends Resource
                                         ->label('Competitor notes')
                                         ->rows(2)
                                         ->helperText('Which rival brands are on the shelf, and at what price.'),
-
-                                    Forms\Components\FileUpload::make('photos')
-                                        ->label('Photos')
-                                        ->multiple()
-                                        ->image()
-                                        ->maxFiles(5)
-                                        ->directory('retail-visits')
-                                        ->imagePreviewHeight('120'),
                                 ]),
                         ])
                         // Second submit button: log the visit, then land in POS
