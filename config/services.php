@@ -45,6 +45,11 @@ return [
         'api_key' => env('GOOGLE_MAPS_API_KEY'),
     ],
 
+    'shuddhidham_web' => [
+        // Public catalogue API behind shuddhidham.com; source for product photos.
+        'url' => env('SHUDDHIDHAM_WEB_URL', 'https://api.shuddhidham.com'),
+    ],
+
     'deploy_webhook' => [
         'secret' => env('DEPLOY_WEBHOOK_SECRET'),
     ],
