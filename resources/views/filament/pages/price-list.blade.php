@@ -96,134 +96,150 @@
         </div>
     </div>
 
-    {{-- Voice Search Bar --}}
+    {{-- Search + filter toolbar.
+
+         Built from a scoped style block rather than utility classes: the admin
+         panel loads Filament's precompiled CSS, which carries only the subset
+         Filament itself uses — grid-cols-3, sm:hidden and every arbitrary value
+         are silently absent, so anything written that way renders unstyled.
+
+         This used to be three stacked blocks (search card, three stat cards,
+         filter bar) that filled the whole first screen on a phone before a
+         single price was visible. The stats double as filters, so they are the
+         chips now, and the two checkboxes they drove are kept in the DOM for
+         the filter JS to read. --}}
     @if(!empty($priceList))
-    <div id="voice-search-bar" class="mb-5 p-4 rounded-2xl bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/30 dark:to-blue-900/30 border border-indigo-200 dark:border-indigo-700 shadow-sm">
-        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+    <style>
+        .pl-bar { margin-bottom: 1rem; padding: 0.5rem; border-radius: 0.75rem;
+                  border: 1px solid rgb(199 210 254); background: rgb(238 242 255 / 0.6); }
+        .dark .pl-bar { border-color: rgb(55 48 163); background: rgb(49 46 129 / 0.2); }
+        .pl-row { display: flex; align-items: center; gap: 0.5rem; }
+        .pl-search { position: relative; flex: 1 1 auto; min-width: 0; }
+        .pl-search input { width: 100%; padding: 9px 32px 9px 12px; font-size: 0.95rem;
+                           border: 2px solid #a5b4fc; border-radius: 10px; outline: none;
+                           background: #fff; color: #1e1b4b; }
+        .pl-clear { position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+                    background: none; border: none; cursor: pointer; color: #6b7280;
+                    font-size: 1.1rem; line-height: 1; }
+        .pl-mic { flex-shrink: 0; width: 42px; height: 42px; border-radius: 50%;
+                  background: #6366f1; border: 2px solid #4338ca; color: #fff; display: flex;
+                  align-items: center; justify-content: center; cursor: pointer;
+                  box-shadow: 0 4px 14px rgba(99,102,241,.4); }
 
-            {{-- Label --}}
-            <div class="flex items-center gap-2 shrink-0">
-                <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                </svg>
-                <span class="text-sm font-semibold text-indigo-700 dark:text-indigo-300 whitespace-nowrap">Search Product</span>
-            </div>
+        /* One scrolling strip, so the chips never wrap into extra rows on a phone. */
+        .pl-chips { display: flex; align-items: center; gap: 0.375rem; margin-top: 0.5rem;
+                    overflow-x: auto; scrollbar-width: none; }
+        .pl-chips::-webkit-scrollbar { display: none; }
+        .pl-chip { flex-shrink: 0; display: inline-flex; align-items: center; gap: 0.3rem;
+                   padding: 5px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 600;
+                   white-space: nowrap; border: 1.5px solid transparent; cursor: pointer;
+                   background: #fff; color: #374151; }
+        .pl-chip b { font-size: 0.8rem; }
+        .pl-chip-changed { border-color: #fed7aa; background: #fff7ed; color: #9a3412; }
+        .pl-chip-missing { border-color: #fecaca; background: #fef2f2; color: #991b1b; }
+        .pl-chip-photos  { border-color: #bfdbfe; background: #eff6ff; color: #1e40af; cursor: default; }
 
-            {{-- Text search input --}}
-            <div class="relative flex-1">
+        /* The filter JS marks an active chip by toggling .ring-2. It also toggles
+           ring-orange-400 / ring-red-400, which are not in the precompiled sheet,
+           so the active state is drawn here instead of relying on them. */
+        #filter-stat-changed.ring-2 { background: #ea580c; border-color: #c2410c; color: #fff; }
+        #filter-stat-missing.ring-2 { background: #dc2626; border-color: #b91c1c; color: #fff; }
+
+        /* A global form-select rule paints its own chevron as a background image
+           and reserves space for it; the right padding here has to clear that
+           or the option text runs underneath it. */
+        .pl-select { flex-shrink: 0; font-size: 0.75rem; padding: 5px 2rem 5px 10px; border-radius: 999px;
+                     border: 1.5px solid #d1d5db; background-color: #fff; color: #374151; max-width: 9.5rem; }
+        .pl-lang { flex-shrink: 0; padding: 5px 9px; border-radius: 999px; font-size: 0.7rem;
+                   font-weight: 700; cursor: pointer; }
+        .pl-clear-link { flex-shrink: 0; margin-left: auto; padding-left: 0.5rem; font-size: 0.7rem;
+                         color: #6b7280; text-decoration: underline; background: none;
+                         border: none; cursor: pointer; }
+        .pl-count { display: block; margin-top: 0.35rem; font-size: 0.7rem; color: #6b7280; }
+        .pl-tip { display: none; margin-top: 0.4rem; font-size: 0.7rem; color: #6b7280; }
+        /* The keyboard-dictation hint only matters on a phone. */
+        @media (max-width: 640px) { .pl-tip { display: block; } }
+    </style>
+
+    <div id="voice-search-bar" class="pl-bar">
+        <div class="pl-row">
+            <div class="pl-search">
                 <input
                     type="text"
                     id="price-search-input"
-                    placeholder="Type or speak a product name…"
+                    placeholder="Search or speak a product name…"
                     oninput="priceListSearch(this.value)"
                     autocomplete="off"
-                    style="width:100%;padding:12px 44px 12px 16px;font-size:1.05rem;border:2px solid #a5b4fc;border-radius:12px;outline:none;background:#fff;color:#1e1b4b;transition:border-color .2s;"
                     onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#a5b4fc'"
                 >
-                <button onclick="document.getElementById('price-search-input').value='';priceListSearch('');"
-                    id="voice-clear-btn"
-                    title="Clear"
-                    style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#6b7280;font-size:1.2rem;line-height:1;">
-                    ✕
-                </button>
+                <button type="button" class="pl-clear" id="voice-clear-btn" title="Clear"
+                    style="display:none;"
+                    onclick="document.getElementById('price-search-input').value='';priceListSearch('');">✕</button>
             </div>
 
-            {{-- Language selector --}}
-            <div class="flex gap-1 shrink-0">
-                <button id="lang-en" onclick="setVoiceLang('en-US')"
-                    style="padding:8px 14px;border-radius:10px;font-size:0.8rem;font-weight:700;border:2px solid #6366f1;background:#6366f1;color:#fff;cursor:pointer;transition:all .15s;">
-                    EN
-                </button>
-                <button id="lang-ne" onclick="setVoiceLang('ne-NP')"
-                    style="padding:8px 14px;border-radius:10px;font-size:0.8rem;font-weight:700;border:2px solid #a5b4fc;background:#fff;color:#6366f1;cursor:pointer;transition:all .15s;">
-                    नेपाली
-                </button>
-                <button id="lang-hi" onclick="setVoiceLang('hi-IN')"
-                    style="padding:8px 14px;border-radius:10px;font-size:0.8rem;font-weight:700;border:2px solid #a5b4fc;background:#fff;color:#6366f1;cursor:pointer;transition:all .15s;">
-                    हिन्दी
-                </button>
-            </div>
-
-            {{-- Mic button --}}
-            <button id="voice-mic-btn" onclick="toggleVoiceSearch()"
-                title="Tap to speak"
-                style="flex-shrink:0;width:52px;height:52px;border-radius:50%;background:#6366f1;border:3px solid #4338ca;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 14px rgba(99,102,241,.4);transition:all .2s;">
-                <svg id="mic-icon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button id="voice-mic-btn" class="pl-mic" onclick="toggleVoiceSearch()" title="Tap to speak">
+                <svg id="mic-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4M12 3a4 4 0 014 4v4a4 4 0 01-8 0V7a4 4 0 014-4z"/>
                 </svg>
             </button>
         </div>
 
-        {{-- Status / feedback bar --}}
-        <div id="voice-status" style="display:none;margin-top:10px;padding:10px 16px;border-radius:10px;background:#fff;border:1.5px solid #c7d2fe;font-size:1rem;color:#312e81;font-weight:600;display:flex;align-items:center;gap:10px;min-height:44px;">
-            <span id="voice-status-icon">🎙️</span>
-            <span id="voice-status-text">Listening…</span>
-        </div>
-
-        {{-- Keyboard dictation tip (always visible, helpful for Nepal) --}}
-        <p style="margin-top:8px;font-size:0.78rem;color:#6b7280;">
-            💡 <strong>On mobile?</strong> Tap the text box, then use the <strong>🎤 mic button on your keyboard</strong> — it works in any language even without internet.
-        </p>
-    </div>
-    @endif
-
-    {{-- Value banners --}}
-    @if($isStale && !empty($priceList))
-        <div class="mb-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-300">
-            <strong>Note:</strong> This price list is more than 24 hours old. Prices may have changed. Click <em>Regenerate</em> to get the latest list.
-        </div>
-    @endif
-
-    @if(!empty($priceList))
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
-            <button type="button" id="filter-stat-changed" onclick="togglePriceListFilter('changed')"
-                class="text-left rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 dark:border-orange-900 dark:bg-orange-900/20 hover:ring-2 hover:ring-orange-300 transition cursor-pointer">
-                <p class="text-xs text-orange-700 dark:text-orange-300 uppercase tracking-wide">Changed Prices</p>
-                <p class="text-2xl font-semibold text-orange-800 dark:text-orange-200">{{ $this->getChangedPriceCount() }}</p>
-                <p class="text-xs text-orange-700/80 dark:text-orange-300/80">Highlighted in orange &middot; click to filter</p>
-            </button>
-            <button type="button" id="filter-stat-missing" onclick="togglePriceListFilter('missing')"
-                class="text-left rounded-lg border border-red-200 bg-red-50 px-4 py-3 dark:border-red-900 dark:bg-red-900/20 hover:ring-2 hover:ring-red-300 transition cursor-pointer">
-                <p class="text-xs text-red-700 dark:text-red-300 uppercase tracking-wide">Missing 500g/1kg</p>
-                <p class="text-2xl font-semibold text-red-800 dark:text-red-200">{{ $this->getMandatoryPackIssueCount() }}</p>
-                <p class="text-xs text-red-700/80 dark:text-red-300/80">Weight products with missing compulsory packs &middot; click to filter</p>
-            </button>
-            <div class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-900 dark:bg-blue-900/20">
-                <p class="text-xs text-blue-700 dark:text-blue-300 uppercase tracking-wide">Photo Coverage</p>
-                <p class="text-2xl font-semibold text-blue-800 dark:text-blue-200">{{ $this->getProductsWithImageCount() }}/{{ $this->getUniqueProductCount() }}</p>
-                <p class="text-xs text-blue-700/80 dark:text-blue-300/80">{{ $this->getImageCoveragePercent() }}% products have photos</p>
-            </div>
-        </div>
-
-        {{-- Filter bar --}}
-        <div class="flex flex-wrap items-center gap-3 mb-5 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
-            <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Filter</span>
-
-            <select id="filter-category" onchange="applyPriceListFilters()"
-                class="text-sm rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 focus:ring-primary-500 focus:border-primary-500">
-                <option value="">All Categories</option>
+        <div class="pl-chips">
+            <select id="filter-category" class="pl-select" onchange="applyPriceListFilters()">
+                <option value="">All categories</option>
                 @foreach($priceList as $group)
                     <option value="{{ strtolower($group['category']) }}">{{ $group['category'] }}</option>
                 @endforeach
             </select>
 
-            <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300">
-                <input type="checkbox" id="filter-changed" onchange="applyPriceListFilters()" class="rounded border-gray-300">
-                <span>Changed prices only</span>
-            </label>
-
-            <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300">
-                <input type="checkbox" id="filter-missing" onchange="applyPriceListFilters()" class="rounded border-gray-300">
-                <span>Missing packs only</span>
-            </label>
-
-            <button type="button" onclick="clearPriceListFilters()"
-                class="ml-auto text-xs text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 underline">
-                Clear filters
+            <button type="button" id="filter-stat-changed" class="pl-chip pl-chip-changed"
+                onclick="togglePriceListFilter('changed')" title="Show only products whose price changed">
+                Changed <b>{{ $this->getChangedPriceCount() }}</b>
             </button>
 
-            <span id="filter-result-count" class="text-xs text-gray-500 dark:text-gray-400 w-full"></span>
+            <button type="button" id="filter-stat-missing" class="pl-chip pl-chip-missing"
+                onclick="togglePriceListFilter('missing')" title="Weight products missing a compulsory 500g or 1kg pack">
+                Missing packs <b>{{ $this->getMandatoryPackIssueCount() }}</b>
+            </button>
+
+            <span class="pl-chip pl-chip-photos" title="{{ $this->getImageCoveragePercent() }}% of products have a photo">
+                Photos <b>{{ $this->getProductsWithImageCount() }}/{{ $this->getUniqueProductCount() }}</b>
+            </span>
+
+            {{-- setVoiceLang() writes these three buttons' colours inline, so their
+                 initial styles have to match what it sets for the active one. --}}
+            <button id="lang-en" class="pl-lang" onclick="setVoiceLang('en-US')"
+                style="border:2px solid #6366f1;background:#6366f1;color:#fff;">EN</button>
+            <button id="lang-ne" class="pl-lang" onclick="setVoiceLang('ne-NP')"
+                style="border:2px solid #a5b4fc;background:#fff;color:#6366f1;">नेपाली</button>
+            <button id="lang-hi" class="pl-lang" onclick="setVoiceLang('hi-IN')"
+                style="border:2px solid #a5b4fc;background:#fff;color:#6366f1;">हिन्दी</button>
+
+            <button type="button" class="pl-clear-link" onclick="clearPriceListFilters()">Clear</button>
+        </div>
+
+        {{-- The chips above drive these; the filter JS reads .checked from them. --}}
+        <input type="checkbox" id="filter-changed" class="sr-only" onchange="applyPriceListFilters()">
+        <input type="checkbox" id="filter-missing" class="sr-only" onchange="applyPriceListFilters()">
+
+        {{-- Hidden until showVoiceStatus() sets display:flex. This previously carried
+             display:none and display:flex in one attribute, so the later one won and
+             "Listening…" showed permanently. --}}
+        <div id="voice-status" style="display:none;align-items:center;gap:10px;margin-top:8px;padding:8px 12px;border-radius:10px;background:#fff;border:1.5px solid #c7d2fe;font-size:0.9rem;color:#312e81;font-weight:600;">
+            <span id="voice-status-icon">🎙️</span>
+            <span id="voice-status-text">Listening…</span>
+        </div>
+
+        <span id="filter-result-count" class="pl-count"></span>
+
+        <p class="pl-tip">💡 Tap the box, then your keyboard's 🎤 — works in any language, even offline.</p>
+    </div>
+    @endif
+
+    @if($isStale && !empty($priceList))
+        <div class="mb-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-300">
+            <strong>Note:</strong> This price list is more than 24 hours old. Prices may have changed. Click <em>Regenerate</em> to get the latest list.
         </div>
     @endif
 
