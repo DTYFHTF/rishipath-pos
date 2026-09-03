@@ -136,9 +136,16 @@
         ->limit(10)
         ->get();
 
+    // supplier_ledger_entries does not share customer_ledger_entries' schema:
+    // it has created_at (not transaction_date), a single signed amount (not
+    // debit_amount/credit_amount), balance_after (not balance), and notes (not
+    // description) - see SupplierLedgerEntry's migration. Querying it with the
+    // customer-ledger column names 500'd on production's MySQL, which validates
+    // ORDER BY columns even against an empty result; SQLite does not, which is
+    // why this passed unnoticed in local dev with no ledger rows to sort.
     $supplierEntries = \App\Models\SupplierLedgerEntry::query()
         ->when($supplierIds->isNotEmpty(), fn($q) => $q->whereIn('supplier_id', $supplierIds))
-        ->orderByDesc('transaction_date')
+        ->orderByDesc('created_at')
         ->limit(10)
         ->get();
 
@@ -153,11 +160,13 @@
     ])->concat($supplierEntries->map(fn($e) => (object) [
         'type' => 'Supplier',
         'party' => $e->supplier->name ?? 'Supplier',
-        'date' => $e->transaction_date,
-        'debit' => $e->debit_amount,
-        'credit' => $e->credit_amount,
-        'balance' => $e->balance,
-        'notes' => $e->description ?? $e->notes,
+        'date' => $e->created_at,
+        // amount is signed: positive on a purchase (what we owe went up - a
+        // debit), negative on a payment or return (what we owe went down).
+        'debit' => $e->amount > 0 ? $e->amount : null,
+        'credit' => $e->amount < 0 ? abs($e->amount) : null,
+        'balance' => $e->balance_after,
+        'notes' => $e->notes,
     ]))->sortByDesc(fn($e) => $e->date)->values();
 
     try {
