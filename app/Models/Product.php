@@ -201,4 +201,30 @@ class Product extends Model
             $product->name
         );
     }
+
+    /**
+     * Turns a raw image_url/image_1/2/3 value into a URL a browser can load.
+     *
+     * The column holds two different kinds of value depending on how the photo
+     * got there: a Filament FileUpload or products:sync-web-images writes a
+     * bare storage-disk path ("product-images/web/...", needs Storage::url());
+     * the legacy productv2 seeder and older imports write a path already
+     * rooted at public/ ("/images/productv2-webp/...", needs asset() as-is).
+     * Mixing the two up — passing the raw value straight to <img src> — is why
+     * a chunk of recently-synced photos silently fell back to a placeholder.
+     */
+    public static function resolveImageUrl(?string $path): ?string
+    {
+        if (blank($path)) {
+            return null;
+        }
+
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return $path;
+        }
+
+        return str_starts_with($path, '/')
+            ? asset(ltrim($path, '/'))
+            : \Illuminate\Support\Facades\Storage::disk('public')->url($path);
+    }
 }

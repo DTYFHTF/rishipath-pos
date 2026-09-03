@@ -96,6 +96,63 @@
         </div>
     </div>
 
+    {{-- Shareable public link. Retail prices only; the payload is filtered in
+         PublicPriceListController, so cost and wholesale are absent from the
+         page rather than hidden in it. --}}
+    @if(!empty($priceList))
+        <style>
+            .share-box { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;
+                         margin-bottom: 1rem; padding: 0.6rem 0.75rem; border-radius: 0.75rem;
+                         border: 1px solid rgb(199 210 254); background: rgb(238 242 255 / 0.5); }
+            .dark .share-box { border-color: rgb(55 48 163); background: rgb(49 46 129 / 0.2); }
+            .share-label { font-size: 0.75rem; font-weight: 700; color: #4338ca; white-space: nowrap; }
+            .dark .share-label { color: #a5b4fc; }
+            .share-url { flex: 1 1 18rem; min-width: 0; font-size: 0.75rem; padding: 6px 10px;
+                         border-radius: 8px; border: 1.5px solid #c7d2fe; background: #fff;
+                         color: #312e81; font-family: ui-monospace, monospace; }
+            .share-btn { flex-shrink: 0; padding: 6px 12px; border-radius: 8px; font-size: 0.75rem;
+                         font-weight: 700; cursor: pointer; border: 1.5px solid #4338ca;
+                         background: #4338ca; color: #fff; }
+            .share-btn-plain { background: #fff; color: #4338ca; }
+            .share-hint { flex-basis: 100%; font-size: 0.7rem; color: #6b7280; }
+        </style>
+
+        <div class="share-box">
+            <span class="share-label">Share price list</span>
+
+            @if($publicUrl)
+                <input type="text" class="share-url" readonly value="{{ $publicUrl }}"
+                       id="public-price-url" onclick="this.select()">
+                <button type="button" class="share-btn" onclick="copyPublicPriceUrl(this)">Copy link</button>
+                <a href="{{ $publicUrl }}" target="_blank" rel="noopener" class="share-btn share-btn-plain">Open</a>
+                <button type="button" class="share-btn share-btn-plain"
+                        wire:click="rotatePublicLink"
+                        wire:confirm="Generate a new link? The current one will stop working for everyone you have already sent it to."
+                >New link</button>
+                <span class="share-hint">Anyone with this link sees retail prices only — no cost, no wholesale. It updates whenever you regenerate the list.</span>
+            @else
+                <button type="button" class="share-btn" wire:click="createPublicLink">Create shareable link</button>
+                <span class="share-hint">Creates an unlisted link you can send on WhatsApp — searchable, always current, retail prices only.</span>
+            @endif
+        </div>
+
+        <script>
+            function copyPublicPriceUrl(button) {
+                const field = document.getElementById('public-price-url');
+                if (!field) return;
+                navigator.clipboard.writeText(field.value).then(() => {
+                    const original = button.textContent;
+                    button.textContent = 'Copied';
+                    setTimeout(() => { button.textContent = original; }, 1500);
+                }).catch(() => {
+                    // clipboard API needs a secure context; selecting the text
+                    // at least leaves it ready for a manual copy.
+                    field.select();
+                });
+            }
+        </script>
+    @endif
+
     {{-- Search + filter toolbar.
 
          Built from a scoped style block rather than utility classes: the admin

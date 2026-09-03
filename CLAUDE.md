@@ -4,7 +4,7 @@ Laravel 12 + Filament 3 admin/POS for a Nepali spice & dry-fruit wholesale/retai
 
 ## Stack
 - **PHP 8.4**, Laravel 12, Filament 3 (admin panel at `/admin`, panel id `admin`).
-- **DB: SQLite** at `database/database.sqlite` (backups in `db_backups/`).
+- **DB differs by environment**: local dev is **SQLite** at `database/database.sqlite` (back it up to `db_backups/` before destructive work); **production is MySQL** (`rishipa2_pos`). So a production repair cannot be made safe by copying a file — snapshot the affected rows to JSON in `db_backups/` first (see `products:restore-synced-images` for the pattern).
 - Key packages: spatie/laravel-permission, barryvdh/laravel-dompdf (invoices), maatwebsite/excel, picqer barcode generator.
 - Local dev served by **Laravel Herd** at `https://rishipath-pos.test` (panel: `/admin`, login `/admin/login`).
 

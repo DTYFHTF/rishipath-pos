@@ -65,7 +65,6 @@
         "SHD-LOPE": "long-pepper",
         "SHD-MA": "mace",
         "SHD-MAKA": "makhana-kanaiya",
-        "SHD-MAMA": "makhana-madhur",
         "SHD-MIDH": "mirchi-dhulo",
         "SHD-MUSE": "mustard-sarsing",
         "SHD-NU": "nutmeg",
@@ -87,7 +86,8 @@
         "SHD-WHSA": "sidhe-nun-white-salt",
         "SHD-WHSESE": "white-sesame-seeds",
         "SHD-WHTUPI": "turmeric-chunks",
-        "SHD-YEMU": "mustard-sarsyun"
+        "SHD-YEMU": "mustard-sarsyun",
+        "SP-MKM": "makhana-madhur"
     },
     "no_web_product": {
         "PC-MM": "Multani Mitti — not sold on the website",
