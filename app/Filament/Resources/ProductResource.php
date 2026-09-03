@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Services\CostRepricer;
 use App\Services\OrganizationContext;
 use App\Services\PackPricing;
+use App\Services\PackVariantGenerator;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
@@ -124,7 +125,36 @@ class ProductResource extends Resource
                                     ])
                                     ->default('standard'),
                                 Forms\Components\Toggle::make('has_variants')
-                                    ->label('Has Multiple Variants'),
+                                    ->label('Has Multiple Variants')
+                                    ->live(),
+
+                                // Creating a product used to mean creating its six
+                                // pack variants one at a time afterwards. Nothing in
+                                // those rows is a decision except the packs and the
+                                // kilo cost, so they are asked for here and the
+                                // variants are built on save. Create only: on an
+                                // existing product the same job is the "Generate pack
+                                // variants" action, which can report what it changed.
+                                Forms\Components\Section::make('Pack Variants')
+                                    ->description('Tick the packs this product is sold in and give the cost of one kilo. Each pack is created with its share of that cost; SKUs and prices follow the usual pricing rule.')
+                                    ->visible(fn (Forms\Get $get, string $operation) => $operation === 'create' && $get('has_variants'))
+                                    ->columnSpanFull()
+                                    ->columns(2)
+                                    ->schema([
+                                        Forms\Components\CheckboxList::make('generate_pack_sizes')
+                                            ->label('Pack sizes')
+                                            ->options(PackVariantGenerator::options())
+                                            ->default(PackVariantGenerator::STANDARD_PACKS)
+                                            ->columns(3)
+                                            ->dehydrated(false)
+                                            ->helperText('The six ticked by default are the catalogue standard.'),
+                                        Forms\Components\TextInput::make('generate_cost_per_kg')
+                                            ->label('Cost per kilo (Rs)')
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->dehydrated(false)
+                                            ->helperText('What one kilo costs you. Leave blank to create the packs without a cost — prices stay empty until you set one.'),
+                                    ]),
                                 Forms\Components\Toggle::make('requires_batch')
                                     ->label('Batch Tracking Required')
                                     ->default(true),

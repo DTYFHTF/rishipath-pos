@@ -27,3 +27,5 @@ Thumbs.db
 *.sqlite
 *.sqlite-journal
 /db_backups/
+/storage/app/product-photos-export
+/storage/app/product-photos-export.zip
