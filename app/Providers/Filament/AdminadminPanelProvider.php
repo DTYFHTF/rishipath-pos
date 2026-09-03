@@ -29,6 +29,7 @@ class AdminadminPanelProvider extends PanelProvider
             ->path('admin')
             ->login()
             ->brandName('Rishipath POS')
+            ->favicon(asset('favicon.ico'))
             ->colors([
                 'primary' => Color::Emerald,
             ])
