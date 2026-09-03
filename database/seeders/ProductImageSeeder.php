@@ -31,6 +31,30 @@ class ProductImageSeeder extends Seeder
         'areca-nut' => 'areca-nut',
     ];
 
+    /**
+     * Whether this seeder may point a product at its name-matched productv2
+     * file, given what the product's image_url holds today.
+     *
+     * This seeder runs on every deploy and used to overwrite image_url
+     * unconditionally. That quietly undid products:sync-web-images: the real
+     * photographs it had pulled from shuddhidham.com stayed on disk and in
+     * image_1, but image_url was pointed back at the older name-matched file,
+     * so the POS and price list showed the old picture. 39 products on
+     * production had been reverted this way before it was noticed.
+     *
+     * A path with no leading slash is a storage-disk path - an upload or a
+     * synced photograph - and always wins over a file this seeder matched by
+     * name. Legacy /images/… paths and empty values stay this seeder's to set.
+     */
+    public static function mayReplaceImageUrl(?string $currentImageUrl): bool
+    {
+        if (blank($currentImageUrl)) {
+            return true;
+        }
+
+        return str_starts_with($currentImageUrl, '/');
+    }
+
     public function run(): void
     {
         $sourcePath = public_path($this->sourceDir);
@@ -55,6 +79,7 @@ class ProductImageSeeder extends Seeder
 
         $updated = 0;
         $missing = 0;
+        $kept = 0;
 
         $lastId = 0;
         do {
@@ -83,6 +108,13 @@ class ProductImageSeeder extends Seeder
                 }
 
                 $relativeUrl = '/'.trim($this->targetDir, '/').'/'.$targetFile;
+
+                if (! self::mayReplaceImageUrl($product->image_url)) {
+                    $kept++;
+
+                    continue;
+                }
+
                 if ($product->image_url !== $relativeUrl) {
                     $product->image_url = $relativeUrl;
                     $product->save();
@@ -91,7 +123,7 @@ class ProductImageSeeder extends Seeder
             }
         } while ($products->count() === 200);
 
-        $this->command->info("ProductImageSeeder: updated {$updated} products, unmatched {$missing}.");
+        $this->command->info("ProductImageSeeder: updated {$updated} products, kept {$kept} real photos, unmatched {$missing}.");
     }
 
     private function buildSourceIndex(string $sourcePath): array
