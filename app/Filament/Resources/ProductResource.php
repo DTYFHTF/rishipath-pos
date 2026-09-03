@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\ProductResource\Pages;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Services\CostRepricer;
 use App\Services\OrganizationContext;
 use App\Services\PackPricing;
@@ -266,7 +267,71 @@ class ProductResource extends Resource
                             ->schema([
                                 Forms\Components\Toggle::make('active')
                                     ->label('Active')
-                                    ->default(true),
+                                    ->default(true)
+                                    ->helperText('Switching a product off hides it from the POS and the price list. Stock and past sales are untouched.'),
+
+                                // A product can be active while the packs people
+                                // actually buy are not, which looks identical from
+                                // the product list. Showing the packs here - and
+                                // letting them be switched back on in place - is
+                                // the difference between spotting that and hunting
+                                // through the Product Variants resource for it.
+                                Forms\Components\Placeholder::make('pack_status_summary')
+                                    ->label('Packs')
+                                    ->content(function (?Product $record) {
+                                        if (! $record) {
+                                            return new HtmlString('<span class="text-sm text-gray-500">Packs appear here once the product is saved.</span>');
+                                        }
+
+                                        $total = $record->variants()->count();
+
+                                        if ($total === 0) {
+                                            return new HtmlString('<span class="text-sm text-gray-500">No packs yet — use <strong>Generate pack variants</strong> above.</span>');
+                                        }
+
+                                        $active = $record->variants()->where('active', true)->count();
+                                        $colour = match (true) {
+                                            $active === 0 => '#b91c1c',
+                                            $active < $total => '#b45309',
+                                            default => '#15803d',
+                                        };
+                                        $note = $active < $total
+                                            ? ' — the rest are hidden from the POS and price list'
+                                            : '';
+
+                                        return new HtmlString(
+                                            '<span style="font-weight:600;color:'.$colour.'">'
+                                            .$active.' of '.$total.' packs active</span>'
+                                            .'<span style="color:#6b7280">'.$note.'</span>'
+                                        );
+                                    })
+                                    ->visibleOn('edit'),
+
+                                Forms\Components\Repeater::make('variants')
+                                    ->relationship()
+                                    ->label('')
+                                    ->schema([
+                                        Forms\Components\Placeholder::make('pack')
+                                            ->label('Pack')
+                                            ->content(fn (?ProductVariant $record) => $record?->pack_label ?? '—'),
+                                        Forms\Components\Placeholder::make('price')
+                                            ->label('Selling price')
+                                            ->content(fn (?ProductVariant $record) => $record?->selling_price_nepal
+                                                ? 'NPR '.number_format((float) $record->selling_price_nepal)
+                                                : '—'),
+                                        Forms\Components\Toggle::make('active')
+                                            ->label('Active')
+                                            ->inline(false),
+                                    ])
+                                    ->columns(3)
+                                    // Packs are created by the generator or the
+                                    // Product Variants resource. Adding or removing
+                                    // one here would cascade to stock levels and
+                                    // batches, so this view only switches them.
+                                    ->addable(false)
+                                    ->deletable(false)
+                                    ->reorderable(false)
+                                    ->visibleOn('edit'),
                             ]),
                     ]),
             ]);
@@ -279,7 +344,12 @@ class ProductResource extends Resource
                 $orgId = OrganizationContext::getCurrentOrganizationId()
                     ?? auth()->user()?->organization_id ?? 1;
 
-                return $query->where('organization_id', $orgId);
+                return $query
+                    ->where('organization_id', $orgId)
+                    ->withCount([
+                        'variants',
+                        'variants as active_variants_count' => fn ($q) => $q->where('active', true),
+                    ]);
             })
             ->columns([
                 Tables\Columns\ImageColumn::make('image_url')
@@ -313,8 +383,23 @@ class ProductResource extends Resource
                         'secondary' => 'others',
                     ]),
                 Tables\Columns\TextColumn::make('variants_count')
-                    ->counts('variants')
-                    ->label('Variants'),
+                    ->label('Packs')
+                    ->badge()
+                    // A bare total hid the case that matters: a live product
+                    // whose packs are all switched off sells nothing, and looked
+                    // no different from a healthy one.
+                    ->getStateUsing(fn ($record) => $record->variants_count === 0
+                        ? '—'
+                        : $record->active_variants_count.'/'.$record->variants_count)
+                    ->color(fn ($record) => match (true) {
+                        $record->variants_count === 0 => 'gray',
+                        $record->active_variants_count === 0 => 'danger',
+                        $record->active_variants_count < $record->variants_count => 'warning',
+                        default => 'success',
+                    })
+                    ->tooltip(fn ($record) => $record->variants_count === 0
+                        ? 'No packs yet'
+                        : $record->active_variants_count.' of '.$record->variants_count.' packs active'),
                 Tables\Columns\IconColumn::make('active')
                     ->boolean(),
                 Tables\Columns\TextColumn::make('created_at')
