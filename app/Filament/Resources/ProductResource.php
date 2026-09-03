@@ -17,6 +17,7 @@ use Filament\Tables\Table;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
+use Illuminate\Support\Str;
 
 class ProductResource extends Resource
 {
@@ -206,11 +207,25 @@ class ProductResource extends Resource
                                             ->maxSize(4096)
                                             ->helperText('Uploading a new file will replace the current image. Square images (1:1) recommended.')
                                             ->afterStateHydrated(function (\Filament\Forms\Components\FileUpload $component, $state) {
-                                                // Seeder-set paths like /images/productv2-webp/... cannot be loaded
-                                                // by Filament\'s FileUpload (different disk). Clear so widget shows empty;
-                                                // dehydrated(false) below ensures the DB value is NOT overwritten on save.
-                                                if (is_string($state) && str_starts_with($state, '/')) {
-                                                    $component->state(null);
+                                                // Defining this callback REPLACES the one BaseFileUpload sets up for
+                                                // itself, which is what normally turns the stored path into the
+                                                // keyed array the component works in. So both cases have to be
+                                                // handled here or the raw string reaches getUploadedFiles() and it
+                                                // fails on foreach() at the next round trip — a 500 on the tab.
+                                                //
+                                                // Paths beginning with / (…/images/productv2-webp/…) are served
+                                                // straight out of public/ rather than the 'public' disk this upload
+                                                // writes to, so the component cannot load them: leave it empty and
+                                                // let the preview above show the image. dehydrated() below keeps the
+                                                // stored value from being overwritten on save.
+                                                if (blank($state) || (is_string($state) && str_starts_with($state, '/'))) {
+                                                    $component->state([]);
+
+                                                    return;
+                                                }
+
+                                                if (is_string($state)) {
+                                                    $component->state([(string) Str::uuid() => $state]);
                                                 }
                                             })
                                             ->dehydrated(fn ($state) => $state !== null),
