@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class Organization extends Model
 {
@@ -20,6 +21,7 @@ class Organization extends Model
         'locale',
         'config',
         'active',
+        'price_list_public_token',
     ];
 
     protected $casts = [
@@ -60,5 +62,30 @@ class Organization extends Model
     public function sales(): HasMany
     {
         return $this->hasMany(Sale::class);
+    }
+
+    /**
+     * The token in the public price list's URL (/prices/{token}). Generated
+     * lazily on first request rather than at organization creation, since
+     * most organizations will never turn the feature on.
+     */
+    public function ensurePriceListToken(): string
+    {
+        if (! $this->price_list_public_token) {
+            $this->forceFill(['price_list_public_token' => Str::random(40)])->save();
+        }
+
+        return $this->price_list_public_token;
+    }
+
+    /**
+     * Invalidates the current public link (if any) and issues a new one - the
+     * only way to revoke a link that has been shared too widely.
+     */
+    public function rotatePriceListToken(): string
+    {
+        $this->forceFill(['price_list_public_token' => Str::random(40)])->save();
+
+        return $this->price_list_public_token;
     }
 }

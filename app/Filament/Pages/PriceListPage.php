@@ -36,18 +36,26 @@ class PriceListPage extends Page
 
     public bool $showWholesale = true;
 
+    /** The unlisted public URL, or null until someone creates the link. */
+    public ?string $publicUrl = null;
+
     // Neutral studio backdrop shown for products that have no photo yet. Kept as a
     // UI fallback rather than being written into products.image_url so that dropping
     // a real photo into images/productv2 is all it takes - no data cleanup after.
     public const PLACEHOLDER_IMAGE = '/images/product-placeholder.webp';
 
     // Cache file lives in storage/app/price-lists/latest.json
-    private const CACHE_FILE = 'price-lists/latest.json';
+    // Read by App\Http\Controllers\PublicPriceListController too, so the
+    // public price list and this page are always looking at the same file.
+    public const CACHE_FILE = 'price-lists/latest.json';
 
     // Increment this whenever the item schema gains new required keys.
     // Any cached file without a matching version is discarded automatically.
     // 9: added the resolved 'image_src' key.
-    private const CACHE_VERSION = 9;
+    // 10: image_src now goes through Product::resolveImageUrl() - a cache
+    // written by v9 has raw storage-disk paths baked in as image_src, which
+    // 404 as an <img src>. Bumping forces a regenerate with the fix.
+    public const CACHE_VERSION = 10;
 
     // Re-generate only after this many hours (unless forced)
     private const CACHE_TTL_HOURS = 24;
@@ -74,6 +82,47 @@ class PriceListPage extends Page
     public function mount(): void
     {
         $this->loadFromCache();
+        $this->refreshPublicUrl();
+    }
+
+    /**
+     * The public link is not created until someone asks for it, so an
+     * organization that never shares a price list never gets a live URL.
+     */
+    private function refreshPublicUrl(): void
+    {
+        $token = $this->currentOrganization()?->price_list_public_token;
+
+        $this->publicUrl = $token ? route('public.price-list', $token) : null;
+    }
+
+    private function currentOrganization(): ?\App\Models\Organization
+    {
+        return \App\Models\Organization::find(OrganizationContext::getCurrentOrganizationId());
+    }
+
+    public function createPublicLink(): void
+    {
+        $this->currentOrganization()?->ensurePriceListToken();
+        $this->refreshPublicUrl();
+
+        Notification::make()
+            ->title('Shareable link ready')
+            ->body('Anyone with this link can see retail prices - cost and wholesale are never included.')
+            ->success()
+            ->send();
+    }
+
+    public function rotatePublicLink(): void
+    {
+        $this->currentOrganization()?->rotatePriceListToken();
+        $this->refreshPublicUrl();
+
+        Notification::make()
+            ->title('New link generated')
+            ->body('The previous link no longer works. Share the new one.')
+            ->success()
+            ->send();
     }
 
     private function loadFromCache(): void
@@ -399,7 +448,13 @@ class PriceListPage extends Page
     private function resolveImageSrc(?string $imageUrl, string $slug): ?string
     {
         if (filled($imageUrl)) {
-            return $imageUrl;
+            // image_url holds two different kinds of path depending on how the
+            // photo got there (see Product::resolveImageUrl) - returning it raw
+            // left every storage-disk path (everything products:sync-web-images
+            // has written since it shipped) resolving relative to this page's
+            // own URL instead of /storage, so the photo 404'd and silently fell
+            // back to the placeholder below.
+            return \App\Models\Product::resolveImageUrl($imageUrl);
         }
 
         foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {

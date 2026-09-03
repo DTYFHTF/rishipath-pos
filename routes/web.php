@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DeployWebhookController;
+use App\Http\Controllers\PublicPriceListController;
 use Illuminate\Support\Facades\Route;
 
 // GitHub Actions deploy webhooks (no CSRF; verified via X-Hub-Signature-256 HMAC)
@@ -185,3 +186,10 @@ Route::get('/api/price-calculator/suggestions', function (\Illuminate\Http\Reque
 
 // Public helper tools - completely client-side, no auth required
 Route::get('/helper-tools', fn () => view('helper-tools.index'))->name('helper-tools');
+
+// Public price list, reached only through the unlisted link the admin Price
+// List page hands out. The 40-character token is the whole access control:
+// no login, but nothing links here and the URL is not guessable. Retail
+// prices only - see PublicPriceListController for what is stripped.
+Route::get('/prices/{token}', [PublicPriceListController::class, 'show'])
+    ->name('public.price-list');
